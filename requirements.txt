@@ -1,0 +1,11 @@
+torch>=2.1.0
+momentfm
+peft>=0.7.0
+numpy
+scipy
+scikit-learn
+pandas
+aeon
+matplotlib
+seaborn
+modal
