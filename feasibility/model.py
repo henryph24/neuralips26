@@ -217,6 +217,32 @@ def _get_hidden_dim(model: nn.Module) -> int:
     raise RuntimeError("Could not determine hidden dimension")
 
 
+def _disable_gradient_checkpointing(model: nn.Module):
+    """Disable gradient checkpointing so forward hooks fire in train mode."""
+    for module in model.modules():
+        if hasattr(module, "gradient_checkpointing"):
+            module.gradient_checkpointing = False
+
+
+def _apply_unfreeze(model: nn.Module, unfreeze: str):
+    """Selectively unfreeze encoder blocks based on strategy."""
+    if unfreeze == "frozen":
+        return
+    encoder_blocks = _get_encoder_blocks(model)
+    n_blocks = len(encoder_blocks)
+    if unfreeze == "last2":
+        unfreeze_from = max(0, n_blocks - 2)
+    elif unfreeze == "last4":
+        unfreeze_from = max(0, n_blocks - 4)
+    elif unfreeze == "all":
+        unfreeze_from = 0
+    else:
+        return
+    for i in range(unfreeze_from, n_blocks):
+        for param in encoder_blocks[i].parameters():
+            param.requires_grad = True
+
+
 def build_adapted_model(
     adapter_cfg: AdapterConfig,
     device: str = "cpu",
@@ -228,17 +254,24 @@ def build_adapted_model(
     """
     model = load_moment(device)
 
+    # Disable gradient checkpointing so forward hooks fire in train mode
+    _disable_gradient_checkpointing(model)
+
     if adapter_cfg.adapter_type == "linear_probe":
+        _apply_unfreeze(model, adapter_cfg.unfreeze)
         return model, None
 
     module_map = discover_module_names(model)
 
     if adapter_cfg.adapter_type == "lora":
         model = attach_lora(model, adapter_cfg, module_map)
+        _disable_gradient_checkpointing(model)
+        _apply_unfreeze(model, adapter_cfg.unfreeze)
         return model, None
 
     if adapter_cfg.adapter_type == "bottleneck":
         model, adapters, hooks = attach_bottleneck(model, adapter_cfg, device)
+        _apply_unfreeze(model, adapter_cfg.unfreeze)
         return model, hooks
 
     raise ValueError(f"Unknown adapter type: {adapter_cfg.adapter_type}")
@@ -268,5 +301,34 @@ def register_feature_hooks(model: nn.Module) -> Tuple[Dict[str, list], list]:
     h1 = encoder_blocks[0].register_forward_hook(capture("first_layer"))
     h2 = encoder_blocks[-1].register_forward_hook(capture("last_layer"))
     hook_handles.extend([h1, h2])
+
+    return feature_store, hook_handles
+
+
+def register_all_layer_hooks(model: nn.Module) -> Tuple[Dict[int, list], list]:
+    """Register forward hooks on ALL encoder blocks.
+
+    Returns (feature_store, hook_handles).
+    feature_store maps layer index -> list of captured outputs.
+    """
+    feature_store = {}
+    hook_handles = []
+
+    encoder_blocks = _get_encoder_blocks(model)
+
+    for idx, block in enumerate(encoder_blocks):
+        feature_store[idx] = []
+
+        def capture(layer_idx):
+            def hook_fn(module, input, output):
+                if isinstance(output, tuple):
+                    feat = output[0]
+                else:
+                    feat = output
+                feature_store[layer_idx].append(feat.detach().cpu())
+            return hook_fn
+
+        h = block.register_forward_hook(capture(idx))
+        hook_handles.append(h)
 
     return feature_store, hook_handles
