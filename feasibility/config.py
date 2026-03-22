@@ -18,6 +18,11 @@ TARGET_MODULE_SETS = {
 }
 BOTTLENECK_DIMS = [32, 64, 128]
 
+# --- New search dimensions ---
+UNFREEZE_STRATEGIES = ["frozen", "last2", "last4", "all"]
+HEAD_TYPES = ["linear", "mlp1", "mlp2"]
+POOLING_STRATEGIES = ["mean", "max", "last", "cls_mean_max"]
+
 
 @dataclass
 class AdapterConfig:
@@ -27,6 +32,9 @@ class AdapterConfig:
     target_modules_key: Optional[str] = None  # "qv" or "qkvo"
     layer_placement: str = "all"
     bottleneck_dim: Optional[int] = None
+    unfreeze: str = "frozen"  # "frozen", "last2", "last4", "all"
+    head_type: str = "linear"  # "linear", "mlp1", "mlp2"
+    pooling: str = "mean"  # "mean", "max", "last", "cls_mean_max"
     config_id: str = ""
 
     @property
@@ -52,6 +60,26 @@ class AdapterConfig:
             if k in AdapterConfig.__dataclass_fields__
         }
         return AdapterConfig(**filtered)
+
+
+def _make_id(cfg: "AdapterConfig") -> str:
+    """Generate a deterministic config_id from parameters."""
+    parts = [cfg.adapter_type]
+    if cfg.adapter_type == "lora":
+        parts.append(f"r{cfg.lora_rank}")
+        parts.append(cfg.target_modules_key or "qv")
+        parts.append(cfg.layer_placement)
+    elif cfg.adapter_type == "bottleneck":
+        parts.append(f"d{cfg.bottleneck_dim}")
+        parts.append(cfg.layer_placement)
+    # Add new dimensions only if non-default
+    if cfg.unfreeze != "frozen":
+        parts.append(f"uf{cfg.unfreeze}")
+    if cfg.head_type != "linear":
+        parts.append(cfg.head_type)
+    if cfg.pooling != "mean":
+        parts.append(f"pool_{cfg.pooling}")
+    return "_".join(parts)
 
 
 def generate_configs() -> List[AdapterConfig]:

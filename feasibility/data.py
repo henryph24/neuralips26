@@ -9,7 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from urllib.request import urlopen
 
 
-ETTH1_URL = "https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small/ETTh1.csv"
+ETT_BASE_URL = "https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small"
+WEATHER_URL = "https://raw.githubusercontent.com/thuml/Time-Series-Library/main/dataset/weather/weather.csv"
 MOMENT_SEQ_LEN = 512
 
 
@@ -31,52 +32,114 @@ def extract_trend(X: torch.Tensor, kernel_size: int = 25) -> torch.Tensor:
     return trend.squeeze(1)
 
 
-def load_etth1(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
-    """Download ETTh1 and create sliding windows, channel-independent.
+def _load_csv_forecasting(url: str, name: str, seq_len: int = MOMENT_SEQ_LEN,
+                          stride: int = 64, max_samples: int = None) -> dict:
+    """Generic loader for CSV forecasting datasets (ETT, Weather, etc.).
 
+    Expects CSV with a date column followed by numeric feature columns.
     Returns dict with 'samples' (n, seq_len) numpy array and 'name'.
     """
-    response = urlopen(ETTH1_URL)
+    response = urlopen(url)
     df = pd.read_csv(io.BytesIO(response.read()))
-    # Drop date column, keep 7 feature columns
-    values = df.iloc[:, 1:].values.astype(np.float32)  # (T, 7)
+    # Drop date column, keep numeric columns
+    values = df.iloc[:, 1:].values.astype(np.float32)
 
-    # Sliding windows
     n_timesteps, n_channels = values.shape
     windows = []
     for start in range(0, n_timesteps - seq_len + 1, stride):
-        window = values[start : start + seq_len]  # (seq_len, 7)
+        window = values[start : start + seq_len]
         windows.append(window)
-    windows = np.stack(windows)  # (n_windows, seq_len, 7)
+    windows = np.stack(windows)
 
-    # Channel-independent: reshape to (n_windows * n_channels, seq_len)
     n_windows = windows.shape[0]
     samples = windows.transpose(0, 2, 1).reshape(n_windows * n_channels, seq_len)
 
-    # Normalize per-sample
+    if max_samples and len(samples) > max_samples:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(samples), max_samples, replace=False)
+        samples = samples[idx]
+
     scaler = StandardScaler()
     samples = scaler.fit_transform(samples.T).T.astype(np.float32)
 
-    return {"samples": samples, "name": "ETTh1", "task": "forecasting"}
+    return {"samples": samples, "name": name, "task": "forecasting"}
 
 
-def load_ethanol_concentration(seq_len: int = MOMENT_SEQ_LEN) -> dict:
-    """Load EthanolConcentration dataset via aeon, pad/truncate to seq_len.
+def load_etth1(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
+    return _load_csv_forecasting(f"{ETT_BASE_URL}/ETTh1.csv", "ETTh1", seq_len, stride)
+
+
+def load_etth2(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
+    return _load_csv_forecasting(f"{ETT_BASE_URL}/ETTh2.csv", "ETTh2", seq_len, stride)
+
+
+def load_ettm1(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
+    return _load_csv_forecasting(f"{ETT_BASE_URL}/ETTm1.csv", "ETTm1", seq_len, stride)
+
+
+def load_ettm2(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
+    return _load_csv_forecasting(f"{ETT_BASE_URL}/ETTm2.csv", "ETTm2", seq_len, stride)
+
+
+def load_weather(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
+    """Load Weather dataset. Requires local file at data/weather.csv.
+
+    Download from: https://drive.google.com/drive/folders/1ohGYWWohJlJlB6l_IFxbKMiAt1grAfKQ
+    """
+    import os
+    local_path = os.path.join(os.path.dirname(__file__), "..", "data", "weather.csv")
+    if not os.path.exists(local_path):
+        raise FileNotFoundError(
+            f"Weather dataset not found at {local_path}. "
+            "Download weather.csv from the Time-Series-Library Google Drive."
+        )
+    df = pd.read_csv(local_path)
+    values = df.iloc[:, 1:].values.astype(np.float32)
+
+    n_timesteps, n_channels = values.shape
+    windows = []
+    for start in range(0, n_timesteps - seq_len + 1, stride):
+        windows.append(values[start : start + seq_len])
+    windows = np.stack(windows)
+
+    n_windows = windows.shape[0]
+    samples = windows.transpose(0, 2, 1).reshape(n_windows * n_channels, seq_len)
+
+    # Subsample — Weather is very large (21 channels)
+    if len(samples) > 5000:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(samples), 5000, replace=False)
+        samples = samples[idx]
+
+    scaler = StandardScaler()
+    samples = scaler.fit_transform(samples.T).T.astype(np.float32)
+
+    return {"samples": samples, "name": "Weather", "task": "forecasting"}
+
+
+FORECASTING_DATASETS = {
+    "ETTh1": load_etth1,
+    "ETTh2": load_etth2,
+    "ETTm1": load_ettm1,
+    "ETTm2": load_ettm2,
+}
+
+
+def _load_uea_classification(dataset_name: str, seq_len: int = MOMENT_SEQ_LEN) -> dict:
+    """Generic loader for UEA classification datasets via aeon.
 
     Returns dict with 'samples' (n, seq_len), 'labels', and 'name'.
     """
     from aeon.datasets import load_classification
 
-    X_train, y_train = load_classification("EthanolConcentration", split="train")
-    X_test, y_test = load_classification("EthanolConcentration", split="test")
+    X_train, y_train = load_classification(dataset_name, split="train")
+    X_test, y_test = load_classification(dataset_name, split="test")
 
-    # X shape: (n_samples, n_channels, n_timesteps)
     X = np.concatenate([X_train, X_test], axis=0).astype(np.float32)
     y = np.concatenate([y_train, y_test], axis=0)
 
     n_samples, n_channels, n_timesteps = X.shape
 
-    # Pad or truncate to seq_len
     if n_timesteps < seq_len:
         pad_width = seq_len - n_timesteps
         X = np.pad(X, ((0, 0), (0, 0), (0, pad_width)), mode="constant")
@@ -86,13 +149,10 @@ def load_ethanol_concentration(seq_len: int = MOMENT_SEQ_LEN) -> dict:
     # Channel-independent: (n_samples * n_channels, seq_len)
     samples = X.reshape(n_samples * n_channels, seq_len)
 
-    # Normalize per-sample
     scaler = StandardScaler()
     samples = scaler.fit_transform(samples.T).T.astype(np.float32)
 
-    # Repeat labels for each channel
     labels = np.repeat(y, n_channels)
-    # Encode labels to integers
     unique_labels = np.unique(labels)
     label_map = {l: i for i, l in enumerate(unique_labels)}
     labels_int = np.array([label_map[l] for l in labels])
@@ -100,9 +160,28 @@ def load_ethanol_concentration(seq_len: int = MOMENT_SEQ_LEN) -> dict:
     return {
         "samples": samples,
         "labels": labels_int,
-        "name": "EthanolConcentration",
+        "name": dataset_name,
         "task": "classification",
     }
+
+
+def load_ethanol_concentration(seq_len: int = MOMENT_SEQ_LEN) -> dict:
+    return _load_uea_classification("EthanolConcentration", seq_len)
+
+
+def load_japanese_vowels(seq_len: int = MOMENT_SEQ_LEN) -> dict:
+    return _load_uea_classification("JapaneseVowels", seq_len)
+
+
+def load_basic_motions(seq_len: int = MOMENT_SEQ_LEN) -> dict:
+    return _load_uea_classification("BasicMotions", seq_len)
+
+
+CLASSIFICATION_DATASETS = {
+    "EthanolConcentration": load_ethanol_concentration,
+    "JapaneseVowels": load_japanese_vowels,
+    "BasicMotions": load_basic_motions,
+}
 
 
 def serialize_dataset(dataset: dict) -> bytes:
