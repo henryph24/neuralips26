@@ -117,11 +117,86 @@ def load_weather(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
     return {"samples": samples, "name": "Weather", "task": "forecasting"}
 
 
+def load_electricity(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
+    """Load Electricity (ECL) dataset. 321 clients, hourly.
+
+    Download from: https://drive.google.com/drive/folders/1ohGYWWohJlJlB6l_IFxbKMiAt1grAfKQ
+    """
+    import os
+    local_path = os.path.join(os.path.dirname(__file__), "..", "data", "electricity.csv")
+    if not os.path.exists(local_path):
+        raise FileNotFoundError(
+            f"Electricity dataset not found at {local_path}. "
+            "Download electricity.csv from the Time-Series-Library Google Drive."
+        )
+    df = pd.read_csv(local_path)
+    values = df.iloc[:, 1:].values.astype(np.float32)
+
+    n_timesteps, n_channels = values.shape
+    windows = []
+    for start in range(0, n_timesteps - seq_len + 1, stride):
+        windows.append(values[start : start + seq_len])
+    windows = np.stack(windows)
+
+    n_windows = windows.shape[0]
+    samples = windows.transpose(0, 2, 1).reshape(n_windows * n_channels, seq_len)
+
+    # Subsample — Electricity has 321 channels
+    if len(samples) > 5000:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(samples), 5000, replace=False)
+        samples = samples[idx]
+
+    scaler = StandardScaler()
+    samples = scaler.fit_transform(samples.T).T.astype(np.float32)
+
+    return {"samples": samples, "name": "Electricity", "task": "forecasting"}
+
+
+def load_traffic(seq_len: int = MOMENT_SEQ_LEN, stride: int = 64) -> dict:
+    """Load Traffic dataset. 862 sensors, hourly.
+
+    Download from: https://drive.google.com/drive/folders/1ohGYWWohJlJlB6l_IFxbKMiAt1grAfKQ
+    """
+    import os
+    local_path = os.path.join(os.path.dirname(__file__), "..", "data", "traffic.csv")
+    if not os.path.exists(local_path):
+        raise FileNotFoundError(
+            f"Traffic dataset not found at {local_path}. "
+            "Download traffic.csv from the Time-Series-Library Google Drive."
+        )
+    df = pd.read_csv(local_path)
+    values = df.iloc[:, 1:].values.astype(np.float32)
+
+    n_timesteps, n_channels = values.shape
+    windows = []
+    for start in range(0, n_timesteps - seq_len + 1, stride):
+        windows.append(values[start : start + seq_len])
+    windows = np.stack(windows)
+
+    n_windows = windows.shape[0]
+    samples = windows.transpose(0, 2, 1).reshape(n_windows * n_channels, seq_len)
+
+    # Subsample — Traffic has 862 channels
+    if len(samples) > 5000:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(samples), 5000, replace=False)
+        samples = samples[idx]
+
+    scaler = StandardScaler()
+    samples = scaler.fit_transform(samples.T).T.astype(np.float32)
+
+    return {"samples": samples, "name": "Traffic", "task": "forecasting"}
+
+
 FORECASTING_DATASETS = {
     "ETTh1": load_etth1,
     "ETTh2": load_etth2,
     "ETTm1": load_ettm1,
     "ETTm2": load_ettm2,
+    "Weather": load_weather,
+    "Electricity": load_electricity,
+    "Traffic": load_traffic,
 }
 
 

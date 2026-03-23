@@ -25,16 +25,26 @@ import modal
 import numpy as np
 
 from feasibility.modal_app import app, image, finetune_config
-from feasibility.data import load_etth1, load_ettm1, serialize_dataset
+from feasibility.data import (
+    load_etth1, load_ettm1, load_etth2, load_ettm2,
+    load_weather, load_electricity, load_traffic,
+    serialize_dataset,
+)
 from feasibility.code_evolution import (
     run_code_evolution,
     validate_adapter_code,
     SEED_ADAPTERS,
 )
+from feasibility.evolution import run_evolution, random_config
 
 DATASETS = {
     "ETTh1": load_etth1,
     "ETTm1": load_ettm1,
+    "ETTh2": load_etth2,
+    "ETTm2": load_ettm2,
+    "Weather": load_weather,
+    "Electricity": load_electricity,
+    "Traffic": load_traffic,
 }
 
 
@@ -99,13 +109,76 @@ def evaluate_adapter_code_remote(
 
 
 def load_cached_baselines(ds_name: str, seed: int) -> dict | None:
-    """Load cached baselines from early_stopping or llm_evolution experiments."""
-    for prefix in ["results/early_stopping/comparison", "results/llm_evolution/comparison"]:
+    """Load cached baselines from early_stopping, llm_evolution, or code_evolution experiments."""
+    for prefix in [
+        "results/early_stopping/comparison",
+        "results/llm_evolution/comparison",
+        "results/code_evolution/baselines",
+    ]:
         path = f"{prefix}_{ds_name}_{seed}.json"
         if os.path.exists(path):
             with open(path) as f:
                 return json.load(f)
     return None
+
+
+def make_3ep_eval(data_bytes, data_meta):
+    """Build a 3-epoch evaluate_fn for traditional evolution baseline."""
+    def eval_fn(cfgs):
+        fts = list(finetune_config.starmap(
+            [(c.to_dict(), data_bytes, data_meta, 3) for c in cfgs]
+        ))
+        results = []
+        for c, ft in zip(cfgs, fts):
+            val = float(ft["mse"])
+            results.append({"config": c.to_dict(), "scores": {"composite": -val}})
+        return results
+    return eval_fn
+
+
+def generate_baselines(ds_name, data_bytes, meta, seed, n_generations, pop_size, validate_top):
+    """Generate Evo-3epoch and Random baselines on-the-fly."""
+    top_n = min(validate_top, 5)
+
+    # Evo-3epoch baseline
+    print(f"  [Baseline] Running Evo-3epoch for {ds_name} (seed={seed})...")
+    ep3_eval = make_3ep_eval(data_bytes, meta)
+    trad_result = run_evolution(
+        ep3_eval,
+        n_generations=n_generations,
+        pop_size=pop_size,
+        seed=seed,
+    )
+    trad_top_cfgs = [r["config"] for r in trad_result["final_population"][:top_n]]
+    trad_ft = list(finetune_config.starmap(
+        [(c, data_bytes, meta, 15) for c in trad_top_cfgs]
+    ))
+
+    # Random baseline
+    print(f"  [Baseline] Running Random for {ds_name} (seed={seed})...")
+    rng = np.random.default_rng(seed)
+    rand_cfgs = [random_config(rng) for _ in range(pop_size)]
+    rand_ft = list(finetune_config.starmap(
+        [(c.to_dict(), data_bytes, meta, 15) for c in rand_cfgs[:top_n]]
+    ))
+
+    baselines = {
+        "comparison": {
+            "Evo-3epoch": trad_ft,
+            "Random": rand_ft,
+        },
+        "metric_key": "mse",
+        "dataset": ds_name,
+        "seed": seed,
+    }
+
+    # Cache for reuse
+    baseline_path = f"results/code_evolution/baselines_{ds_name}_{seed}.json"
+    with open(baseline_path, "w") as f:
+        json.dump(baselines, f, indent=2, default=str)
+    print(f"  Saved baselines to {baseline_path}")
+
+    return baselines
 
 
 @app.local_entrypoint()
@@ -129,10 +202,20 @@ def code_evo(
             print(f"    WARNING: Seed adapter {i+1} is invalid!")
 
     datasets_to_run = {}
-    if dataset in ("etth1", "both"):
+    if dataset in ("etth1", "both", "all"):
         datasets_to_run["ETTh1"] = DATASETS["ETTh1"]
-    if dataset in ("ettm1", "both"):
+    if dataset in ("ettm1", "both", "all"):
         datasets_to_run["ETTm1"] = DATASETS["ETTm1"]
+    if dataset in ("etth2", "all"):
+        datasets_to_run["ETTh2"] = DATASETS["ETTh2"]
+    if dataset in ("ettm2", "all"):
+        datasets_to_run["ETTm2"] = DATASETS["ETTm2"]
+    if dataset in ("weather", "all"):
+        datasets_to_run["Weather"] = DATASETS["Weather"]
+    if dataset in ("electricity", "all"):
+        datasets_to_run["Electricity"] = DATASETS["Electricity"]
+    if dataset in ("traffic", "all"):
+        datasets_to_run["Traffic"] = DATASETS["Traffic"]
 
     for ds_name, loader in datasets_to_run.items():
         print(f"\n{'#'*60}")
@@ -211,8 +294,14 @@ def code_evo(
             with open(val_path, "w") as f:
                 json.dump(validated, f, indent=2, default=str)
 
-        # Load cached baselines for comparison
+        # Load cached baselines or generate on-the-fly
         cached = load_cached_baselines(ds_name, seed)
+        if not cached:
+            print(f"\n  No cached baselines for {ds_name} — generating...")
+            cached = generate_baselines(
+                ds_name, data_bytes, meta, seed,
+                n_generations, pop_size, validate_top,
+            )
 
         print(f"\n{'='*60}")
         print(f"COMPARISON — {ds_name} (MSE, seed={seed})")
@@ -228,20 +317,17 @@ def code_evo(
         else:
             print(f"  {'Code-Evo':<20} no valid adapters found")
 
-        # Cached baselines
-        if cached:
-            mk = cached.get("metric_key", "mse")
-            for method_name in ["Evo-3epoch", "Random", "LLM-Evo"]:
-                results = cached.get("comparison", {}).get(method_name, [])
-                if results:
-                    vals = [float(r.get(mk, float("nan"))) for r in results]
-                    valid_vals = [v for v in vals if not np.isnan(v)]
-                    if valid_vals:
-                        best_v = min(valid_vals)
-                        mean_v = float(np.mean(valid_vals))
-                        print(f"  {method_name:<20} best={best_v:.4f}  mean={mean_v:.4f}")
-        else:
-            print(f"  (No cached baselines found for comparison)")
+        # Baselines
+        mk = cached.get("metric_key", "mse")
+        for method_name in ["Evo-3epoch", "Random", "LLM-Evo"]:
+            results = cached.get("comparison", {}).get(method_name, [])
+            if results:
+                vals = [float(r.get(mk, float("nan"))) for r in results]
+                valid_vals = [v for v in vals if not np.isnan(v)]
+                if valid_vals:
+                    best_v = min(valid_vals)
+                    mean_v = float(np.mean(valid_vals))
+                    print(f"  {method_name:<20} best={best_v:.4f}  mean={mean_v:.4f}")
 
         # Save full comparison
         save_data = {
