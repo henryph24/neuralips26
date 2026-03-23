@@ -8,9 +8,9 @@ Adapting time series foundation models (TSFMs) to downstream tasks requires choo
 
 ## 1. Introduction
 
-Time series foundation models (TSFMs) such as MOMENT (Goswami et al., 2024), TimesFM (Das et al., 2024), and Timer (Liu et al., 2024) have emerged as powerful pretrained representations for diverse temporal tasks. However, a critical practical question remains: *how should one adapt a frozen TSFM to a specific downstream dataset?* The standard approach — selecting from a small menu of adapter types (LoRA ranks, bottleneck dimensions, prediction heads) — is limited by the designer's imagination and the combinatorial size of the configuration space.
+Time series foundation models (TSFMs) such as MOMENT (Goswami et al., 2024), TimesFM (Das et al., 2024), Timer (Liu et al., 2024), Chronos (Ansari et al., 2024), and Moirai (Woo et al., 2024) have emerged as powerful pretrained representations for diverse temporal tasks. The landscape continues to expand rapidly: Moirai-MoE (Liu et al., 2025a) introduces sparse mixture-of-experts for token-level specialization, Timer-XL (Chen et al., 2025) extends to long-context forecasting via hierarchical attention, and GIFT-Eval benchmarking (Woo et al., 2024b) now tracks over a dozen foundation models across 23 datasets. However, a critical practical question remains: *how should one adapt a frozen TSFM to a specific downstream dataset?* The standard approach — selecting from a small menu of adapter types (LoRA ranks, bottleneck dimensions, prediction heads) — is limited by the designer's imagination and the combinatorial size of the configuration space.
 
-This limitation motivates a shift from **configuration search** to **code search**: instead of picking hyperparameters from a predefined grid, what if the search process could generate arbitrary neural architectures? Recent advances in LLM-guided program synthesis (Romera-Paredes et al., 2024; Lehman et al., 2023) have demonstrated that language models can serve as mutation operators in evolutionary algorithms, generating novel programs that would be difficult to specify through traditional genetic programming.
+This limitation motivates a shift from **configuration search** to **code search**: instead of picking hyperparameters from a predefined grid, what if the search process could generate arbitrary neural architectures? Recent advances in LLM-guided program synthesis (Romera-Paredes et al., 2024; Lehman et al., 2023; Nasir et al., 2024) have demonstrated that language models can serve as mutation operators in evolutionary algorithms, generating novel programs that would be difficult to specify through traditional genetic programming.
 
 We instantiate this idea for TSFM adaptation. Our method, **Code Evolution**, maintains a population of PyTorch `nn.Module` adapter classes. Each generation, an LLM (GPT-4o-mini) observes the current population — their code, fitness scores, and failure modes — and proposes new adapter architectures. These are validated locally for correctness, then evaluated on GPU via short training runs. Elitism preserves the best designs while the LLM balances exploitation of successful patterns with exploration of novel architectures.
 
@@ -30,23 +30,25 @@ Our experiments reveal a clear progression of negative and positive results that
 
 ### 2.1 Time Series Foundation Models and Adaptation
 
-The TSFM landscape has rapidly expanded. MOMENT (Goswami et al., 2024) pretrains a transformer encoder via masked reconstruction on 1B time points. TimesFM (Das et al., 2024) and Chronos (Ansari et al., 2024) demonstrate strong zero-shot forecasting. Timer (Liu et al., 2024) unifies multiple tasks through autoregressive pretraining. Adaptation typically follows the NLP playbook: LoRA (Hu et al., 2022), bottleneck adapters, or linear probing atop frozen features.
+The TSFM landscape has rapidly expanded. MOMENT (Goswami et al., 2024) pretrains a transformer encoder via masked reconstruction on 1B time points. TimesFM (Das et al., 2024) and Chronos (Ansari et al., 2024) demonstrate strong zero-shot forecasting. Timer (Liu et al., 2024) unifies multiple tasks through autoregressive pretraining; Timer-XL (Chen et al., 2025) extends this to long-context horizons via hierarchical attention. Moirai (Woo et al., 2024) trains a universal forecaster on 27B observations across 9 domains, while Moirai-MoE (Liu et al., 2025a) replaces frequency-level specialization with sparse mixture-of-experts for automatic token-level routing, achieving up to 17% improvement with 65× fewer activated parameters. UniTS (Lee et al., 2024) demonstrates multi-task pretraining across 50 datasets. The GIFT-Eval benchmark (Woo et al., 2024b) now tracks these models systematically across 23 datasets and 7 domains.
 
-TEMPLATE (Li et al., NeurIPS 2025) provides transferability estimation for model selection across TSFMs, computing CKA-based scores to predict which pretrained model best suits a target dataset. Critically, TEMPLATE is *passive* — it selects among existing models rather than generating new configurations. TimeTic (Pan et al., 2025) takes a similar selection approach using in-context learning entropy. Our work closes this gap: rather than selecting models, we *generate* adapter architectures guided by performance feedback.
+Adaptation typically follows the NLP playbook: LoRA (Hu et al., 2022), bottleneck adapters, or linear probing atop frozen features. More recently, in-context fine-tuning (Faw et al., 2025) shows that TSFMs can be adapted at inference time by prompting with related time-series examples, matching explicit fine-tuning without gradient steps — an orthogonal approach to architecture search.
+
+TEMPLATE (Zhang et al., NeurIPS 2025) provides transferability estimation for model selection across TSFMs, computing CKA-based scores (Dependency Learning, Pattern Learning, Task Adaptation) to predict which pretrained model best suits a target dataset. Critically, TEMPLATE is *passive* — it selects among existing models rather than generating new configurations. TimeTic (Yao et al., 2025) takes a similar selection approach, recasting transferability estimation as an in-context learning problem using entropy evolution across model layers, achieving τ ≈ 0.6 rank correlation with fine-tuned performance. Our work closes a different gap: rather than selecting models, we *generate* adapter architectures guided by performance feedback.
 
 ### 2.2 Neural Architecture Search for Adapters
 
-NAS-LoRA (Munoz et al., 2024) and Shears (Munoz et al., 2024) apply neural architecture search over adapter configurations for large language models, but use training-based fitness evaluation and search discrete hyperparameter spaces. MTF-PDNS (Xue et al., 2024) combines multi-objective evolutionary search with training-free proxies for vision CNNs. AZ-NAS (Lin et al., CVPR 2024) assembles zero-cost proxies for architecture ranking. ONE-NAS (Li et al., 2022) applies evolutionary NAS to time series but searches raw RNN architectures, not adapters on frozen backbones.
+NAS-LoRA (Munoz et al., 2024) and Shears (Munoz et al., 2024) apply neural architecture search over adapter configurations for large language models, but use training-based fitness evaluation and search discrete hyperparameter spaces. MTF-PDNS (Xue et al., 2024) combines multi-objective evolutionary search with training-free proxies for vision CNNs. AZ-NAS (Lin et al., CVPR 2024) assembles zero-cost proxies for architecture ranking. RZ-NAS (Ji et al., ICML 2025) enriches LLM-guided NAS with reflective zero-cost proxies — using proxy metrics *informatively* in prompts rather than as optimization targets, a distinction relevant to our negative results in §4.2. ONE-NAS (Li et al., 2022) applies evolutionary NAS to time series but searches raw RNN architectures, not adapters on frozen backbones. Recent time series NAS work (Liang & Sun, 2024; Deng et al., 2024) searches over spatial-temporal GNN modules or hierarchical cell spaces, but remains confined to discrete architectural blocks.
 
 The key gap: no prior work searches an *unbounded* architecture space (arbitrary code) for foundation model adaptation, nor uses LLMs as the generative operator.
 
 ### 2.3 LLM-Guided Program Synthesis and Evolution
 
-FunSearch (Romera-Paredes et al., 2024) demonstrated that LLMs can discover novel mathematical constructions through evolutionary program search, achieving superhuman results on extremal combinatorics problems. Evolution through Large Models (ELM; Lehman et al., 2023) showed LLMs can serve as intelligent mutation operators for Sodarace robot design. ReEvo (Ye et al., 2024) applies LLM-guided evolution to combinatorial optimization heuristics.
+FunSearch (Romera-Paredes et al., 2024) demonstrated that LLMs can discover novel mathematical constructions through evolutionary program search, achieving superhuman results on extremal combinatorics problems. Evolution through Large Models (ELM; Lehman et al., 2023) showed LLMs can serve as intelligent mutation operators for Sodarace robot design. ReEvo (Ye et al., 2024) applies LLM-guided evolution to combinatorial optimization heuristics. LLMatic (Nasir et al., 2024) combines code-generating LLMs with Quality-Diversity (MAP-Elites) search for NAS, producing competitive architectures on CIFAR-10 and NAS-bench-201 with only 2,000 evaluations — the closest methodological peer to our work, though LLMatic searches full network architectures rather than adapter modules on frozen backbones.
 
-Most recently, GENESYS (Allen AI, 2025) applies multi-agent LLM evolution to discover novel LLM architectures themselves, using a "Ladder of Scales" approach where designs are proposed, adversarially reviewed, implemented, and verified at increasing model scales (14M–350M parameters). GENESYS demonstrates that LLM-guided genetic programming outperforms direct prompting for architecture discovery.
+EvoTune (Surina et al., 2025) extends FunSearch by closing the loop: rather than treating the LLM as a static generator, it fine-tunes the LLM via reinforcement learning based on fitness signals from evolutionary search, accelerating algorithm discovery on combinatorial optimization tasks. GENESYS (Allen AI, 2025) applies multi-agent LLM evolution to discover novel LLM architectures themselves, using a "Ladder of Scales" approach where designs are proposed, adversarially reviewed, implemented, and verified at increasing model scales (14M–350M parameters). GENESYS demonstrates that LLM-guided genetic programming outperforms direct prompting for architecture discovery.
 
-Our work applies this paradigm to a complementary problem: rather than discovering foundation model architectures, we discover *adapter* architectures for *existing* foundation models — a setting with much lower evaluation cost (minutes vs. days) that enables rapid iteration. The adapter search space is also fundamentally different: GENESYS searches over transformer block designs, while we search over arbitrary reduction modules that map high-dimensional encoder representations to task-specific outputs.
+Our work applies this paradigm to a complementary problem: rather than discovering foundation model architectures (GENESYS, days of compute) or full classification networks (LLMatic), we discover *adapter* architectures for *existing* foundation models — a setting with much lower evaluation cost (~55 minutes per run) that enables rapid iteration. The adapter search space is also fundamentally different: GENESYS searches over transformer block designs, LLMatic over full CNN/ResNet architectures, while we search over arbitrary reduction modules that map high-dimensional encoder representations to task-specific outputs.
 
 ---
 
@@ -114,7 +116,7 @@ This section reports our full experimental trajectory, including negative result
 
 **Result.** Best proxy achieved cross-dataset τ = 0.50 (per-dataset: ETTh1=0.57, ETTm1=0.68, EthanolConcentration=0.29). Gradient signal-to-noise ratio (grad_snr) was the strongest individual predictor (|τ|=0.46). However, when used as evolutionary fitness, the proxy-guided search produced **worse** results than random (best MSE 2.73 vs. 0.88 on ETTh1) — evolution exploited proxy weaknesses, pushing toward degenerate configurations.
 
-**Diagnosis.** Goodhart's Law in action: a metric correlated with performance becomes a poor objective when optimized against. The proxy captures coarse ranking but lacks the resolution needed for selection among good candidates.
+**Diagnosis.** Goodhart's Law in action: a metric correlated with performance becomes a poor objective when optimized against. The proxy captures coarse ranking but lacks the resolution needed for selection among good candidates. This finding is complementary to RZ-NAS (Ji et al., 2025), which successfully uses zero-cost proxies *informatively* within LLM prompts — the key distinction is that RZ-NAS provides proxy scores as context for LLM reasoning, whereas our experiment used proxies directly as the evolutionary fitness function, enabling the search to exploit their weaknesses.
 
 ### 4.3 Discrete Hyperparameter Evolution
 
@@ -195,22 +197,31 @@ The LLM's contribution is not random code generation — it is informed architec
 - Combining successful motifs (merging attention weighting from one parent with convolution from another)
 - Importing cross-domain knowledge (depthwise separable convolutions from mobile vision, pre-norm architectures from transformer literature)
 
+### Relationship to concurrent work
+
+Code Evolution occupies a distinct niche in the emerging landscape of LLM-guided architecture search. Compared to LLMatic (Nasir et al., 2024), which combines LLM code generation with Quality-Diversity search for full network architectures on vision benchmarks, our search space is narrower (adapter modules only) but our evaluation is more expensive (GPU fine-tuning vs. NAS-bench lookup), making the LLM's ability to propose high-quality candidates from limited evaluations (~240 per run) more critical. Compared to GENESYS (Allen AI, 2025), which requires days of compute to evolve foundation model architectures at scale, our adapter-level search completes in under an hour — suggesting that code evolution is particularly well-suited to the adapter search setting where evaluation cost is moderate and the design space is structured by a fixed backbone interface.
+
+EvoTune (Surina et al., 2025) demonstrates that RL fine-tuning of the LLM mutation operator accelerates convergence in evolutionary program search. Our current approach treats GPT-4o-mini as a static generator; incorporating RL feedback on architectural fitness could further improve sample efficiency.
+
+In-context fine-tuning (Faw et al., 2025) represents an orthogonal adaptation paradigm: rather than searching for adapter architectures, it prompts TSFMs with related time-series examples at inference time, matching explicit fine-tuning without gradient steps. These approaches are complementary — one could use Code Evolution to design the adapter module and in-context fine-tuning to further specialize it at deployment.
+
 ### Limitations
 
 **Compute cost.** Each Code Evolution run requires ~55 minutes on an A10G GPU (~$8.50 including LLM costs). While comparable to discrete evolution per-run, the approach requires multi-seed evaluation for reliable conclusions.
 
 **LLM dependence.** Results depend on the LLM's training data distribution. Architectures far from published designs (e.g., exotic recurrence patterns) may be underrepresented in the LLM's generative distribution.
 
-**Single backbone.** We evaluate only on MOMENT. Generalization to other TSFMs (TimesFM, Chronos, Timer) remains to be tested.
+**Single backbone.** We evaluate only on MOMENT. Generalization to other TSFMs (TimesFM, Chronos, Timer-XL, Moirai-MoE) remains to be tested, though the adapter interface is backbone-agnostic in principle.
 
-**Incomplete evaluation breadth.** Due to compute constraints, Electricity lacks multi-seed results and baselines, and Traffic is not yet evaluated. Weather seed 44 lacks validation.
+**Incomplete evaluation breadth.** Due to compute constraints, Electricity lacks multi-seed results and baselines, and Traffic is not yet evaluated. Weather seed 44 lacks validation. Our benchmarks (ETTh1/h2, ETTm1/m2, Weather, Electricity) overlap with but do not cover the full GIFT-Eval suite (Woo et al., 2024b) or fev-bench (Shchur et al., 2025), which span 23 and 100 forecasting tasks respectively.
 
 ### Future Work
 
 - **Multi-objective evolution**: Jointly optimizing MSE and parameter count to discover Pareto-optimal adapters.
 - **Cross-dataset transfer**: Using adapters evolved on one dataset as seeds for another, testing whether architectural motifs transfer.
-- **Backbone diversity**: Evaluating Code Evolution across MOMENT, TimesFM, and Timer to test backbone-agnostic architectural patterns.
-- **Scaling the search**: Longer evolution runs, larger populations, and stronger LLMs (GPT-4o, Claude) as the code generation engine.
+- **Backbone diversity**: Evaluating Code Evolution across MOMENT, TimesFM, Timer-XL (Chen et al., 2025), and Moirai-MoE (Liu et al., 2025a) to test backbone-agnostic architectural patterns.
+- **RL-enhanced search**: Following EvoTune (Surina et al., 2025), fine-tuning the LLM mutation operator via reinforcement learning on architectural fitness signals to improve sample efficiency.
+- **Scaling the search**: Longer evolution runs, larger populations, and stronger LLMs (GPT-4o, Claude) as the code generation engine. Quality-Diversity methods (Nasir et al., 2024) could maintain architectural diversity alongside fitness optimization.
 
 ---
 
@@ -223,17 +234,29 @@ We presented Code Evolution, an LLM-guided evolutionary approach to adapter arch
 ## References
 
 - Ansari, A.F. et al. (2024). Chronos: Learning the language of time series. *arXiv:2403.07815*.
+- Chen, S. et al. (2025). Timer-XL: Long-context transformers for unified time series forecasting. *ICLR 2025*.
 - Das, A. et al. (2024). A decoder-only foundation model for time-series forecasting. *ICML 2024*.
+- Deng, Y. et al. (2024). Optimizing time series forecasting architectures: A hierarchical NAS approach. *arXiv:2406.05088*.
+- Faw, M. et al. (2025). In-context fine-tuning for time-series foundation models. *ICML 2025*.
 - GENESYS Team, Allen AI (2025). GENESYS: Distributed language model architecture discovery. *GitHub: allenai/genesys*.
 - Goswami, M. et al. (2024). MOMENT: A family of open time-series foundation models. *ICML 2024*.
 - Hu, E.J. et al. (2022). LoRA: Low-rank adaptation of large language models. *ICLR 2022*.
+- Ji, H. et al. (2025). RZ-NAS: Reflective zero-cost proxies for LLM-guided neural architecture search. *ICML 2025*.
+- Lee, G. et al. (2024). UniTS: A unified multi-task time series model. *NeurIPS 2024*.
 - Lehman, J. et al. (2023). Evolution through large models. *arXiv:2206.08896*.
 - Li, Y. et al. (2022). ONE-NAS: An online neuroevolution-based NAS for time series forecasting.
-- Li, Z. et al. (2025). TEMPLATE: Transferability estimation for time series foundation models. *NeurIPS 2025*.
-- Lin, Y. et al. (2024). AZ-NAS: Assembling zero-cost proxies for NAS. *CVPR 2024*.
+- Liang, Z. & Sun, J. (2024). Evolutionary neural architecture search for multivariate time series forecasting. *ACML 2024*.
+- Liu, X. et al. (2025a). Moirai-MoE: Empowering time series foundation models with sparse mixture of experts. *ICML 2025*.
 - Liu, Y. et al. (2024). Timer: Generative pre-training of time series. *ICML 2024*.
+- Lin, Y. et al. (2024). AZ-NAS: Assembling zero-cost proxies for NAS. *CVPR 2024*.
 - Munoz, J.P. et al. (2024). Shears: Unstructured sparsity with neural low-rank adapter search.
-- Pan, Y. et al. (2025). TimeTic: Efficient time series model selection via in-context learning.
+- Nasir, M.U. et al. (2024). LLMatic: Neural architecture search via large language models and quality diversity optimization. *GECCO 2024*.
 - Romera-Paredes, B. et al. (2024). Mathematical discoveries from program search with large language models. *Nature*.
+- Shchur, O. et al. (2025). fev-bench: A realistic benchmark for time series forecasting. *arXiv:2509.26468*.
+- Surina, A. et al. (2025). Algorithm discovery with LLMs: Evolutionary search meets reinforcement learning. *arXiv:2504.05108*.
+- Woo, G. et al. (2024). Moirai: A time series foundation model for universal forecasting. *ICML 2024*.
+- Woo, G. et al. (2024b). GIFT-Eval: A benchmark for general time series forecasting model evaluation. *arXiv:2410.10393*.
 - Xue, Y. et al. (2024). MTF-PDNS: Multi-objective training-free proxy-based differential NAS.
+- Yao, Q. et al. (2025). TimeTic: Estimating time series foundation model transferability via in-context learning. *arXiv:2509.23695*.
 - Ye, H. et al. (2024). ReEvo: Large language models as hyper-heuristics with reflective evolution.
+- Zhang, W. et al. (2025). Unified transferability metrics for time series foundation models. *NeurIPS 2025*.
