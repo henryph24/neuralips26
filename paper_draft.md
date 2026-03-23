@@ -205,29 +205,65 @@ EvoTune (Surina et al., 2025) demonstrates that RL fine-tuning of the LLM mutati
 
 In-context fine-tuning (Faw et al., 2025) represents an orthogonal adaptation paradigm: rather than searching for adapter architectures, it prompts TSFMs with related time-series examples at inference time, matching explicit fine-tuning without gradient steps. These approaches are complementary — one could use Code Evolution to design the adapter module and in-context fine-tuning to further specialize it at deployment.
 
-### Limitations
+### Current Experimental Status and Limitations
 
-**Compute cost.** Each Code Evolution run requires ~55 minutes on an A10G GPU (~$8.50 including LLM costs). While comparable to discrete evolution per-run, the approach requires multi-seed evaluation for reliable conclusions.
+This paper reports results from a feasibility study. We describe what has been established, what remains incomplete, and what additional experiments are required for a full evaluation.
 
-**LLM dependence.** Results depend on the LLM's training data distribution. Architectures far from published designs (e.g., exotic recurrence patterns) may be underrepresented in the LLM's generative distribution.
+**What we have established:**
+- Code Evolution outperforms discrete evolutionary search on 4/5 complete benchmarks (ETTh1, ETTh2, ETTm1, Weather) with 3–7× lower variance across 3 random seeds (42–44).
+- The method discovers structurally novel adapters (depthwise convolutions, learned positional weighting, attention-weighted pooling) that cannot be expressed in the discrete search space.
+- Three negative results (TEMPLATE fitness, GP-evolved proxies, discrete LLM-guided search) that motivated the code-level approach and provide practical guidance for the community.
+- Preliminary results on Electricity (single seed, MSE=0.1956) suggesting the method generalizes to larger-scale datasets.
 
-**Single backbone.** We evaluate only on MOMENT. Generalization to other TSFMs (TimesFM, Chronos, Timer-XL, Moirai-MoE) remains to be tested, though the adapter interface is backbone-agnostic in principle.
+**What is missing for a complete evaluation:**
 
-**Incomplete evaluation breadth.** Due to compute constraints, Electricity lacks multi-seed results and baselines, and Traffic is not yet evaluated. Weather seed 44 lacks validation. Our benchmarks (ETTh1/h2, ETTm1/m2, Weather, Electricity) overlap with but do not cover the full GIFT-Eval suite (Woo et al., 2024b) or fev-bench (Shchur et al., 2025), which span 23 and 100 forecasting tasks respectively.
+*Ablations isolating the LLM's contribution.* The most critical gap is the absence of baselines that disentangle the LLM's role from the search space expansion. Specifically: (1) a **random code baseline** — generating random valid `nn.Module` adapters without LLM guidance, using the same evaluation budget — would establish whether the unbounded search space alone accounts for the improvement, or whether LLM-guided generation is essential; (2) an **LLM-without-evolution baseline** — single-shot LLM generation without population feedback — would establish whether the evolutionary loop (elitism, fitness ranking, error feedback) contributes beyond the LLM's architectural priors; (3) **prompt ablations** — removing error feedback or fitness rankings from the LLM prompt — would identify which information channels drive the LLM's improvement across generations.
+
+*Evaluation breadth.* Current results use a single forecast horizon (96 steps). Standard time series evaluation requires multiple horizons (96, 192, 336, 720) to demonstrate robustness. Only MSE is reported; MAE should be included as a complementary metric. Electricity lacks multi-seed results and baselines, Traffic is not yet evaluated, and Weather seed 44 lacks validation. Our benchmarks overlap with but do not cover the full GIFT-Eval suite (Woo et al., 2024b; 23 datasets, 7 domains) or fev-bench (Shchur et al., 2025; 100 forecasting tasks).
+
+*Practitioner baselines.* We compare against discrete evolutionary search and random sampling from our own search space, but not against hand-tuned LoRA — what a practitioner would do before resorting to architecture search. A grid search over LoRA rank, learning rate, unfreezing strategy, and head type (~72 configurations, 15-epoch training) would establish whether Code Evolution outperforms competent manual tuning.
+
+*Statistical rigor.* Three seeds provide preliminary variance estimates but are insufficient for formal significance testing. Five seeds per dataset with Wilcoxon signed-rank tests or bootstrap confidence intervals would strengthen the claims.
+
+*Single backbone and LLM.* We evaluate only on MOMENT with GPT-4o-mini. Generalization to other TSFMs (TimesFM, Chronos, Timer-XL, Moirai-MoE) and other code-generating LLMs (GPT-4o, open-source models) remains untested. The adapter interface contract (`(batch, seq_len, d_model) → (batch, output_dim)`) is backbone-agnostic in principle, but backbone-specific hidden dimensions, encoder block structures, and feature distributions may affect which architectures the LLM discovers.
+
+*Convergence and scaling.* We run 12 generations with population size 20. Whether performance saturates at 12 generations or continues improving with longer runs is unknown. Similarly, the effect of population size, elite count, and LLM temperature on search quality has not been ablated.
+
+### Scaling Roadmap
+
+We estimate the following compute budget to address the gaps above, based on ~$3.30 per Code Evolution run (single dataset, single seed, A10G GPU):
+
+| Experiment | Scope | Estimated Cost |
+|-----------|-------|---------------|
+| Random code baseline | 7 datasets × 3 seeds | ~$70 |
+| LLM-without-evolution baseline | 7 datasets × 3 seeds | ~$70 |
+| Prompt ablations (2 variants) | 3 datasets × 3 seeds | ~$60 |
+| Hand-tuned LoRA grid (72 configs) | 7 datasets × 3 seeds | ~$30 |
+| Multi-horizon {192, 336, 720} | 3 datasets × 3 seeds × Code-Evo only | ~$90 |
+| Additional seeds (45–46) | 3 representative datasets × all methods | ~$80 |
+| Second LLM (GPT-4o) | 3 datasets × 3 seeds | ~$32 |
+| Convergence (24 generations) | 3 datasets × 1 seed | ~$20 |
+| **Total** | | **~$452** |
+
+The infrastructure supports this scaling: all GPU evaluation runs on Modal with parallel `starmap` execution, dataset serialization is reusable across runs, and the `run_code_evolution.py` entry point already accepts `--seed`, `--dataset`, and `--n-generations` parameters. The random code baseline and ablation flags require new code (~200 lines); multi-horizon support requires parameterizing the currently hardcoded `forecast_horizon=96` through the data loading and prompt generation pipeline.
 
 ### Future Work
 
+Beyond the scaling roadmap above, several directions merit investigation:
+
 - **Multi-objective evolution**: Jointly optimizing MSE and parameter count to discover Pareto-optimal adapters.
-- **Cross-dataset transfer**: Using adapters evolved on one dataset as seeds for another, testing whether architectural motifs transfer.
+- **Cross-dataset transfer**: Using adapters evolved on one dataset as seeds for another, testing whether architectural motifs transfer across temporal domains.
 - **Backbone diversity**: Evaluating Code Evolution across MOMENT, TimesFM, Timer-XL (Chen et al., 2025), and Moirai-MoE (Liu et al., 2025a) to test backbone-agnostic architectural patterns.
 - **RL-enhanced search**: Following EvoTune (Surina et al., 2025), fine-tuning the LLM mutation operator via reinforcement learning on architectural fitness signals to improve sample efficiency.
-- **Scaling the search**: Longer evolution runs, larger populations, and stronger LLMs (GPT-4o, Claude) as the code generation engine. Quality-Diversity methods (Nasir et al., 2024) could maintain architectural diversity alongside fitness optimization.
+- **Quality-Diversity search**: Incorporating MAP-Elites or similar QD methods (Nasir et al., 2024) to explicitly maintain architectural diversity alongside fitness optimization, potentially discovering a broader repertoire of effective adapter designs.
 
 ---
 
 ## 6. Conclusion
 
-We presented Code Evolution, an LLM-guided evolutionary approach to adapter architecture search for time series foundation models. Through a systematic experimental progression — from transferability metrics to zero-cost proxies to discrete search to code-level search — we demonstrated that the critical ingredient for effective LLM-guided NAS is an *unbounded yet structured* search space. When constrained to discrete hyperparameters, LLM guidance adds nothing; when given the full space of PyTorch programs, it discovers novel architectures that outperform hand-designed adapters on 4/5 forecasting benchmarks with substantially lower variance. Our work provides a practical framework for automated foundation model adaptation and contributes to the growing evidence that LLMs can serve as effective architecture designers.
+We presented Code Evolution, an LLM-guided evolutionary approach to adapter architecture search for time series foundation models. Through a systematic experimental progression — from transferability metrics to zero-cost proxies to discrete search to code-level search — we identified that the critical ingredient for effective LLM-guided NAS is an *unbounded yet structured* search space. When constrained to discrete hyperparameters, LLM guidance adds nothing; when given the full space of PyTorch programs, it discovers novel architectures that outperform discrete evolutionary search on 4/5 forecasting benchmarks with substantially lower variance.
+
+Our results are preliminary: they establish the viability of code-level adapter search but do not yet isolate the LLM's contribution from the search space expansion, nor demonstrate robustness across multiple forecast horizons, backbones, or LLMs. We have outlined a concrete scaling roadmap (~$450 in compute) to address these gaps. If the ablations confirm that LLM guidance — not merely the unbounded space — drives the improvement, Code Evolution would provide a practical and inexpensive (~$8.50/run) framework for automated foundation model adaptation, contributing to the growing evidence that LLMs can serve as effective architecture designers.
 
 ---
 
