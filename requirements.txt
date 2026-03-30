@@ -9,3 +9,5 @@ aeon
 matplotlib
 seaborn
 modal
+openai
+anthropic

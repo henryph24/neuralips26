@@ -37,6 +37,19 @@ from feasibility.code_evolution import (
 )
 from feasibility.evolution import run_evolution, random_config
 
+DEFAULT_MODEL = "gpt-4o-mini"
+
+
+def _run_suffix(model: str, tag: str = "") -> str:
+    """Return file name suffix for non-default models or tagged runs."""
+    parts = []
+    if model != DEFAULT_MODEL:
+        parts.append(model)
+    if tag:
+        parts.append(tag)
+    return ("_" + "_".join(parts)) if parts else ""
+
+
 DATASETS = {
     "ETTh1": load_etth1,
     "ETTm1": load_ettm1,
@@ -48,12 +61,18 @@ DATASETS = {
 }
 
 
-@app.function(gpu="A10G", timeout=600)
+@app.function(
+    gpu="A10G",
+    timeout=600,
+    scaledown_window=2,
+    max_containers=20,
+)
 def evaluate_adapter_code_remote(
     code_str: str,
     data_bytes: bytes,
     data_meta: dict,
     n_epochs: int = 3,
+    forecast_horizon: int = 96,
 ) -> dict:
     """Evaluate a single adapter code string on GPU.
 
@@ -99,7 +118,7 @@ def evaluate_adapter_code_remote(
             device="cuda",
             n_epochs=n_epochs,
             lr=1e-3,
-            forecast_horizon=96,
+            forecast_horizon=forecast_horizon,
             batch_size=64,
         )
         return result
@@ -189,6 +208,7 @@ def code_evo(
     validate_top: int = 5,
     model: str = "gpt-4o-mini",
     dataset: str = "both",
+    tag: str = "",
 ):
     os.makedirs("results/code_evolution", exist_ok=True)
 
@@ -260,7 +280,8 @@ def code_evo(
         log_data["best_mse"] = result["best_mse"]
         log_data["best_param_count"] = result["best_param_count"]
 
-        log_path = f"results/code_evolution/evo_log_{ds_name}_{seed}.json"
+        rsuf = _run_suffix(model, tag)
+        log_path = f"results/code_evolution/evo_log_{ds_name}_{seed}{rsuf}.json"
         with open(log_path, "w") as f:
             json.dump(log_data, f, indent=2, default=str)
         print(f"\nSaved evolution log to {log_path}")
@@ -273,12 +294,12 @@ def code_evo(
         ][:top_n]
 
         if valid_pop:
-            print(f"\nValidating top-{len(valid_pop)} adapters at 15 epochs...")
+            print(f"\nValidating top-{len(valid_pop)} adapters at 15 epochs (parallel)...")
+            val_results = list(evaluate_adapter_code_remote.starmap(
+                [(ind["code"], data_bytes, meta, 15) for ind in valid_pop]
+            ))
             validated = []
-            for ind in valid_pop:
-                val_result = evaluate_adapter_code_remote.remote(
-                    ind["code"], data_bytes, meta, n_epochs=15,
-                )
+            for ind, val_result in zip(valid_pop, val_results):
                 validated.append({
                     "code": ind["code"],
                     "mse_3ep": ind["mse"],
@@ -290,7 +311,7 @@ def code_evo(
                 mse_str = f"{val_result.get('mse', 'ERR'):.4f}" if "mse" in val_result else val_result.get("error", "ERR")
                 print(f"  mse_3ep={ind['mse']:.4f} -> mse_15ep={mse_str}")
 
-            val_path = f"results/code_evolution/validated_{ds_name}_{seed}.json"
+            val_path = f"results/code_evolution/validated_{ds_name}_{seed}{rsuf}.json"
             with open(val_path, "w") as f:
                 json.dump(validated, f, indent=2, default=str)
 
@@ -346,7 +367,7 @@ def code_evo(
             "cached_baselines": cached.get("comparison", {}) if cached else {},
         }
 
-        comp_path = f"results/code_evolution/comparison_{ds_name}_{seed}.json"
+        comp_path = f"results/code_evolution/comparison_{ds_name}_{seed}{rsuf}.json"
         with open(comp_path, "w") as f:
             json.dump(save_data, f, indent=2, default=str)
         print(f"Saved to {comp_path}")

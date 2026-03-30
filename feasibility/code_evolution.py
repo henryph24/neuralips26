@@ -224,13 +224,20 @@ def train_adapter_from_code(
     optimizer = torch.optim.Adam(trainable_params, lr=lr)
     criterion = nn.MSELoss()
 
-    # Prepare data
+    # Prepare data — support both legacy (samples=512) and multi-horizon (samples=512+H)
     seq_len = samples.shape[1]
-    input_len = seq_len - forecast_horizon
-    X = samples[:, :input_len]
-    Y = samples[:, input_len:]
+    if seq_len > 512:
+        # Decoupled windows: X=[:512], Y=[512:512+H]
+        input_len = 512
+        X = samples[:, :input_len]
+        Y = samples[:, input_len:input_len + forecast_horizon]
+    else:
+        # Legacy: X=[:512-H], Y=[512-H:]
+        input_len = seq_len - forecast_horizon
+        X = samples[:, :input_len]
+        Y = samples[:, input_len:]
 
-    X_padded = np.zeros_like(samples)
+    X_padded = np.zeros((len(X), 512), dtype=samples.dtype)
     X_padded[:, :input_len] = X
 
     n = len(X_padded)
@@ -334,6 +341,36 @@ Return a JSON object with key "adapters", containing a list of objects each with
 Balance exploitation (variations of top adapters) with exploration (novel architecture ideas). Avoid repeating failed patterns."""
 
 
+def _call_llm(system_prompt: str, user_prompt: str, model: str = "gpt-4o-mini",
+              max_tokens: int = 8192) -> str:
+    """Route LLM call based on model name. Returns raw response text (expected JSON)."""
+    if model.startswith("claude"):
+        from anthropic import Anthropic
+        client = Anthropic()
+        # Claude has no native JSON mode — instruction in prompt is sufficient
+        response = client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt
+                       + "\n\nIMPORTANT: Return ONLY valid JSON, no markdown."}],
+        )
+        return response.content[0].text
+    else:
+        from openai import OpenAI
+        client = OpenAI()
+        response = client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        return response.choices[0].message.content
+
+
 def llm_generate_code(
     population: List[CodeIndividual],
     n_offspring: int,
@@ -390,20 +427,7 @@ def llm_generate_code(
     )
 
     try:
-        from openai import OpenAI
-
-        client = OpenAI()
-        response = client.chat.completions.create(
-            model=model,
-            max_tokens=8192,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": CODE_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-
-        content = response.choices[0].message.content
+        content = _call_llm(CODE_SYSTEM_PROMPT, user_prompt, model=model)
         parsed = json.loads(content)
         adapters = parsed.get("adapters", [])
 
@@ -578,31 +602,54 @@ def run_code_evolution(
                 next_gen.append(elite)
                 seen_codes.add(ind.code.strip())
 
-        # Step 5: LLM generates offspring
+        # Step 5-6: LLM generates offspring, pre-validated for budget equalization.
+        # Retry LLM up to 2 extra times to fill population with VALID adapters,
+        # so Code Evolution gets the same real eval count as random baselines.
         n_needed = pop_size - len(next_gen)
-        llm_results = llm_generate_code(
-            population, n_needed, gen, best_fitness_history, model=model,
-        )
-        all_reasonings.append({
-            "generation": gen,
-            "n_proposed": len(llm_results),
-            "reasonings": [r["reasoning"] for r in llm_results],
-        })
+        gen_reasonings = []
+        valid_added = 0
+        max_retries = 2
 
-        # Step 6: Dedup and add LLM codes
-        for item in llm_results:
+        for attempt in range(1 + max_retries):
+            request_n = n_needed - valid_added if attempt > 0 else n_needed
+            if request_n <= 0:
+                break
+
+            llm_results = llm_generate_code(
+                population, request_n, gen, best_fitness_history, model=model,
+            )
+            gen_reasonings.extend([r["reasoning"] for r in llm_results])
+
+            for item in llm_results:
+                if len(next_gen) >= pop_size:
+                    break
+                code = item["code"].strip()
+                if code in seen_codes:
+                    continue
+                val = validate_adapter_code(code)
+                if val["valid"]:
+                    seen_codes.add(code)
+                    next_gen.append(CodeIndividual(
+                        code=item["code"],
+                        reasoning=item["reasoning"],
+                        generation=gen + 1,
+                    ))
+                    valid_added += 1
+
             if len(next_gen) >= pop_size:
                 break
-            code = item["code"].strip()
-            if code not in seen_codes:
-                seen_codes.add(code)
-                next_gen.append(CodeIndividual(
-                    code=item["code"],
-                    reasoning=item["reasoning"],
-                    generation=gen + 1,
-                ))
 
-        # Step 7: Fill remaining with seed adapter variations
+            if attempt < max_retries and valid_added < n_needed:
+                print(f"    Retry {attempt+1}: {valid_added}/{n_needed} valid, requesting {n_needed - valid_added} more")
+
+        all_reasonings.append({
+            "generation": gen,
+            "n_proposed": len(gen_reasonings),
+            "n_valid_added": valid_added,
+            "reasonings": gen_reasonings,
+        })
+
+        # Step 7: Fill remaining with seed adapter variations (fallback)
         fill_idx = 0
         while len(next_gen) < pop_size:
             code = SEED_ADAPTERS[fill_idx % len(SEED_ADAPTERS)]
@@ -611,7 +658,6 @@ def run_code_evolution(
                 next_gen.append(CodeIndividual(code=code, generation=gen + 1))
             fill_idx += 1
             if fill_idx > len(SEED_ADAPTERS) * 2:
-                # Avoid infinite loop — just duplicate
                 next_gen.append(CodeIndividual(
                     code=SEED_ADAPTERS[fill_idx % len(SEED_ADAPTERS)],
                     generation=gen + 1,
