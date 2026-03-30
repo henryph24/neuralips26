@@ -1,116 +1,124 @@
-# Project: Transferability-Guided Adapter Search for Time Series Foundation Models
+# Project: Code Evolution — LLM-Designed Adapter Architectures for Time Series Foundation Models
 
-NeurIPS 2026 submission — feasibility study exploring whether LLM-guided evolutionary search can discover effective adapter architectures for the MOMENT time series foundation model.
+NeurIPS 2026 submission. LLM-guided evolutionary search generates PyTorch `nn.Module` adapter code for the MOMENT time series foundation model, searching an unbounded architecture space where LLM guidance genuinely outperforms discrete hyperparameter search.
 
 ## Architecture
 
 ```
 feasibility/          Core library (importable modules)
 scripts/              Modal GPU runners (entrypoints)
-template_code/        Vendored TEMPLATE transferability score code (CKA utils)
-results/              Experiment outputs (JSON logs, comparisons) — gitignored
+results/              Experiment outputs (JSON logs, comparisons)
+template_code/        [LEGACY] Vendored TEMPLATE transferability code
 ```
 
-All GPU computation runs on **Modal.com** (A10G). LLM calls (OpenAI gpt-4o-mini) run locally. Data is serialized as numpy and sent to Modal containers.
+GPU computation runs on **Modal.com** (A10G). LLM calls (OpenAI gpt-4o-mini) run locally. Data serialized as numpy for Modal containers.
 
-## Key Modules
+## Active Modules
 
 | Module | Purpose |
 |--------|---------|
-| `feasibility/config.py` | `AdapterConfig` dataclass, search space constants (ranks, dims, placements) |
-| `feasibility/model.py` | `load_moment()`, LoRA/bottleneck attachment, encoder block discovery, hook registration |
-| `feasibility/finetune.py` | `finetune_forecasting()` / `finetune_classification()` — train adapter+head on extracted features |
-| `feasibility/features.py` | Batched feature extraction via forward hooks on first/last encoder blocks |
-| `feasibility/scores.py` | TEMPLATE transferability scores (DL, PL, TA, composite) |
-| `feasibility/data.py` | Dataset loaders (ETTh1/h2/m1/m2, Weather, EthanolConcentration, etc.), serialize/deserialize for Modal |
-| `feasibility/evolution.py` | Traditional evolutionary search (`Individual`, `EvolutionLogger`, crossover, mutation, tournament selection) |
-| `feasibility/llm_operators.py` | LLM-guided evolution over discrete hyperparameters (OpenAI function calling) |
-| `feasibility/code_evolution.py` | **Code-level evolution** — LLM generates PyTorch `nn.Module` adapter code (FunSearch-style) |
-| `feasibility/statistics.py` | Extended feature statistics for GP proxy search |
-| `feasibility/proxy_gp.py` | Genetic programming for proxy score formulas |
-| `feasibility/proxy_search.py` | End-to-end proxy search pipeline (calibrate → GP → validate) |
-| `feasibility/modal_app.py` | Modal `app` + `image` definition, remote GPU functions (`evaluate_config`, `finetune_config`, `compute_statistics_remote`) |
+| `feasibility/code_evolution.py` | Core method — `CodeIndividual`, `validate_adapter_code()`, `train_adapter_from_code()`, `llm_generate_code()`, `run_code_evolution()` |
+| `feasibility/modal_app.py` | Modal app/image, remote GPU functions: `evaluate_config`, `finetune_config`, `compute_statistics_remote` |
+| `feasibility/model.py` | `load_moment()`, encoder block discovery, `_apply_unfreeze()`, LoRA/bottleneck attachment, hook registration |
+| `feasibility/finetune.py` | `finetune_forecasting()` / `finetune_classification()`, head factories (`LinearHead`, `MLPHead`), pooling |
+| `feasibility/data.py` | 7 forecasting loaders (ETTh1/h2/m1/m2, Weather, Electricity, Traffic), 2 classification, serialize/deserialize |
+| `feasibility/config.py` | `AdapterConfig` dataclass, discrete search space constants (2,160 configs) |
+| `scripts/run_code_evolution.py` | Main experiment script — CLI args: `--seed`, `--dataset`, `--n-generations`, `--pop-size`, `--model` |
 
-## Experiment Progression
+## Baseline Modules (kept for comparison, do not extend)
 
-1. **TEMPLATE sweep** — 45 adapter configs × 2 datasets, compute transferability scores → found TEMPLATE fitness doesn't predict downstream MSE
-2. **Evolutionary search** — Traditional evo over 8-dim discrete config space using 3-epoch MSE as fitness
-3. **LLM-guided evo** — LLM proposes discrete configs instead of random mutation → marginal improvement over traditional evo (search space too small)
-4. **Proxy search** — GP-evolved proxy scores from feature statistics → τ=0.50 but fails at selection
-5. **Code-level evolution** (current) — LLM generates actual PyTorch adapter code (FunSearch-style). Multi-seed results (42-44):
+| Module | Purpose |
+|--------|---------|
+| `feasibility/evolution.py` | Traditional evo search — `Individual`, crossover, mutation, tournament selection |
+| `feasibility/llm_operators.py` | LLM-guided discrete hyperparameter evolution (OpenAI function calling) |
+| `scripts/run_evolution.py` | Traditional evo runner |
+| `scripts/run_llm_evolution.py` | Discrete LLM evo runner |
 
-### Code Evolution Results
+## Legacy Modules (abandoned directions, do NOT modify or extend)
 
-| Dataset | Code-Evo (mean±std) | Evo-3epoch (mean±std) | Random (mean) |
-|---------|--------------------|-----------------------|---------------|
-| ETTh1   | **0.5525 ± 0.016** | 0.6189 ± 0.106       | 0.8704        |
-| ETTm1   | **0.3633 ± 0.006** | 0.3697                | 0.3871        |
-
-Key: Code-Evo has 6.7× lower variance than Evo-3epoch on ETTh1. Winning architectures: Conv1d+BatchNorm (ETTh1, 228K params), attention-weighted pooling (ETTm1, 49K params)
-
-## Running Experiments
-
-All scripts use Modal. Pattern:
-```bash
-modal run scripts/run_code_evolution.py                                    # full run (both datasets)
-modal run scripts/run_code_evolution.py --n-generations 2 --dataset etth1  # smoke test
-modal run scripts/run_code_evolution.py --seed 43 --dataset both           # different seed
-modal run scripts/run_llm_evolution.py --seed 42                           # discrete LLM evo
-```
-
-Cost per run: ~$5.50 (4 GPU-hours + $0.05 LLM). Runtime: ~55 min per seed (both datasets).
-
-The `OPENAI_API_KEY` must be set in `.env` (loaded via dotenv in scripts). LLM calls happen locally; only GPU training runs on Modal.
+- `feasibility/scores.py`, `feasibility/features.py`, `template_code/` — TEMPLATE transferability (scores don't predict MSE)
+- `feasibility/statistics.py`, `feasibility/proxy_gp.py`, `feasibility/proxy_search.py` — GP proxy search (τ=0.50, fails at selection)
+- `feasibility/viz.py` — old visualization
+- `scripts/run_classification_*.py`, `scripts/run_proxy_search.py`, `scripts/analyze_calibration.py`, `scripts/test_early_stopping_proxy.py`, `scripts/finish_early_stop_validation.py` — abandoned experiments
 
 ## Code Evolution Interface
 
-The adapter contract for code-level evolution:
+Adapter contract:
 ```python
 class Adapter(nn.Module):
     def __init__(self, d_model: int, output_dim: int):
         super().__init__()
-        # LLM generates
+        # d_model=768 (MOMENT hidden dim), output_dim=96 (forecast horizon)
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         """(batch, seq_len=512, d_model=768) -> (batch, output_dim=96)"""
 ```
 
-Constraints: max 500K params, only `torch`/`nn`/`F`/`math` imports. Backbone: MOMENT with last-4 layers unfrozen.
+Constraints: max 500K params, only `torch`/`nn`/`F`/`math` imports. Backbone: MOMENT with last-4 encoder layers unfrozen.
 
-## Data Flow (Code Evolution)
+## Data Flow
 
 ```
-LLM (gpt-4o-mini) → code strings
+LLM (gpt-4o-mini) → adapter code strings
   → Local CPU validation (exec, shape check, param count ≤ 500K)
   → Valid codes → Modal GPU starmap (3-epoch train) → MSE
   → Invalid codes → fitness=-inf, error fed back to LLM
-  → Elitism (top-2) + LLM offspring → next generation
+  → Elitism (top-2) + 18 LLM offspring → next generation
   → After 12 gens: top-5 validated at 15 epochs
 ```
 
-## Search Space Comparison
+## Running Experiments
 
-| Dimension | Discrete Evo | Code Evo |
-|-----------|-------------|----------|
-| Space size | 2,160 configs (6 ranks × 2 targets × 3 placements × 4 unfreeze × 3 heads × 4 pooling) | Infinite (all valid PyTorch programs) |
-| What varies | Hyperparameters (rank, placement, head type, pooling) | Entire architecture (arbitrary nn.Module code) |
-| Evals/run | ~240 | ~240 (179 valid, 25% rejection rate) |
-| LLM value-add | Marginal (space too small for guidance to matter) | Strong (discovers architectures outside discrete menu) |
+```bash
+modal run scripts/run_code_evolution.py                                    # default: seed=42, dataset=both (ETTh1+ETTm1)
+modal run scripts/run_code_evolution.py --dataset all                      # all 7 forecasting datasets
+modal run scripts/run_code_evolution.py --seed 43 --dataset weather        # specific seed+dataset
+modal run scripts/run_code_evolution.py --n-generations 2 --dataset etth1  # smoke test
+```
 
-The code space includes architectures that don't decompose into pooling+head (e.g., Conv1d→Conv1d→MeanPool→Linear), which is why Code-Evo outperforms discrete search.
+Dataset options: `etth1`, `ettm1`, `etth2`, `ettm2`, `weather`, `electricity`, `traffic`, `both`, `all`
+
+Cost: ~$3.30/run (~4 GPU-hours + $0.05 LLM). Runtime: ~55 min per seed per dataset.
+
+`OPENAI_API_KEY` must be in `.env` (loaded via dotenv). LLM calls local; GPU training on Modal.
+
+## Current Results (seeds 42-44)
+
+| Dataset | Code-Evo (mean±std) | Evo-3ep (mean±std) | Random | Δ |
+|---------|----|----|----|----|
+| ETTh1 | **0.5614±0.011** | 0.6189±0.106 | 0.8704 | −9.3% |
+| ETTh2 | **0.6580±0.010** | 0.7398±0.060 | 0.7951 | −11.1% |
+| ETTm1 | **0.3619±0.007** | 0.3697 | 0.3871 | −2.1% |
+| ETTm2 | 0.5501±0.009 | **0.5280±0.006** | 0.5810 | +4.2% |
+| Weather | **0.3325±0.007** | 0.3376±0.007 | 0.3484 | −1.5% |
+| Electricity* | **0.1956** | — | — | — |
+
+*Single seed, no baselines yet. Weather missing seed 44. Traffic not yet run.
+
+Winning architectures: Conv1d+BatchNorm (ETTh1, 228K params), attention-weighted pooling (ETTm1, 49K params), depthwise conv + learned positional weighting (Electricity, 52K params).
+
+## Results Directory Convention
+
+```
+results/code_evolution/
+  evo_log_{DATASET}_{SEED}.json      # per-generation evolution log with LLM reasoning
+  validated_{DATASET}_{SEED}.json    # top-5 adapters evaluated at 15 epochs
+  baselines_{DATASET}_{SEED}.json   # cached Evo-3epoch + Random results
+  comparison_{DATASET}_{SEED}.json  # final comparison table
+  run_{DATASET}_{SEED}.log          # stdout
+```
 
 ## Conventions
 
-- `evaluate_fn` in evolution modules takes **batch** input (list of configs or code strings) and returns list of result dicts — enables parallel Modal `starmap`
-- Fitness is always "higher is better" (composite score, or -MSE for forecasting)
-- All results saved to `results/<experiment_name>/` as JSON
-- Cached baselines loaded from `results/early_stopping/comparison_*.json` for cross-experiment comparison
-- Seeds: primary seed=42, multi-seed runs use 42-44
+- `evaluate_fn` takes **batch** input (list of code strings) → list of result dicts (enables Modal `starmap`)
+- Fitness: always higher-is-better (−MSE for forecasting)
+- Seeds: 42, 43, 44 for multi-seed statistical analysis
+- Datasets use sliding windows (stride=64) of length 512, StandardScaler normalized
 
 ## Dependencies
 
 Core: `torch>=2.1.0`, `momentfm`, `peft>=0.7.0`, `numpy`, `scipy`, `scikit-learn`, `pandas`
-Classification: `aeon`
 GPU infra: `modal`
 LLM: `openai` (via `OPENAI_API_KEY` in `.env`)
 Viz: `matplotlib`, `seaborn`
+Classification (legacy): `aeon`

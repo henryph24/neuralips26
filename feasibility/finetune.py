@@ -144,12 +144,18 @@ def finetune_forecasting(
     optimizer = torch.optim.Adam(trainable_params, lr=lr)
     criterion = nn.MSELoss()
 
+    # Support both legacy (samples=512) and multi-horizon (samples=512+H)
     seq_len = samples.shape[1]
-    input_len = seq_len - forecast_horizon
-    X = samples[:, :input_len]
-    Y = samples[:, input_len:]
+    if seq_len > 512:
+        input_len = 512
+        X = samples[:, :input_len]
+        Y = samples[:, input_len:input_len + forecast_horizon]
+    else:
+        input_len = seq_len - forecast_horizon
+        X = samples[:, :input_len]
+        Y = samples[:, input_len:]
 
-    X_padded = np.zeros_like(samples)
+    X_padded = np.zeros((len(X), 512), dtype=samples.dtype)
     X_padded[:, :input_len] = X
 
     n = len(X_padded)

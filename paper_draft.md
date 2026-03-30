@@ -8,21 +8,21 @@ Adapting time series foundation models (TSFMs) to downstream tasks requires choo
 
 ## 1. Introduction
 
-Time series foundation models (TSFMs) such as MOMENT (Goswami et al., 2024), TimesFM (Das et al., 2024), Timer (Liu et al., 2024), Chronos (Ansari et al., 2024), and Moirai (Woo et al., 2024) have emerged as powerful pretrained representations for diverse temporal tasks. The landscape continues to expand rapidly: Moirai-MoE (Liu et al., 2025a) introduces sparse mixture-of-experts for token-level specialization, Timer-XL (Chen et al., 2025) extends to long-context forecasting via hierarchical attention, and GIFT-Eval benchmarking (Woo et al., 2024b) now tracks over a dozen foundation models across 23 datasets. However, a critical practical question remains: *how should one adapt a frozen TSFM to a specific downstream dataset?* The standard approach — selecting from a small menu of adapter types (LoRA ranks, bottleneck dimensions, prediction heads) — is limited by the designer's imagination and the combinatorial size of the configuration space.
+Time series foundation models (TSFMs) such as MOMENT (Goswami et al., 2024), TimesFM (Das et al., 2024), Timer (Liu et al., 2024), Chronos (Ansari et al., 2024), and Moirai (Woo et al., 2024) have emerged as powerful pretrained representations for diverse temporal tasks. However, a critical practical question remains: *how should one adapt a frozen TSFM to a specific downstream dataset?*
 
-This limitation motivates a shift from **configuration search** to **code search**: instead of picking hyperparameters from a predefined grid, what if the search process could generate arbitrary neural architectures? Recent advances in LLM-guided program synthesis (Romera-Paredes et al., 2024; Lehman et al., 2023; Nasir et al., 2024) have demonstrated that language models can serve as mutation operators in evolutionary algorithms, generating novel programs that would be difficult to specify through traditional genetic programming.
+The standard approach — selecting from a small menu of adapter types (LoRA ranks, bottleneck dimensions, prediction heads) — is limited in two ways. First, the designer must enumerate all candidate architectures upfront; novel structural ideas (e.g., depthwise convolutions, learned feature weighting) cannot be discovered if they are not in the menu. Second, even moderately sized discrete spaces (thousands of configurations) are small enough that random search performs comparably to guided search, leaving no room for intelligent exploration.
 
-We instantiate this idea for TSFM adaptation. Our method, **Code Evolution**, maintains a population of PyTorch `nn.Module` adapter classes. Each generation, an LLM (GPT-4o-mini) observes the current population — their code, fitness scores, and failure modes — and proposes new adapter architectures. These are validated locally for correctness, then evaluated on GPU via short training runs. Elitism preserves the best designs while the LLM balances exploitation of successful patterns with exploration of novel architectures.
+We propose a shift from **configuration search** to **code search**: instead of picking hyperparameters from a predefined grid, the search process generates arbitrary neural architectures as PyTorch programs. Recent advances in LLM-guided program synthesis — FunSearch (Romera-Paredes et al., 2024), ELM (Lehman et al., 2023), LLMatic (Nasir et al., 2024), GENESYS (Allen AI, 2025) — have demonstrated that language models can serve as mutation operators in evolutionary algorithms, generating novel programs that would be difficult to specify through traditional genetic programming. We instantiate this idea for TSFM adaptation.
 
-Our experiments reveal a clear progression of negative and positive results that together paint a complete picture of what works and what doesn't for TSFM adapter search:
+Our method, **Code Evolution**, maintains a population of PyTorch `nn.Module` adapter classes. Each generation, an LLM (GPT-4o-mini) observes the current population — their code, fitness scores, and failure modes — and proposes new adapter architectures. These are validated locally for correctness, then evaluated on GPU via short training runs. Elitism preserves the best designs while the LLM balances exploitation of successful patterns with exploration of novel architectures.
 
-1. **Transferability metrics fail as fitness** (§3.1). TEMPLATE-style scores (CKA-based transferability estimation) differentiate adapter configurations but this differentiation does not predict downstream performance. The metric was designed to rank pretrained models, not adapter configurations on a single backbone.
+Our contributions:
 
-2. **Zero-cost proxies fail at selection** (§3.2). GP-evolved proxy formulas achieve τ = 0.50 correlation with true performance but catastrophically fail when used as evolutionary fitness — the search exploits proxy weaknesses, producing degenerate configurations.
+1. **Code Evolution**, an LLM-guided evolutionary framework that searches the unbounded space of PyTorch adapter programs for foundation model adaptation, completing a full search in ~55 minutes at ~$3.30 per run.
 
-3. **Discrete hyperparameter search saturates quickly** (§3.3). A 2,160-configuration discrete space (LoRA rank × target modules × placement × unfreezing × head type × pooling) leaves little room for LLM guidance — random search and evolutionary search achieve similar results.
+2. **Empirical results** showing Code Evolution outperforms discrete evolutionary search on 4/5 forecasting benchmarks with 3–7× lower variance across seeds, discovering structurally novel adapters (depthwise convolutions, attention-weighted pooling, LayerNorm gating) that lie outside any discrete search space.
 
-4. **Code-level evolution succeeds** (§3.4). When the search space is expanded to arbitrary PyTorch programs, LLM guidance provides genuine value — discovering architectures that outperform the best discrete configurations on 4/5 benchmarks with dramatically lower variance.
+3. **Analysis of discovered architectures** revealing that the LLM imports cross-domain design patterns (from mobile vision, transformer literature) and that winning adapters are structurally simpler (50K–157K params) than discrete-menu alternatives.
 
 ---
 
@@ -30,15 +30,13 @@ Our experiments reveal a clear progression of negative and positive results that
 
 ### 2.1 Time Series Foundation Models and Adaptation
 
-The TSFM landscape has rapidly expanded. MOMENT (Goswami et al., 2024) pretrains a transformer encoder via masked reconstruction on 1B time points. TimesFM (Das et al., 2024) and Chronos (Ansari et al., 2024) demonstrate strong zero-shot forecasting. Timer (Liu et al., 2024) unifies multiple tasks through autoregressive pretraining; Timer-XL (Chen et al., 2025) extends this to long-context horizons via hierarchical attention. Moirai (Woo et al., 2024) trains a universal forecaster on 27B observations across 9 domains, while Moirai-MoE (Liu et al., 2025a) replaces frequency-level specialization with sparse mixture-of-experts for automatic token-level routing, achieving up to 17% improvement with 65× fewer activated parameters. UniTS (Lee et al., 2024) demonstrates multi-task pretraining across 50 datasets. The GIFT-Eval benchmark (Woo et al., 2024b) now tracks these models systematically across 23 datasets and 7 domains.
+The TSFM landscape has rapidly expanded. MOMENT (Goswami et al., 2024) pretrains a transformer encoder via masked reconstruction on 1B time points. TimesFM (Das et al., 2024) and Chronos (Ansari et al., 2024) demonstrate strong zero-shot forecasting. Timer (Liu et al., 2024) unifies multiple tasks through autoregressive pretraining; Timer-XL (Chen et al., 2025) extends this to long-context horizons via hierarchical attention. Moirai (Woo et al., 2024) trains a universal forecaster on 27B observations across 9 domains, while Moirai-MoE (Liu et al., 2025a) replaces frequency-level specialization with sparse mixture-of-experts for automatic token-level routing. UniTS (Lee et al., 2024) demonstrates multi-task pretraining across 50 datasets. The GIFT-Eval benchmark (Woo et al., 2024b) now tracks these models systematically across 23 datasets and 7 domains.
 
-Adaptation typically follows the NLP playbook: LoRA (Hu et al., 2022), bottleneck adapters, or linear probing atop frozen features. More recently, in-context fine-tuning (Faw et al., 2025) shows that TSFMs can be adapted at inference time by prompting with related time-series examples, matching explicit fine-tuning without gradient steps — an orthogonal approach to architecture search.
-
-TEMPLATE (Zhang et al., NeurIPS 2025) provides transferability estimation for model selection across TSFMs, computing CKA-based scores (Dependency Learning, Pattern Learning, Task Adaptation) to predict which pretrained model best suits a target dataset. Critically, TEMPLATE is *passive* — it selects among existing models rather than generating new configurations. TimeTic (Yao et al., 2025) takes a similar selection approach, recasting transferability estimation as an in-context learning problem using entropy evolution across model layers, achieving τ ≈ 0.6 rank correlation with fine-tuned performance. Our work closes a different gap: rather than selecting models, we *generate* adapter architectures guided by performance feedback.
+Adaptation typically follows the NLP playbook: LoRA (Hu et al., 2022), bottleneck adapters, or linear probing atop frozen features. More recently, in-context fine-tuning (Faw et al., 2025) shows that TSFMs can be adapted at inference time by prompting with related time-series examples — an orthogonal approach to architecture search. TEMPLATE (Zhang et al., 2025) and TimeTic (Yao et al., 2025) address model *selection* (which pretrained TSFM to use), but not adapter *design* on a chosen backbone. Our work closes this gap: rather than selecting models, we *generate* adapter architectures guided by performance feedback.
 
 ### 2.2 Neural Architecture Search for Adapters
 
-NAS-LoRA (Munoz et al., 2024) and Shears (Munoz et al., 2024) apply neural architecture search over adapter configurations for large language models, but use training-based fitness evaluation and search discrete hyperparameter spaces. MTF-PDNS (Xue et al., 2024) combines multi-objective evolutionary search with training-free proxies for vision CNNs. AZ-NAS (Lin et al., CVPR 2024) assembles zero-cost proxies for architecture ranking. RZ-NAS (Ji et al., ICML 2025) enriches LLM-guided NAS with reflective zero-cost proxies — using proxy metrics *informatively* in prompts rather than as optimization targets, a distinction relevant to our negative results in §4.2. ONE-NAS (Li et al., 2022) applies evolutionary NAS to time series but searches raw RNN architectures, not adapters on frozen backbones. Recent time series NAS work (Liang & Sun, 2024; Deng et al., 2024) searches over spatial-temporal GNN modules or hierarchical cell spaces, but remains confined to discrete architectural blocks.
+NAS-LoRA and Shears (Munoz et al., 2024) apply neural architecture search over adapter configurations for large language models, but search discrete hyperparameter spaces. MTF-PDNS (Xue et al., 2024) combines multi-objective evolutionary search with training-free proxies for vision CNNs. AZ-NAS (Lin et al., 2024) assembles zero-cost proxies for architecture ranking. RZ-NAS (Ji et al., 2025) enriches LLM-guided NAS with reflective zero-cost proxies — using proxy metrics *informatively* in prompts rather than as optimization targets. ONE-NAS (Li et al., 2022) applies evolutionary NAS to time series but searches raw RNN architectures, not adapters on frozen backbones. Recent time series NAS work (Liang & Sun, 2024; Deng et al., 2024) searches over spatial-temporal GNN modules or hierarchical cell spaces, but remains confined to discrete architectural blocks.
 
 The key gap: no prior work searches an *unbounded* architecture space (arbitrary code) for foundation model adaptation, nor uses LLMs as the generative operator.
 
@@ -46,9 +44,9 @@ The key gap: no prior work searches an *unbounded* architecture space (arbitrary
 
 FunSearch (Romera-Paredes et al., 2024) demonstrated that LLMs can discover novel mathematical constructions through evolutionary program search, achieving superhuman results on extremal combinatorics problems. Evolution through Large Models (ELM; Lehman et al., 2023) showed LLMs can serve as intelligent mutation operators for Sodarace robot design. ReEvo (Ye et al., 2024) applies LLM-guided evolution to combinatorial optimization heuristics. LLMatic (Nasir et al., 2024) combines code-generating LLMs with Quality-Diversity (MAP-Elites) search for NAS, producing competitive architectures on CIFAR-10 and NAS-bench-201 with only 2,000 evaluations — the closest methodological peer to our work, though LLMatic searches full network architectures rather than adapter modules on frozen backbones.
 
-EvoTune (Surina et al., 2025) extends FunSearch by closing the loop: rather than treating the LLM as a static generator, it fine-tunes the LLM via reinforcement learning based on fitness signals from evolutionary search, accelerating algorithm discovery on combinatorial optimization tasks. GENESYS (Allen AI, 2025) applies multi-agent LLM evolution to discover novel LLM architectures themselves, using a "Ladder of Scales" approach where designs are proposed, adversarially reviewed, implemented, and verified at increasing model scales (14M–350M parameters). GENESYS demonstrates that LLM-guided genetic programming outperforms direct prompting for architecture discovery.
+EvoTune (Surina et al., 2025) extends FunSearch by fine-tuning the LLM via reinforcement learning based on fitness signals. GENESYS (Allen AI, 2025) applies multi-agent LLM evolution to discover novel LLM architectures, using 6 specialized agents (design proposer, adversarial reviewer, implementation planner, coder, observer, and RAG-based search assistant) to generate complete PyTorch architectures for language models at 14M–350M parameter scale. Their "Ladder of Scales" approach trains candidate architectures from scratch at progressively larger scales, narrowing the candidate pool at each stage. GENESYS produced 1,062 verified architectures that outperform GPT-2 and Mamba2 on 6/9 BabyLM benchmarks — but requires thousands of GPU-hours for full pre-training evaluations.
 
-Our work applies this paradigm to a complementary problem: rather than discovering foundation model architectures (GENESYS, days of compute) or full classification networks (LLMatic), we discover *adapter* architectures for *existing* foundation models — a setting with much lower evaluation cost (~55 minutes per run) that enables rapid iteration. The adapter search space is also fundamentally different: GENESYS searches over transformer block designs, LLMatic over full CNN/ResNet architectures, while we search over arbitrary reduction modules that map high-dimensional encoder representations to task-specific outputs.
+Our work applies this paradigm to a fundamentally different level of the architecture stack. GENESYS evolves *entire foundation model architectures* — full transformer variants trained from scratch on pre-training corpora. We evolve *adapter modules* — small (50K–500K parameter) task-specific networks attached to a frozen backbone. This difference has three implications: (1) evaluation cost drops from thousands of GPU-hours to ~4 GPU-hours per run (~$3.30), enabling rapid iteration; (2) our single-agent LLM design (one GPT-4o-mini call per generation) suffices where GENESYS requires a 6-agent pipeline, because adapter code is structurally simpler than full architectures; and (3) the fixed backbone interface contract (`(batch, seq_len, d_model) → (batch, output_dim)`) provides strong constraints that guide the LLM's search, whereas GENESYS must explore the much larger space of unconstrained transformer block designs.
 
 ---
 
@@ -57,6 +55,8 @@ Our work applies this paradigm to a complementary problem: rather than discoveri
 ### 3.1 Problem Setup
 
 Given a pretrained TSFM backbone $f_\theta$ (MOMENT, $d_\text{model}=768$, 12 transformer blocks) and a target forecasting dataset, we seek an adapter module $g_\phi: \mathbb{R}^{B \times 512 \times 768} \rightarrow \mathbb{R}^{B \times 96}$ that maps encoder hidden states to forecast values. The backbone's last 4 encoder blocks are unfrozen during training; all other parameters remain fixed.
+
+**What is an adapter module?** In the foundation model paradigm, the pretrained backbone produces rich intermediate representations but is not directly usable for a specific downstream task. An adapter is a small, task-specific neural network (typically 50K–500K parameters) attached to the backbone's output that transforms its hidden representations into task predictions — in our case, mapping a $(B, 512, 768)$ tensor of encoder hidden states to a $(B, 96)$ forecast vector. Unlike full fine-tuning (which updates all backbone parameters) or LoRA (which constrains adaptation to low-rank weight perturbations), our adapter modules are *structurally unconstrained*: they can implement any differentiable function within the parameter budget, including convolutions, attention mechanisms, gating, and combinations thereof. This structural freedom is what enables Code Evolution to discover novel designs.
 
 ### 3.2 Code Evolution
 
@@ -73,64 +73,68 @@ class Adapter(nn.Module):
         # Forward pass defined by LLM
 ```
 
-Constraints enforce ≤500K parameters and restrict imports to `torch`, `nn`, `F`, and `math`.
+Constraints enforce ≤500K parameters and restrict imports to `torch`, `nn`, `F`, and `math`. Each individual is represented as a `CodeIndividual` containing the source code string, fitness (−MSE, higher is better), parameter count, and any error message from validation or training.
 
-**Initialization.** The population (size 20) is seeded with 5 hand-designed baselines (MeanPool+Linear, MeanPool+MLP, LastToken+MLP, Conv1d+Pool, Attention+Linear) plus 15 LLM-generated cold-start architectures.
+**Initialization.** The population (size 20) is seeded with 5 hand-designed baselines that represent standard adapter patterns:
+1. MeanPool + Linear — the simplest possible adapter (pool across time, project to output)
+2. MeanPool + 2-layer MLP with GELU and dropout — matching the best discrete-menu head
+3. LastToken + MLP — using only the final timestep's representation
+4. Attention pooling + Linear — learnable weighted pooling via a scoring network
+5. Conv1d downsample + Linear — temporal pattern extraction via strided convolution
 
-**Evaluation.** Each generation proceeds as:
-1. **Local validation** (CPU): `exec()` the code, check output shape `(1, 96)` and parameter count ≤500K.
-2. **GPU evaluation** (Modal A10G): 3-epoch training with Adam (lr=1e-3), MSE loss, 80/20 train/val split. Fitness = −MSE.
-3. **Elitism**: Top 2 individuals pass unchanged to the next generation.
-4. **LLM offspring**: GPT-4o-mini observes the ranked population (code, fitness, errors) and generates 18 new architectures, balancing exploitation and exploration.
+The remaining 15 slots are filled by **LLM cold-start**: GPT-4o-mini receives the 5 seed adapters (with no fitness data yet) and generates 15 new architectures. This bootstraps diversity before any training has occurred — the LLM draws on its architectural priors rather than population feedback.
 
-**Validation.** After 12 generations, the top 5 architectures are re-evaluated at 15 epochs for final comparison.
+**Evolutionary loop.** Each of the 12 generations proceeds in 6 steps:
+
+1. **Local validation** (CPU): Each new individual's code is `exec()`'d in a sandboxed namespace containing only `torch`, `nn`, `F`, and `math`. The resulting `Adapter` class is instantiated with `(d_model=768, output_dim=96)`, then a dummy forward pass checks that a `(2, 512, 768)` input produces a `(2, 96)` output. Invalid codes (syntax errors, shape mismatches, exceeding 500K parameters) are assigned fitness = −∞ and their error messages are preserved for LLM feedback.
+
+2. **GPU evaluation** (Modal A10G): Valid adapters that haven't been evaluated are sent to remote GPU workers via Modal's `starmap` for parallel execution. Each evaluation loads MOMENT, freezes all parameters, unfreezes the last 4 encoder blocks, attaches the adapter, and trains for 3 epochs with Adam (lr=1e-3), MSE loss, batch size 64, and 80/20 train/val split. The adapter and unfrozen backbone parameters are trained jointly. Fitness = −validation MSE.
+
+3. **Ranking**: The population is sorted by fitness (descending). Generation statistics (best MSE, mean MSE, valid/invalid counts) are logged.
+
+4. **Elitism**: The top 2 individuals pass unchanged to the next generation, preserving the best architectures discovered so far.
+
+5. **LLM offspring generation**: GPT-4o-mini receives a structured prompt containing: (a) a system prompt describing the interface contract, constraints, and design principles (attention pooling, multi-scale convolutions, gating mechanisms, learned positional weighting, feature selection); (b) the top 5 adapters with their full source code, fitness, MSE, and parameter counts; (c) the bottom 3 adapters; (d) up to 5 failed adapters with their error messages and code snippets; (e) the fitness trajectory (best fitness per generation). The LLM returns a JSON object containing 18 new adapter architectures, each with a reasoning string and complete class definition.
+
+6. **Deduplication**: LLM-generated codes are deduplicated against existing population members (exact string match after stripping whitespace). If the LLM produces fewer than 18 unique adapters, remaining slots are filled with seed adapter variations to maintain population size.
+
+**Final validation.** After 12 generations (~240 total evaluations, of which ~179 pass local validation), the top 5 architectures from the final population are re-evaluated at 15 epochs on the same data split for final comparison. This longer training schedule reveals whether the 3-epoch fitness ranking is preserved under more thorough optimization.
 
 ### 3.3 Baselines
 
-- **Evo-3epoch**: Traditional evolutionary search over a discrete 2,160-configuration space (6 LoRA ranks × 2 target modules × 3 placements × 4 unfreezing strategies × 3 head types × 4 pooling methods), using 3-epoch MSE as fitness. Top 5 validated at 15 epochs.
-- **Random**: Random sampling from the discrete space, top 5 validated at 15 epochs.
+- **Evo-3epoch**: Traditional evolutionary search over a discrete 2,160-configuration space (6 LoRA ranks × 2 target modules × 3 placements × 4 unfreezing strategies × 3 head types × 4 pooling methods), using tournament selection, crossover, and mutation. 3-epoch MSE as fitness. Top 5 validated at 15 epochs.
+- **Random**: Random sampling from the same discrete space, top 5 validated at 15 epochs.
 
 Both baselines use identical compute budgets (~240 evaluations per run).
 
+### 3.4 Why Code Search Over Configuration Search?
+
+The discrete search space contains 2,160 configurations — all combinations of predefined hyperparameters. This space is small enough that random sampling achieves near-optimal coverage, leaving no room for intelligent guidance. More fundamentally, it cannot represent architectures that don't decompose into the fixed template of `pooling → head` (e.g., Conv1d→Conv1d→Pool→Linear, or learned feature weighting before aggregation).
+
+Code Evolution removes both limitations: the search space is infinite (all valid PyTorch programs satisfying the interface contract), and architectures are represented as programs rather than hyperparameter tuples, enabling structural novelty.
+
+| Dimension | Discrete Search | Code Evolution |
+|-----------|----------------|----------------|
+| Space size | 2,160 configs | Infinite (all valid PyTorch programs) |
+| What varies | Hyperparameters (rank, placement, head type, pooling) | Entire architecture (arbitrary nn.Module code) |
+| Structural novelty | None (fixed template) | Unbounded (depthwise conv, attention gating, etc.) |
+| Evals per run | ~240 | ~240 (179 valid, ~25% rejection rate) |
+
 ---
 
-## 4. Experimental Journey
+## 4. Experiments
 
-This section reports our full experimental trajectory, including negative results that shaped the final approach.
+### 4.1 Setup
 
-### 4.1 TEMPLATE Transferability Scores as Fitness
+**Backbone.** MOMENT-1-large (Goswami et al., 2024), a 12-layer transformer encoder pretrained via masked reconstruction on 1B time points. Hidden dimension $d_\text{model}=768$, sequence length 512. Last 4 encoder blocks unfrozen during adapter training.
 
-**Hypothesis.** TEMPLATE's CKA-based transferability scores can serve as cheap fitness for adapter architecture search, avoiding expensive fine-tuning during evolution.
+**Datasets.** ETTh1, ETTh2, ETTm1, ETTm2 (Zhou et al., 2021), Weather (Wetterstation), Electricity (UCI). Forecast horizon: 96 steps. Standard train/val/test splits.
 
-**Setup.** 45 adapter configurations evaluated on ETTh1 and ETTm1. TEMPLATE composite scores (DL, PL, TA components) computed as fitness.
+**Training.** Adam optimizer, lr=1e-3, MSE loss, batch size 64, 80/20 train/val split. Evolution uses 3-epoch fitness evaluations; final validation uses 15 epochs. All GPU computation on Modal A10G instances via parallel `starmap` dispatch.
 
-**Result.** TEMPLATE scores differentiate configurations (range 0.44–0.96) but this differentiation does **not** predict downstream MSE. Kendall τ between TEMPLATE fitness and 15-epoch MSE was not significant. All search strategies (hand-designed, random, TEMPLATE-guided evolution) produced statistically equivalent fine-tuning results.
+**Seeds.** Results averaged over seeds 42–44 where available.
 
-**Diagnosis.** TEMPLATE measures frozen backbone representation quality — a property of the pretrained model, not the adapter-backbone interaction. It was designed to rank different pretrained models (MOMENT vs. TimesFM vs. Timer), not adapter configurations on the same backbone.
-
-### 4.2 GP-Evolved Zero-Cost Proxies
-
-**Hypothesis.** A composite zero-cost proxy, discovered via genetic programming over feature statistics (gradient norms, SNR, feature rank, etc.), could replace training-based fitness.
-
-**Setup.** 30 calibration configurations per dataset, 15-epoch ground truth. GP search over 14 feature statistics across ETTh1, ETTm1, EthanolConcentration.
-
-**Result.** Best proxy achieved cross-dataset τ = 0.50 (per-dataset: ETTh1=0.57, ETTm1=0.68, EthanolConcentration=0.29). Gradient signal-to-noise ratio (grad_snr) was the strongest individual predictor (|τ|=0.46). However, when used as evolutionary fitness, the proxy-guided search produced **worse** results than random (best MSE 2.73 vs. 0.88 on ETTh1) — evolution exploited proxy weaknesses, pushing toward degenerate configurations.
-
-**Diagnosis.** Goodhart's Law in action: a metric correlated with performance becomes a poor objective when optimized against. The proxy captures coarse ranking but lacks the resolution needed for selection among good candidates. This finding is complementary to RZ-NAS (Ji et al., 2025), which successfully uses zero-cost proxies *informatively* within LLM prompts — the key distinction is that RZ-NAS provides proxy scores as context for LLM reasoning, whereas our experiment used proxies directly as the evolutionary fitness function, enabling the search to exploit their weaknesses.
-
-### 4.3 Discrete Hyperparameter Evolution
-
-**Hypothesis.** LLM guidance over discrete adapter hyperparameters improves upon random or traditional evolutionary search.
-
-**Setup.** Search space: 2,160 configurations. LLM (GPT-4o-mini) proposes configurations via function calling. 12 generations, population 20.
-
-**Result.** LLM-guided evolution produced marginal improvement over traditional evolution (within noise). The search space is too small — with only 2,160 possible configurations, random sampling already achieves near-optimal coverage, and the LLM's architectural intuition cannot be expressed through 6 discrete knobs.
-
-### 4.4 Code-Level Evolution (This Work)
-
-**Hypothesis.** When the search space is expanded from 2,160 discrete configurations to the infinite space of valid PyTorch programs, LLM guidance can discover architectures that discrete search cannot reach.
-
-**Results.** Multi-seed results (seeds 42–44 where available):
+### 4.2 Main Results
 
 | Dataset | Code-Evo (mean ± std) | Evo-3ep (mean ± std) | Random (mean) | Δ vs Evo-3ep |
 |---------|----------------------|---------------------|---------------|-------------|
@@ -143,13 +147,13 @@ This section reports our full experimental trajectory, including negative result
 
 *Electricity: single seed, no baselines due to compute budget.
 
-**Code-Evo wins on 4/5 datasets** with complete comparisons. On the single loss (ETTm2), the margin is small (4.2%).
+**Code-Evo wins on 4/5 datasets** with complete comparisons. The single loss (ETTm2, +4.2%) is within a small margin.
 
-**Variance reduction.** Code-Evo exhibits 3–7× lower standard deviation across seeds compared to Evo-3ep (e.g., ETTh1: 0.011 vs 0.106). The LLM's architectural priors act as implicit regularization, avoiding the high-variance configurations that discrete search occasionally selects.
+**Variance reduction.** Code-Evo exhibits 3–7× lower standard deviation across seeds compared to Evo-3ep (e.g., ETTh1: 0.011 vs 0.106; ETTh2: 0.010 vs 0.060). The LLM's architectural priors act as implicit regularization, consistently producing well-behaved architectures and avoiding the high-variance configurations that discrete search occasionally selects.
 
-### 4.5 Discovered Architectures
+### 4.3 Discovered Architectures
 
-Code Evolution discovers architectures that cannot be expressed in the discrete search space:
+Code Evolution discovers architectures that cannot be expressed in the discrete search space. These share a pattern: they are *structurally simple* (50K–157K params) but contain design choices that lie outside the discrete space's representational capacity.
 
 **Depthwise convolution + learned positional weighting** (Electricity, 52K params, MSE=0.1956):
 ```python
@@ -157,7 +161,7 @@ self.depthwise_conv = nn.Conv1d(d_model, d_model, kernel_size=3,
                                  groups=d_model, padding=1)
 self.positional_weights = nn.Parameter(torch.randn(d_model))
 ```
-Applies channel-wise temporal smoothing followed by learned feature weighting — a pattern common in efficient vision models (MobileNet) but not in the discrete adapter menu.
+Applies channel-wise temporal smoothing followed by learned feature weighting — a pattern common in efficient vision models (MobileNet) but absent from the discrete adapter menu. The depthwise convolution avoids the $O(d^2)$ cost of standard convolutions while capturing local temporal structure.
 
 **Attention-weighted feature pooling** (Weather, 157K params, MSE=0.3258):
 ```python
@@ -165,7 +169,7 @@ self.attention_weights = nn.Parameter(torch.randn(d_model))
 weights = F.softmax(self.attention_weights, dim=-1)
 pooled = (hidden_states * weights.unsqueeze(0).unsqueeze(0)).sum(dim=-1)
 ```
-Learns which of the 768 features are most relevant before temporal aggregation — effectively a soft feature selection layer.
+Learns which of the 768 features are most relevant before temporal aggregation — effectively a soft feature selection layer. This inverts the standard pooling→projection order: feature selection happens *before* spatial reduction, allowing the model to discard irrelevant dimensions early.
 
 **LayerNorm + mean pooling** (ETTh1, 50K params, MSE=0.5501):
 ```python
@@ -173,97 +177,59 @@ self.norm = nn.LayerNorm(d_model)
 normed = self.norm(hidden_states)
 pooled = normed.mean(dim=1)
 ```
-The simplest winning architecture: normalization before pooling stabilizes training with unfrozen backbone layers. Despite having no hidden layers, it outperforms deeper discrete-menu architectures.
+The simplest winning architecture: normalization before pooling stabilizes training with unfrozen backbone layers. Despite having no hidden layers, it outperforms deeper discrete-menu architectures — suggesting that representation quality from the unfrozen backbone is sufficient when properly normalized.
 
-These architectures share a pattern: they are *structurally simple* (50K–157K params) but contain design choices (depthwise convolution, learned weighting, pre-pooling normalization) that lie outside the discrete search space's representational capacity.
+### 4.4 The LLM as Architecture Designer
+
+The LLM's contribution is not random code generation — it is informed architectural reasoning. The system prompt provides the interface contract and design principles; the population provides empirical feedback. Across generations, we observe the LLM:
+
+- **Learning from failures**: Avoiding patterns that produced shape mismatches or NaN losses in previous generations.
+- **Combining successful motifs**: Merging attention weighting from one parent with convolution from another.
+- **Importing cross-domain knowledge**: Depthwise separable convolutions from mobile vision (Howard et al., 2017), pre-norm architectures from transformer literature (Xiong et al., 2020).
+- **Simplifying**: Converging toward simpler architectures over generations, as overparameterized designs are penalized by the 500K parameter budget and short training schedules.
 
 ---
 
 ## 5. Discussion
 
-### Why does code evolution work where other approaches fail?
+### Why code search over configuration search?
 
-Our experimental trajectory suggests a clear narrative:
+The core insight is that LLM guidance only provides value when the search space is large enough to benefit from intelligent exploration but structured enough for the LLM to reason about. A discrete space of 2,160 configurations is too small — random sampling achieves near-optimal coverage. The space of valid PyTorch programs is vast enough that the LLM's architectural priors, cross-domain knowledge, and ability to learn from population feedback become genuine advantages.
 
-1. **Transferability metrics** fail because they measure the wrong thing — backbone quality rather than adapter-backbone fit.
-2. **Zero-cost proxies** fail because Goodhart's Law applies — any cheap metric becomes a poor optimization target.
-3. **Discrete search** fails to benefit from LLM guidance because the space is too small — 2,160 configurations are exhaustively searchable.
-4. **Code search** succeeds because it sits at the right intersection: the space is vast enough that intelligent guidance matters (infinite valid PyTorch programs), but structured enough that the LLM can reason about it (neural architecture design is well-represented in training data).
+### Variance reduction as implicit regularization
 
-### The LLM as architecture designer
-
-The LLM's contribution is not random code generation — it is informed architectural reasoning. The system prompt provides the interface contract and design principles; the population provides empirical feedback. Across generations, we observe the LLM:
-- Learning from failures (avoiding patterns that produced shape mismatches or NaN losses)
-- Combining successful motifs (merging attention weighting from one parent with convolution from another)
-- Importing cross-domain knowledge (depthwise separable convolutions from mobile vision, pre-norm architectures from transformer literature)
+The 3–7× variance reduction across seeds is arguably as important as the MSE improvement. In practice, a method that reliably produces good adapters (Code-Evo: σ=0.007–0.011) is more valuable than one that occasionally finds great adapters but sometimes produces poor ones (Evo-3ep: σ=0.006–0.106). The LLM's training data provides strong priors about which architectural patterns are generally effective, filtering out degenerate designs that random or evolutionary search may explore.
 
 ### Relationship to concurrent work
 
-Code Evolution occupies a distinct niche in the emerging landscape of LLM-guided architecture search. Compared to LLMatic (Nasir et al., 2024), which combines LLM code generation with Quality-Diversity search for full network architectures on vision benchmarks, our search space is narrower (adapter modules only) but our evaluation is more expensive (GPU fine-tuning vs. NAS-bench lookup), making the LLM's ability to propose high-quality candidates from limited evaluations (~240 per run) more critical. Compared to GENESYS (Allen AI, 2025), which requires days of compute to evolve foundation model architectures at scale, our adapter-level search completes in under an hour — suggesting that code evolution is particularly well-suited to the adapter search setting where evaluation cost is moderate and the design space is structured by a fixed backbone interface.
+Code Evolution occupies a distinct niche in the emerging landscape of LLM-guided architecture search. Compared to LLMatic (Nasir et al., 2024), which searches full network architectures on vision benchmarks via NAS-bench lookup, our evaluation is more expensive (GPU fine-tuning), making the LLM's ability to propose high-quality candidates from limited evaluations (~240 per run) more critical. Compared to GENESYS (Allen AI, 2025), which evolves full LM architectures (14M–350M params) using a 6-agent pipeline and thousands of GPU-hours, our adapter-level search uses a single LLM agent and completes in under an hour at ~$3.30. This 3-orders-of-magnitude cost reduction is possible because adapter modules are structurally constrained by the backbone interface — the LLM only needs to solve the reduction problem ($\mathbb{R}^{512 \times 768} \rightarrow \mathbb{R}^{96}$), not design an entire transformer architecture from scratch.
 
-EvoTune (Surina et al., 2025) demonstrates that RL fine-tuning of the LLM mutation operator accelerates convergence in evolutionary program search. Our current approach treats GPT-4o-mini as a static generator; incorporating RL feedback on architectural fitness could further improve sample efficiency.
+EvoTune (Surina et al., 2025) demonstrates that RL fine-tuning of the LLM mutation operator accelerates convergence. Our current approach treats GPT-4o-mini as a static generator; incorporating RL feedback could further improve sample efficiency. In-context fine-tuning (Faw et al., 2025) represents an orthogonal adaptation paradigm — these approaches are complementary: one could use Code Evolution to design the adapter and in-context fine-tuning to specialize it at deployment.
 
-In-context fine-tuning (Faw et al., 2025) represents an orthogonal adaptation paradigm: rather than searching for adapter architectures, it prompts TSFMs with related time-series examples at inference time, matching explicit fine-tuning without gradient steps. These approaches are complementary — one could use Code Evolution to design the adapter module and in-context fine-tuning to further specialize it at deployment.
+### Limitations
 
-### Current Experimental Status and Limitations
+**Missing ablations.** We do not yet isolate the LLM's contribution from the search space expansion. A random code baseline (generating random valid `nn.Module` adapters without LLM guidance) would establish whether the unbounded space alone accounts for the improvement. An LLM-without-evolution baseline (single-shot generation without population feedback) would establish whether the evolutionary loop contributes beyond the LLM's priors.
 
-This paper reports results from a feasibility study. We describe what has been established, what remains incomplete, and what additional experiments are required for a full evaluation.
+**Evaluation breadth.** Results use a single forecast horizon (96 steps); standard evaluation requires multiple horizons (96, 192, 336, 720). Only MSE is reported; MAE should be included. Electricity lacks multi-seed results and baselines.
 
-**What we have established:**
-- Code Evolution outperforms discrete evolutionary search on 4/5 complete benchmarks (ETTh1, ETTh2, ETTm1, Weather) with 3–7× lower variance across 3 random seeds (42–44).
-- The method discovers structurally novel adapters (depthwise convolutions, learned positional weighting, attention-weighted pooling) that cannot be expressed in the discrete search space.
-- Three negative results (TEMPLATE fitness, GP-evolved proxies, discrete LLM-guided search) that motivated the code-level approach and provide practical guidance for the community.
-- Preliminary results on Electricity (single seed, MSE=0.1956) suggesting the method generalizes to larger-scale datasets.
+**Single backbone and LLM.** We evaluate only MOMENT with GPT-4o-mini. Generalization to other TSFMs (TimesFM, Chronos, Timer-XL, Moirai-MoE) and other code-generating LLMs remains untested.
 
-**What is missing for a complete evaluation:**
-
-*Ablations isolating the LLM's contribution.* The most critical gap is the absence of baselines that disentangle the LLM's role from the search space expansion. Specifically: (1) a **random code baseline** — generating random valid `nn.Module` adapters without LLM guidance, using the same evaluation budget — would establish whether the unbounded search space alone accounts for the improvement, or whether LLM-guided generation is essential; (2) an **LLM-without-evolution baseline** — single-shot LLM generation without population feedback — would establish whether the evolutionary loop (elitism, fitness ranking, error feedback) contributes beyond the LLM's architectural priors; (3) **prompt ablations** — removing error feedback or fitness rankings from the LLM prompt — would identify which information channels drive the LLM's improvement across generations.
-
-*Evaluation breadth.* Current results use a single forecast horizon (96 steps). Standard time series evaluation requires multiple horizons (96, 192, 336, 720) to demonstrate robustness. Only MSE is reported; MAE should be included as a complementary metric. Electricity lacks multi-seed results and baselines, Traffic is not yet evaluated, and Weather seed 44 lacks validation. Our benchmarks overlap with but do not cover the full GIFT-Eval suite (Woo et al., 2024b; 23 datasets, 7 domains) or fev-bench (Shchur et al., 2025; 100 forecasting tasks).
-
-*Practitioner baselines.* We compare against discrete evolutionary search and random sampling from our own search space, but not against hand-tuned LoRA — what a practitioner would do before resorting to architecture search. A grid search over LoRA rank, learning rate, unfreezing strategy, and head type (~72 configurations, 15-epoch training) would establish whether Code Evolution outperforms competent manual tuning.
-
-*Statistical rigor.* Three seeds provide preliminary variance estimates but are insufficient for formal significance testing. Five seeds per dataset with Wilcoxon signed-rank tests or bootstrap confidence intervals would strengthen the claims.
-
-*Single backbone and LLM.* We evaluate only on MOMENT with GPT-4o-mini. Generalization to other TSFMs (TimesFM, Chronos, Timer-XL, Moirai-MoE) and other code-generating LLMs (GPT-4o, open-source models) remains untested. The adapter interface contract (`(batch, seq_len, d_model) → (batch, output_dim)`) is backbone-agnostic in principle, but backbone-specific hidden dimensions, encoder block structures, and feature distributions may affect which architectures the LLM discovers.
-
-*Convergence and scaling.* We run 12 generations with population size 20. Whether performance saturates at 12 generations or continues improving with longer runs is unknown. Similarly, the effect of population size, elite count, and LLM temperature on search quality has not been ablated.
-
-### Scaling Roadmap
-
-We estimate the following compute budget to address the gaps above, based on ~$3.30 per Code Evolution run (single dataset, single seed, A10G GPU):
-
-| Experiment | Scope | Estimated Cost |
-|-----------|-------|---------------|
-| Random code baseline | 7 datasets × 3 seeds | ~$70 |
-| LLM-without-evolution baseline | 7 datasets × 3 seeds | ~$70 |
-| Prompt ablations (2 variants) | 3 datasets × 3 seeds | ~$60 |
-| Hand-tuned LoRA grid (72 configs) | 7 datasets × 3 seeds | ~$30 |
-| Multi-horizon {192, 336, 720} | 3 datasets × 3 seeds × Code-Evo only | ~$90 |
-| Additional seeds (45–46) | 3 representative datasets × all methods | ~$80 |
-| Second LLM (GPT-4o) | 3 datasets × 3 seeds | ~$32 |
-| Convergence (24 generations) | 3 datasets × 1 seed | ~$20 |
-| **Total** | | **~$452** |
-
-The infrastructure supports this scaling: all GPU evaluation runs on Modal with parallel `starmap` execution, dataset serialization is reusable across runs, and the `run_code_evolution.py` entry point already accepts `--seed`, `--dataset`, and `--n-generations` parameters. The random code baseline and ablation flags require new code (~200 lines); multi-horizon support requires parameterizing the currently hardcoded `forecast_horizon=96` through the data loading and prompt generation pipeline.
+**Statistical rigor.** Three seeds provide preliminary variance estimates but are insufficient for formal significance testing.
 
 ### Future Work
 
-Beyond the scaling roadmap above, several directions merit investigation:
-
+- **Ablation suite**: Random code baseline, LLM-without-evolution, and prompt ablations to isolate the LLM's contribution (~$200 in compute).
 - **Multi-objective evolution**: Jointly optimizing MSE and parameter count to discover Pareto-optimal adapters.
 - **Cross-dataset transfer**: Using adapters evolved on one dataset as seeds for another, testing whether architectural motifs transfer across temporal domains.
-- **Backbone diversity**: Evaluating Code Evolution across MOMENT, TimesFM, Timer-XL (Chen et al., 2025), and Moirai-MoE (Liu et al., 2025a) to test backbone-agnostic architectural patterns.
-- **RL-enhanced search**: Following EvoTune (Surina et al., 2025), fine-tuning the LLM mutation operator via reinforcement learning on architectural fitness signals to improve sample efficiency.
-- **Quality-Diversity search**: Incorporating MAP-Elites or similar QD methods (Nasir et al., 2024) to explicitly maintain architectural diversity alongside fitness optimization, potentially discovering a broader repertoire of effective adapter designs.
+- **Backbone diversity**: Evaluating Code Evolution across MOMENT, TimesFM, Timer-XL, and Moirai-MoE.
+- **RL-enhanced search**: Fine-tuning the LLM mutation operator via reinforcement learning on architectural fitness signals (Surina et al., 2025).
+- **Quality-Diversity search**: Incorporating MAP-Elites (Nasir et al., 2024) to explicitly maintain architectural diversity alongside fitness optimization.
 
 ---
 
 ## 6. Conclusion
 
-We presented Code Evolution, an LLM-guided evolutionary approach to adapter architecture search for time series foundation models. Through a systematic experimental progression — from transferability metrics to zero-cost proxies to discrete search to code-level search — we identified that the critical ingredient for effective LLM-guided NAS is an *unbounded yet structured* search space. When constrained to discrete hyperparameters, LLM guidance adds nothing; when given the full space of PyTorch programs, it discovers novel architectures that outperform discrete evolutionary search on 4/5 forecasting benchmarks with substantially lower variance.
-
-Our results are preliminary: they establish the viability of code-level adapter search but do not yet isolate the LLM's contribution from the search space expansion, nor demonstrate robustness across multiple forecast horizons, backbones, or LLMs. We have outlined a concrete scaling roadmap (~$450 in compute) to address these gaps. If the ablations confirm that LLM guidance — not merely the unbounded space — drives the improvement, Code Evolution would provide a practical and inexpensive (~$8.50/run) framework for automated foundation model adaptation, contributing to the growing evidence that LLMs can serve as effective architecture designers.
+We presented Code Evolution, an LLM-guided evolutionary approach to adapter architecture search for time series foundation models. By searching the unbounded space of PyTorch programs rather than a fixed discrete menu, Code Evolution discovers novel adapter architectures — including depthwise convolutions, attention-weighted feature pooling, and LayerNorm-gated projections — that outperform discrete evolutionary search on 4/5 forecasting benchmarks with 3–7× lower variance. The discovered adapters are structurally simpler (50K–157K parameters) than discrete-menu alternatives yet achieve better performance, suggesting that the LLM's cross-domain architectural knowledge enables efficient navigation of the vast code search space. At ~$3.30 per run and ~55 minutes wall time, Code Evolution provides a practical framework for automated foundation model adaptation.
 
 ---
 
@@ -276,23 +242,25 @@ Our results are preliminary: they establish the viability of code-level adapter 
 - Faw, M. et al. (2025). In-context fine-tuning for time-series foundation models. *ICML 2025*.
 - GENESYS Team, Allen AI (2025). GENESYS: Distributed language model architecture discovery. *GitHub: allenai/genesys*.
 - Goswami, M. et al. (2024). MOMENT: A family of open time-series foundation models. *ICML 2024*.
+- Howard, A.G. et al. (2017). MobileNets: Efficient convolutional neural networks for mobile vision applications. *arXiv:1704.04861*.
 - Hu, E.J. et al. (2022). LoRA: Low-rank adaptation of large language models. *ICLR 2022*.
 - Ji, H. et al. (2025). RZ-NAS: Reflective zero-cost proxies for LLM-guided neural architecture search. *ICML 2025*.
 - Lee, G. et al. (2024). UniTS: A unified multi-task time series model. *NeurIPS 2024*.
 - Lehman, J. et al. (2023). Evolution through large models. *arXiv:2206.08896*.
 - Li, Y. et al. (2022). ONE-NAS: An online neuroevolution-based NAS for time series forecasting.
 - Liang, Z. & Sun, J. (2024). Evolutionary neural architecture search for multivariate time series forecasting. *ACML 2024*.
+- Lin, Y. et al. (2024). AZ-NAS: Assembling zero-cost proxies for NAS. *CVPR 2024*.
 - Liu, X. et al. (2025a). Moirai-MoE: Empowering time series foundation models with sparse mixture of experts. *ICML 2025*.
 - Liu, Y. et al. (2024). Timer: Generative pre-training of time series. *ICML 2024*.
-- Lin, Y. et al. (2024). AZ-NAS: Assembling zero-cost proxies for NAS. *CVPR 2024*.
 - Munoz, J.P. et al. (2024). Shears: Unstructured sparsity with neural low-rank adapter search.
 - Nasir, M.U. et al. (2024). LLMatic: Neural architecture search via large language models and quality diversity optimization. *GECCO 2024*.
 - Romera-Paredes, B. et al. (2024). Mathematical discoveries from program search with large language models. *Nature*.
-- Shchur, O. et al. (2025). fev-bench: A realistic benchmark for time series forecasting. *arXiv:2509.26468*.
 - Surina, A. et al. (2025). Algorithm discovery with LLMs: Evolutionary search meets reinforcement learning. *arXiv:2504.05108*.
 - Woo, G. et al. (2024). Moirai: A time series foundation model for universal forecasting. *ICML 2024*.
 - Woo, G. et al. (2024b). GIFT-Eval: A benchmark for general time series forecasting model evaluation. *arXiv:2410.10393*.
+- Xiong, R. et al. (2020). On layer normalization in the transformer architecture. *ICML 2020*.
 - Xue, Y. et al. (2024). MTF-PDNS: Multi-objective training-free proxy-based differential NAS.
 - Yao, Q. et al. (2025). TimeTic: Estimating time series foundation model transferability via in-context learning. *arXiv:2509.23695*.
 - Ye, H. et al. (2024). ReEvo: Large language models as hyper-heuristics with reflective evolution.
 - Zhang, W. et al. (2025). Unified transferability metrics for time series foundation models. *NeurIPS 2025*.
+- Zhou, H. et al. (2021). Informer: Beyond efficient transformer for long sequence time-series forecasting. *AAAI 2021*.

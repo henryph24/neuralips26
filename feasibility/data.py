@@ -200,6 +200,87 @@ FORECASTING_DATASETS = {
 }
 
 
+# --- Multi-horizon loaders ---
+# Generate samples of length input_len + forecast_horizon so that
+# X = samples[:, :input_len] and Y = samples[:, input_len:] are decoupled.
+# This supports H > 512 (e.g., 720) which is impossible with the original
+# approach of input_len = 512 - H.
+
+FORECAST_HORIZONS = [96, 192, 336, 720]
+
+
+def _load_local_csv_values(name):
+    """Load values array from local CSV (Weather, Electricity, Traffic)."""
+    import os
+    local_path = os.path.join(os.path.dirname(__file__), "..", "data", f"{name.lower()}.csv")
+    if not os.path.exists(local_path):
+        raise FileNotFoundError(f"{name} dataset not found at {local_path}")
+    df = pd.read_csv(local_path)
+    return df.iloc[:, 1:].values.astype(np.float32)
+
+
+def load_dataset_multihor(
+    dataset_name: str,
+    input_len: int = MOMENT_SEQ_LEN,
+    forecast_horizon: int = 96,
+    stride: int = 64,
+    max_samples: int = 5000,
+) -> dict:
+    """Load dataset with decoupled input/output windows.
+
+    Returns samples of shape (n, input_len + forecast_horizon) where:
+    - samples[:, :input_len] = encoder input (512 for MOMENT)
+    - samples[:, input_len:] = forecast target (H values)
+
+    Also returns 'input_len' in the dict for downstream splitting.
+    """
+    total_len = input_len + forecast_horizon
+
+    # Load raw values
+    if dataset_name.startswith("ETT"):
+        suffix = dataset_name  # ETTh1, ETTh2, etc.
+        response = urlopen(f"{ETT_BASE_URL}/{suffix}.csv")
+        df = pd.read_csv(io.BytesIO(response.read()))
+        values = df.iloc[:, 1:].values.astype(np.float32)
+        max_samples = None  # ETT datasets are small enough
+    elif dataset_name in ("Weather", "Electricity", "Traffic"):
+        values = _load_local_csv_values(dataset_name)
+    else:
+        raise ValueError(f"Unknown dataset: {dataset_name}")
+
+    n_timesteps, n_channels = values.shape
+
+    if n_timesteps < total_len:
+        raise ValueError(
+            f"Dataset {dataset_name} has {n_timesteps} timesteps, "
+            f"need at least {total_len} (input_len={input_len} + H={forecast_horizon})"
+        )
+
+    windows = []
+    for start in range(0, n_timesteps - total_len + 1, stride):
+        windows.append(values[start : start + total_len])
+    windows = np.stack(windows)
+
+    n_windows = windows.shape[0]
+    samples = windows.transpose(0, 2, 1).reshape(n_windows * n_channels, total_len)
+
+    if max_samples and len(samples) > max_samples:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(samples), max_samples, replace=False)
+        samples = samples[idx]
+
+    scaler = StandardScaler()
+    samples = scaler.fit_transform(samples.T).T.astype(np.float32)
+
+    return {
+        "samples": samples,
+        "name": dataset_name,
+        "task": "forecasting",
+        "input_len": input_len,
+        "forecast_horizon": forecast_horizon,
+    }
+
+
 def _load_uea_classification(dataset_name: str, seq_len: int = MOMENT_SEQ_LEN) -> dict:
     """Generic loader for UEA classification datasets via aeon.
 
