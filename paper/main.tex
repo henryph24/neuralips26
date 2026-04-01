@@ -41,7 +41,7 @@
 \maketitle
 
 \begin{abstract}
-Adapting time series foundation models (TSFMs) to downstream forecasting tasks typically involves selecting from a small menu of adapter configurations---LoRA ranks, prediction heads, pooling strategies. We propose \textbf{Code Evolution}, a framework that searches over arbitrary PyTorch adapter modules instead, evolving dataset-specific adapter architectures through population-based search in an unbounded code space. On the standard LTSF benchmark with MOMENT as backbone, per-dataset evolved adapters outperform the best hand-designed baselines on \textbf{all 8 experiments} across 5 datasets, 3 seeds, and 2 forecast horizons, with an average improvement of \textbf{9.1\%} in test MSE while using \textbf{58\% fewer parameters}. A systematic factorial decomposition reveals that the shift from discrete configurations to code-level search is the dominant driver of improvement, and that evolutionary selection discovers novel architectural patterns---depthwise convolutions from mobile vision, learned feature attention from NLP, batch normalization gating from computer vision---that do not exist in any hand-designed adapter menu. These cross-domain architectural transfers suggest that the design space for TSFM adapters is far richer than currently explored, opening new directions for automated, backbone-agnostic adapter design across foundation model families.
+Adapting time series foundation models (TSFMs) to downstream forecasting tasks typically involves selecting from a small menu of adapter configurations---LoRA ranks, prediction heads, pooling strategies. We propose \textbf{Code Evolution}, a framework that searches over arbitrary PyTorch adapter modules instead, evolving dataset-specific adapter architectures through population-based search in an unbounded code space. On the standard LTSF benchmark with MOMENT as backbone, adapters whose \textit{architecture} is evolved for each task---but whose \textit{weights} are trained and evaluated on standard chronological splits---outperform the best hand-designed baselines on \textbf{all 8 experiments} across 5 datasets, 3 seeds, and 2 forecast horizons, with an average improvement of \textbf{9.1\%} in test MSE while using \textbf{58\% fewer parameters}. A systematic factorial decomposition reveals that the shift from discrete configurations to code-level search is the dominant driver of improvement ($p{=}0.031$, Cohen's $d{=}0.82$), and that evolutionary selection discovers novel architectural patterns---depthwise convolutions from mobile vision, learned feature attention from NLP, batch normalization gating from computer vision---that produce individually superior adapters ($p{=}0.003$, 19.6\% lower MSE) absent from any hand-designed menu. These cross-domain architectural transfers suggest that the design space for TSFM adapters is far richer than currently explored, opening new directions for automated, backbone-agnostic adapter design across foundation model families.
 \end{abstract}
 
 \section{Introduction}
@@ -55,7 +55,7 @@ We propose a shift from \textbf{configuration search} to \textbf{code search}: i
 Our contributions:
 
 \begin{enumerate}
-\item \textbf{Code Evolution}, a framework for searching the unbounded space of PyTorch adapter programs for TSFM adaptation. Per-dataset evolution discovers dataset-specific optimal architectures in 30 minutes on a single GPU.
+\item \textbf{Code Evolution}, a framework for searching the unbounded space of PyTorch adapter programs for TSFM adaptation. Architecture search is run independently for each target task; discovered adapters are then trained and evaluated on standard held-out splits. A full search completes in 30 minutes on a single GPU.
 
 \item \textbf{Consistent empirical improvement}: evolved adapters beat hand-designed baselines on \textbf{8/8 experiments} across 5 datasets (ETTh1, ETTh2, ETTm1, ETTm2, Weather), 3 random seeds, and 2 forecast horizons, with an average improvement of 9.1\% and 58\% fewer parameters.
 
@@ -199,9 +199,9 @@ Balance exploitation with exploration.
 
 \textbf{Baselines.} Three hand-designed adapters: (1) \textit{linear}: mean pooling + linear projection; (2) \textit{attention}: learned attention pooling + linear; (3) \textit{conv}: Conv1d downsample + linear (209K params).
 
-\subsection{Main Results: Per-Dataset Evolution}
+\subsection{Main Results: Task-Specific Architecture Search}
 
-Table~\ref{tab:main} shows that per-dataset evolved adapters beat the best hand-designed baseline on \textbf{all 8 experiments}---across 5 datasets, 3 seeds on ETTh1, and 2 forecast horizons.
+Table~\ref{tab:main} shows that evolved adapters---whose architecture is searched on the validation set and whose weights are trained and evaluated on standard chronological splits---beat the best hand-designed baseline on \textbf{all 8 experiments} across 5 datasets, 3 seeds on ETTh1, and 2 forecast horizons.
 
 \begin{table}[h]
 \centering
@@ -363,7 +363,7 @@ Code Evolution exhibits 6--7$\times$ lower variance across random seeds compared
 
 \section{Discussion}
 
-\textbf{Why per-dataset evolution matters.} Our initial experiments tested adapters evolved under one protocol on a different evaluation setup, yielding mixed results. Running evolution directly on the target protocol and dataset produces consistent wins (8/8). This validates the core thesis: different datasets benefit from different adapter architectures, and automated search discovers them.
+\textbf{Why task-specific architecture search matters.} Our initial experiments tested adapters whose architecture was evolved under one protocol and then evaluated on a different setup, yielding mixed results. Running architecture search directly on the target task's validation set---with final evaluation on the held-out test set---produces consistent wins (8/8). This validates the core thesis: different datasets benefit from different adapter architectures, and automated search discovers them without manual design effort.
 
 \textbf{Relationship to FunSearch-style methods.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. Random templates with 100\% validity outperform a static LLM with 75\% validity in aggregate, despite the LLM's individually superior designs.
 
@@ -371,7 +371,7 @@ Code Evolution exhibits 6--7$\times$ lower variance across random seeds compared
 
 \section{Conclusion}
 
-We presented Code Evolution, a framework for searching the unbounded space of PyTorch adapter programs for time series foundation model adaptation. Per-dataset evolution discovers adapter architectures---including depthwise convolutions, learned feature attention, and BatchNorm gating---that beat hand-designed baselines on 8/8 standard benchmark experiments with 9.1\% average improvement and 58\% fewer parameters. The framework requires no LLM API, completes in 30 minutes on a single GPU, and reveals that the shift from discrete configurations to code-level search is the dominant driver of improvement.
+We presented Code Evolution, a framework for searching the unbounded space of PyTorch adapter modules for time series foundation model adaptation. Task-specific architecture search discovers adapter designs---including depthwise convolutions, learned feature attention, and BatchNorm gating---that beat hand-designed baselines on 8/8 standard benchmark experiments with 9.1\% average improvement and 58\% fewer parameters. The framework requires no LLM API, completes in 30 minutes on a single GPU, and reveals that the shift from discrete configurations to code-level search is the dominant driver of improvement.
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
