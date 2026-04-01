@@ -59,7 +59,7 @@ Our contributions:
 
 \item \textbf{Consistent empirical improvement}: evolved adapters beat hand-designed baselines on \textbf{8/8 experiments} across 5 datasets (ETTh1, ETTh2, ETTm1, ETTm2, Weather), 3 random seeds, and 2 forecast horizons, with an average improvement of 9.1\% and 58\% fewer parameters.
 
-\item \textbf{Rigorous factorial decomposition} of what drives improvement in code-level architecture search: the search space representation is the dominant factor ($p{=}0.031$), LLM-discovered patterns are individually 19.6\% better ($p{=}0.003$), and a self-improving loop resolves the validity--quality tradeoff.
+\item \textbf{Rigorous factorial decomposition} of what drives improvement in code-level architecture search: the search space representation is the dominant factor ($p{=}0.031$), and LLM-discovered patterns are individually 19.6\% better ($p{=}0.003$) but lose on aggregate because the LLM wastes 25\% of its evaluation budget on invalid code---a gap that a self-improving fine-tuning loop narrows by restoring 100\% code validity.
 \end{enumerate}
 
 \textbf{Gaps in the current landscape.} Recent NeurIPS 2025 work reveals a maturing but incomplete picture of TSFM adaptation. MSFT~\cite{qiao2025msft} demonstrates that naive finetuning underutilizes TSFM capabilities, yet restricts its search to finetuning \textit{strategies} (multi-scale modeling) rather than adapter \textit{architectures}. Prune-then-Finetune~\cite{zhao2025prune} shows that TSFMs contain redundant substructures and benefit from pruning before adaptation, but does not explore what \textit{new} architectural components might replace the pruned ones. TEMPLATE~\cite{zhang2025template} addresses which \textit{pretrained model} to select from a pool, but assumes the adapter architecture is given. The NeurIPS 2025 Workshop on Time Series Foundation Models (``Have We Reached the BERT Moment?'') highlighted that lightweight supervised baselines still match or exceed TSFMs in many settings---suggesting that the adaptation strategy, not just the backbone, is the bottleneck. Meanwhile, in the LLM-guided search community, PartEvo~\cite{hu2025partevo} and the AI Research Agents study~\cite{toledo2025aiagents} (Spotlight) demonstrate that search strategy design is critical for automated ML, but neither applies code-level search to foundation model adaptation. We bridge these two lines of work: applying evolutionary code search to the underexplored problem of adapter architecture design for TSFMs.
@@ -141,7 +141,7 @@ Constraints: ${\leq}500$K parameters, imports restricted to \texttt{torch}, \tex
 
 \subsection{Code Evolution}
 
-\textbf{Population.} We maintain a population of 20 adapter code strings. The population is initialized with 5 hand-designed seed adapters (mean pooling + linear, MLP, last-token, attention pooling, Conv1d) plus 15 randomly generated adapters from a template-based code generator.
+\textbf{Population and search budget.} We maintain a population of 20 adapter code strings, evolved over 12 generations---yielding ${\sim}240$ total adapter evaluations per search run. The \textit{population size} (20) controls how many candidate architectures compete in each generation: larger populations explore more designs per generation but increase GPU cost linearly. The \textit{number of generations} (12) controls how many rounds of selection and offspring generation occur: more generations allow the population to refine toward better architectures. Together, they define the total search budget. We chose 20$\times$12{=}240 total evaluations as a practical tradeoff: comparable to EvoPrompting~\cite{chen2023evoprompting} (${\sim}200$ evaluations) and smaller than LLMatic~\cite{nasir2024llmatic} (2,000 evaluations), while completing in ${\sim}30$ minutes on a single A10G GPU. Elitism preserves the top 2 architectures across generations to prevent regression. The population is initialized with 5 hand-designed seed adapters (mean pooling + linear, MLP, last-token, attention pooling, Conv1d) to bootstrap with known-good designs, plus 15 randomly generated adapters from a template-based code generator to ensure initial diversity.
 
 \textbf{Template-Based Code Generator.} Inspired by grammar-guided program synthesis~\cite{koza1994genetic, mckay2010grammar}, we design a compositional code generator that produces valid adapter architectures by sampling and assembling building blocks from a predefined vocabulary. Each adapter is composed in three stages: (1)~a \textit{pooling strategy} is selected from \{mean, last-token, max, attention-weighted, Conv1d-based\}; (2)~a \textit{post-pooling MLP} with 1--3 linear layers, hidden dimensions sampled from \{64, 128, 192, 256, 384\}, and activations from \{GELU, ReLU, SiLU\}; (3)~optional \textit{pre-normalization} (LayerNorm) and dropout. The generator constructs the full \texttt{\_\_init\_\_} and \texttt{forward} methods as a code string, with shape correctness guaranteed by construction---each stage's output dimension feeds correctly into the next. This yields 100\% validity (vs.\ ${\sim}75\%$ for LLM-generated code), enabling a fair comparison that isolates the effect of the code generator from evaluation budget differences. The total combinatorial space is ${\sim}1{,}200$ unique architectures, substantially larger than the discrete hyperparameter space (2,160 configs) while remaining bounded, in contrast to the unbounded LLM code space.
 
@@ -196,13 +196,19 @@ Balance exploitation with exploration.
 
 \textbf{Datasets.} ETTh1, ETTh2, ETTm1, ETTm2~\cite{zhou2021informer}, Weather (21 channels). These are the standard LTSF benchmarks used by PatchTST~\cite{nie2023patchtst}, iTransformer~\cite{liu2024itransformer}, TimesNet~\cite{wu2023timesnet}, DLinear~\cite{zeng2023dlinear}, and Autoformer~\cite{wu2021autoformer}.
 
-\textbf{Training.} Adam optimizer, lr$=10^{-3}$, MSE loss, batch size 32--64. Evolution: 3-epoch fitness. Final: 15-epoch test evaluation.
+\textbf{Training.} Adam optimizer, lr$=10^{-3}$, MSE loss, batch size 32--64. During evolution, each candidate adapter is trained for 3 epochs on the \textit{training} set and its fitness is measured as $-\text{MSE}$ on the \textit{validation} set. After evolution (12 generations), the top-5 adapters are retrained for 15 epochs and evaluated on the held-out \textit{test} set. This three-way split ensures that architecture search (validation) and final evaluation (test) use disjoint data.
 
-\textbf{Baselines.} Three hand-designed adapters: (1) \textit{linear}: mean pooling + linear projection; (2) \textit{attention}: learned attention pooling + linear; (3) \textit{conv}: Conv1d downsample + linear (209K params).
+\textbf{Fixed adapter baselines.} We compare against three hand-designed adapter architectures that represent common practice in TSFM adaptation. These architectures are \textit{not} searched---they are fixed designs, each trained and evaluated on the same standard splits as the evolved adapters:
+\begin{itemize}
+    \item \textit{linear}: mean pooling over the temporal dimension followed by a linear projection (49K params). This is the simplest possible adapter and the default in most TSFM papers.
+    \item \textit{attention}: learned attention-weighted pooling followed by a linear projection (50K params). The pooling weights are trained end-to-end.
+    \item \textit{conv}: Conv1d temporal downsampling (kernel=8, stride=4) followed by mean pooling and linear projection (209K params). This is the strongest fixed baseline across all datasets.
+\end{itemize}
+All baselines unfreeze the same last-4 encoder blocks as the evolved adapters, use the same optimizer, learning rate, and number of training epochs (15 for final evaluation). The only difference is the adapter architecture itself---hand-designed vs.\ evolved.
 
 \subsection{Main Results: Task-Specific Architecture Search}
 
-Table~\ref{tab:main} shows that evolved adapters---whose architecture is searched on the validation set and whose weights are trained and evaluated on standard chronological splits---beat the best hand-designed baseline on \textbf{all 8 experiments} across 5 datasets, 3 seeds on ETTh1, and 2 forecast horizons.
+Table~\ref{tab:main} shows results on the held-out test set. Evolved adapters---whose architecture is discovered via search on the validation set---beat the best fixed adapter on \textbf{all 8 experiments} across 5 datasets, 3 seeds on ETTh1, and 2 forecast horizons.
 
 \begin{table}[h]
 \centering
@@ -210,7 +216,7 @@ Table~\ref{tab:main} shows that evolved adapters---whose architecture is searche
 \label{tab:main}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
-Dataset & Setting & Evolved MSE & Baseline MSE & $\Delta$ & Evolved Params \\
+Dataset & Setting & Evolved MSE & Best Fixed Adapter & $\Delta$ & Evolved Params \\
 \midrule
 ETTh1 & H=96, seed 42 & \textbf{1.0835} & 1.1477 & --5.6\% & 118K \\
 ETTh1 & H=96, seed 43 & \textbf{1.0418} & 1.1484 & --9.3\% & 157K \\
@@ -252,10 +258,10 @@ Weather & H=96, seed 42 & \textbf{0.4933} & 0.6085 & --18.9\% & 158K \\
 \addplot[fill=red!40, draw=red!60] coordinates {
     (ETTh1, 1.1477) (ETTm1, 1.1223) (ETTh2, 3.1040) (ETTm2, 3.1059) (Weather, 0.6085)
 };
-\legend{Evolved, Best Baseline}
+\legend{Evolved, Best Fixed Adapter (conv)}
 \end{axis}
 \end{tikzpicture}
-\caption{Evolved adapters (blue) vs.\ best hand-designed baseline (red) on standard LTSF benchmarks. Evolved adapters win on all 5 datasets, with the largest gain on Weather (--18.9\%).}
+\caption{Evolved adapters (blue) vs.\ best fixed adapter architecture (red; Conv1d + Linear, 209K params) on standard LTSF benchmarks. Evolved adapters win on all 5 datasets, with the largest gain on Weather (--18.9\%).}
 \label{fig:main_results}
 \end{figure}
 
