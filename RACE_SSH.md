@@ -21,6 +21,23 @@ To update:
 3. Workspaces → select workspace → **Edit Security Group**
 4. Add `<your-ip>/32` on **port 22**
 
+## Permanent SSH Access (bypasses 60-second window)
+
+The public key has been added to `~/.ssh/authorized_keys` on the VM, so SSH works anytime without needing to click "Use this SSH Key" in RACE. This was done by:
+
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo '<public-key>' > ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+To re-extract the public key from the `.pem` if needed:
+```bash
+ssh-keygen -y -f hungphanphd.pem
+```
+
 ## Notes
 - Key permissions must be `chmod 400` (`chmod 400 hungphanphd.pem`)
-- The 60-second countdown after clicking "Use this SSH Key" in RACE applies when authorizing keys via the web UI
+- The RACE "Use this SSH Key" 60-second window is no longer needed thanks to permanent key setup
+- Only remaining requirement: your public IP must be whitelisted in the security group (port 22)
+- If IP changes (router restart, different network), professor must update the security group
