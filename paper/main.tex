@@ -77,49 +77,50 @@ Our contributions:
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    box/.style={rectangle, draw, rounded corners=3pt, minimum height=0.8cm, minimum width=2.2cm, font=\small, align=center, fill=#1},
+    box/.style={rectangle, draw, rounded corners=4pt, minimum height=1.1cm, minimum width=2.8cm, font=\small, align=center, fill=#1, line width=0.6pt},
     box/.default=white,
-    arr/.style={-{Stealth[length=2.5mm]}, thick},
-    darr/.style={-{Stealth[length=2.5mm]}, thick, dashed},
+    arr/.style={-{Stealth[length=3mm, width=2mm]}, thick},
+    darr/.style={-{Stealth[length=3mm, width=2mm]}, thick, dashed, draw=red!60},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=1.5pt},
 ]
 
-% Code Generator
+% Row 1: Main pipeline (left to right)
 \node[box=blue!12] (gen) at (0, 0) {Code\\Generator};
-\node[font=\tiny, text=gray, below=0.1cm of gen] {Templates / LLM};
+\node[box=green!12] (code) at (3.8, 0) {Adapter Code\\\texttt{nn.Module}};
+\node[box=yellow!12] (val) at (7.6, 0) {CPU Validate\\shape, params};
+\node[box=orange!12] (gpu) at (11.4, 0) {GPU Train\\3-epoch MSE};
 
-% Adapter Code
-\node[box=green!12] (code) at (3.2, 0) {Adapter Code\\\texttt{nn.Module}};
+% Row 2: Selection and feedback (right to left)
+\node[box=red!10] (sel) at (11.4, -2.8) {Rank \&\\Elitism (top 2)};
+\node[box=cyan!12] (final) at (7.6, -2.8) {Best Adapter\\15-ep test eval};
+\node[box=purple!10] (pop) at (3.8, -2.8) {Population\\(20 adapters)};
 
-% Local Validation
-\node[box=yellow!15] (val) at (6.4, 0) {CPU Validate\\shape, params};
+% Label under generator
+\node[font=\scriptsize, text=gray!70] at (0, -0.85) {Templates / LLM};
 
-% GPU Eval
-\node[box=orange!15] (gpu) at (9.6, 0) {GPU Train\\3-epoch MSE};
-
-% Selection
-\node[box=red!12] (sel) at (9.6, -1.8) {Rank \&\\Elitism (top 2)};
-
-% Population
-\node[box=purple!10] (pop) at (3.2, -1.8) {Population\\(20 adapters)};
-
-% Final
-\node[box=cyan!15] (final) at (6.4, -1.8) {Best Adapter\\15-ep test eval};
-
-% Arrows
+% Row 1 arrows
 \draw[arr] (gen) -- (code);
 \draw[arr] (code) -- (val);
-\draw[arr] (val) -- node[above, font=\tiny] {valid} (gpu);
+\draw[arr] (val) -- node[lbl, above] {valid} (gpu);
+
+% Row 1 to Row 2
 \draw[arr] (gpu) -- (sel);
-\draw[arr] (sel) -- (pop);
-\draw[arr] (pop) -- node[above, font=\tiny] {next gen} (gen);
-\draw[darr] (val) -- node[right, font=\tiny, text=red] {invalid} ++(0, -0.8) -| (gen);
-\draw[arr] (pop) -- node[above, font=\tiny] {gen 12} (final);
+
+% Row 2 arrows (right to left)
+\draw[arr] (sel) -- node[lbl, above] {after gen 12} (final);
+\draw[arr] (sel.west) -- +(-0.6, 0) |- node[lbl, near start, above] {} (pop.east);
+
+% Feedback: Population back to Generator (clean loop underneath)
+\draw[arr] (pop.west) -- +(-0.6, 0) |- node[lbl, near end, above] {next gen} (gen.south west);
+
+% Invalid feedback: separate dashed path below validation
+\draw[darr] (val.south) -- +(0, -1.2) -| node[lbl, near start, right, text=red!70] {invalid} (gen.south);
 
 % Generation label
-\node[font=\scriptsize, text=gray!70] at (4.8, -3.0) {12 generations $\times$ 20 population $\approx$ 240 evaluations};
+\node[font=\scriptsize, text=gray!60] at (5.7, -4.3) {12 generations $\times$ 20 population $\approx$ 240 evaluations};
 
 \end{tikzpicture}
-\caption{Code Evolution framework. A code generator (random templates or LLM) produces \texttt{nn.Module} adapter classes. Each is validated locally for shape/parameter correctness, then trained on GPU. Evolutionary selection preserves the top 2 adapters; the remaining 18 slots are filled with new candidates. After 12 generations, the best adapter is evaluated on the held-out test set.}
+\caption{Code Evolution framework. A code generator (random templates or LLM) produces \texttt{nn.Module} adapter classes. Each is validated locally for shape and parameter correctness; invalid codes are fed back to the generator. Valid adapters are trained on GPU for 3 epochs. Evolutionary selection preserves the top 2 adapters; the remaining 18 slots are filled with new candidates. After 12 generations, the best adapter is evaluated on the held-out test set at 15 epochs.}
 \label{fig:framework}
 \end{figure}
 
