@@ -9,6 +9,7 @@ import copy
 import json
 import traceback
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 from typing import Callable, List, Optional
 
@@ -341,13 +342,85 @@ Return a JSON object with key "adapters", containing a list of objects each with
 Balance exploitation (variations of top adapters) with exploration (novel architecture ideas). Avoid repeating failed patterns."""
 
 
+# Global cache for local model (avoid reloading per call)
+_LOCAL_MODEL_CACHE = {"model": None, "tokenizer": None, "path": None}
+
+
+def load_local_llm(model_path: str, device: str = "cuda"):
+    """Load a fine-tuned local LLM (QLoRA adapter + base model) for code generation."""
+    if _LOCAL_MODEL_CACHE["path"] == model_path and _LOCAL_MODEL_CACHE["model"] is not None:
+        return _LOCAL_MODEL_CACHE["model"], _LOCAL_MODEL_CACHE["tokenizer"]
+
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+    from peft import PeftModel
+
+    # Check if this is a LoRA adapter directory (has adapter_config.json)
+    adapter_config_path = os.path.join(model_path, "adapter_config.json")
+    if os.path.exists(adapter_config_path):
+        with open(adapter_config_path) as f:
+            adapter_cfg = json.load(f)
+        base_model_name = adapter_cfg.get("base_model_name_or_path", "Qwen/Qwen2.5-3B-Instruct")
+        print("Loading base model: %s" % base_model_name)
+
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        base_model = AutoModelForCausalLM.from_pretrained(
+            base_model_name, quantization_config=bnb_config,
+            device_map="auto", trust_remote_code=True,
+        )
+        model = PeftModel.from_pretrained(base_model, model_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    else:
+        # Full model directory
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, quantization_config=bnb_config,
+            device_map="auto", trust_remote_code=True,
+        )
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    model.eval()
+    _LOCAL_MODEL_CACHE["model"] = model
+    _LOCAL_MODEL_CACHE["tokenizer"] = tokenizer
+    _LOCAL_MODEL_CACHE["path"] = model_path
+    print("Local LLM loaded: %s" % model_path)
+    return model, tokenizer
+
+
 def _call_llm(system_prompt: str, user_prompt: str, model: str = "gpt-4o-mini",
               max_tokens: int = 8192) -> str:
     """Route LLM call based on model name. Returns raw response text (expected JSON)."""
-    if model.startswith("claude"):
+    if model.startswith("local:"):
+        # Local fine-tuned model: "local:/path/to/adapter"
+        model_path = model[len("local:"):]
+        llm, tokenizer = load_local_llm(model_path)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt
+             + "\n\nIMPORTANT: Return ONLY valid JSON, no markdown."},
+        ]
+        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = tokenizer(text, return_tensors="pt").to(llm.device)
+        with torch.no_grad():
+            outputs = llm.generate(
+                **inputs, max_new_tokens=max_tokens, temperature=0.7,
+                do_sample=True, top_p=0.9, pad_token_id=tokenizer.pad_token_id,
+            )
+        response = tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+        return response
+    elif model.startswith("claude"):
         from anthropic import Anthropic
         client = Anthropic()
-        # Claude has no native JSON mode — instruction in prompt is sufficient
         response = client.messages.create(
             model=model,
             max_tokens=max_tokens,
@@ -417,20 +490,42 @@ def llm_generate_code(
 
     history_str = [round(f, 6) for f in best_fitness_history]
 
+    # For local models, request 1 adapter per call (small models can't generate batches)
+    # For API models, request all at once (batch is more efficient)
+    is_local = model.startswith("local:")
+    request_n = 1 if is_local else n_offspring
+
     user_prompt = CODE_USER_PROMPT_TEMPLATE.format(
         generation=generation,
         top_adapters=json.dumps(top_5, indent=2),
         bottom_adapters=json.dumps(bottom_3, indent=2),
         failed_adapters=json.dumps(failed, indent=2) if failed else "None",
         fitness_history=history_str,
-        n_offspring=n_offspring,
+        n_offspring=request_n,
     )
 
     try:
-        content = _call_llm(CODE_SYSTEM_PROMPT, user_prompt, model=model)
-        parsed = json.loads(content)
-        adapters = parsed.get("adapters", [])
+        all_adapters = []
+        n_calls = n_offspring if is_local else 1
+        for call_i in range(n_calls):
+            content = _call_llm(CODE_SYSTEM_PROMPT, user_prompt, model=model)
+            # Try direct JSON parse, then fallback to extracting JSON from response
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError:
+                import re
+                json_match = re.search(r'\{[\s\S]*\}', content)
+                if json_match:
+                    try:
+                        parsed = json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        parsed = {}
+                else:
+                    parsed = {}
+            batch = parsed.get("adapters", [])
+            all_adapters.extend(batch)
 
+        adapters = all_adapters
         if not adapters:
             print(f"    LLM returned no adapters")
             return []

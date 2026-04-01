@@ -30,10 +30,14 @@ try:
 except ImportError:
     pass
 
-import modal
-import numpy as np
+try:
+    import modal
+    from feasibility.modal_app import app, image
+    MODAL_AVAILABLE = True
+except ImportError:
+    MODAL_AVAILABLE = False
 
-from feasibility.modal_app import app, image
+import numpy as np
 from feasibility.data import (
     load_etth1, load_ettm1, load_etth2, load_ettm2,
     load_weather, load_electricity, load_traffic,
@@ -60,12 +64,20 @@ DATASETS = {
 
 
 # --- Modal GPU evaluation (identical to run_code_evolution.py) ---
+# Guarded: only define when Modal is available (not needed for local runs)
+
+if not MODAL_AVAILABLE:
+    def _noop_decorator(*args, **kw):
+        def wrapper(f):
+            return f
+        return wrapper
+    app = type('FakeApp', (), {'function': staticmethod(_noop_decorator), 'local_entrypoint': staticmethod(_noop_decorator)})()
 
 @app.function(
     gpu="A10G",
     timeout=600,
-    scaledown_window=2,     # scale to 0 quickly when idle — no paying for idle between gens
-    max_containers=20,      # allow full population parallelism (pop_size=20)
+    scaledown_window=2,
+    max_containers=20,
 )
 def evaluate_adapter_code_remote(
     code_str: str,

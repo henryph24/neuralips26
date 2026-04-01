@@ -3,3 +3,16 @@ __pycache__/
 *.pyc
 .env
 *.egg-info/
+*.pem
+*.pptx
+*.docx
+*.pdf
+data/
+figures/
+zifCaAXT
+~$*
+.claude/
+experiments/finetune_training_data.json
+experiments/sft_dataset.jsonl
+experiments/winning_codes.txt
+*.html
