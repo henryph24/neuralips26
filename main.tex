@@ -46,7 +46,7 @@ Adapting time series foundation models (TSFMs) to downstream forecasting tasks t
 
 \section{Introduction}
 
-Time series foundation models (TSFMs) such as MOMENT~\cite{goswami2024moment}, TimesFM~\cite{das2024timesfm}, Chronos~\cite{ansari2024chronos}, Timer~\cite{liu2024timer}, Moirai~\cite{woo2024moirai}, and UniTS~\cite{lee2024units} have emerged as powerful pretrained representations for temporal tasks. A critical practical question remains: \textit{how should one design the adapter that connects a frozen TSFM to a specific downstream dataset?}
+The transformer architecture~\cite{vaswani2017attention} has enabled foundation models~\cite{bommasani2021foundation} across modalities---from language~\cite{devlin2019bert, brown2020gpt3} to vision~\cite{dosovitskiy2021vit}. Time series foundation models (TSFMs) such as MOMENT~\cite{goswami2024moment}, TimesFM~\cite{das2024timesfm}, Chronos~\cite{ansari2024chronos}, Timer/Timer-XL~\cite{liu2024timer, liu2025timerxl}, Moirai/Moirai-MoE~\cite{woo2024moirai, liu2025moiraimoe}, UniTS~\cite{lee2024units}, Lag-Llama~\cite{rasul2024lagllama}, Time-MoE~\cite{shi2024timemoe}, and TTM~\cite{ekambaram2024ttm} have emerged as powerful pretrained representations for temporal tasks. A critical practical question remains: \textit{how should one design the adapter that connects a frozen TSFM to a specific downstream dataset?}
 
 Current practice selects from a fixed menu: LoRA~\cite{hu2022lora} rank, bottleneck dimension, prediction head type, pooling strategy. This discrete search space (typically ${\sim}2{,}000$ configurations) has two limitations. First, the designer must enumerate candidate architectures upfront; novel structural ideas---depthwise convolutions, learned feature weighting---cannot be discovered if they are absent from the menu. Second, the space is small enough that random search achieves near-optimal coverage, leaving no room for intelligent exploration.
 
@@ -68,9 +68,9 @@ Our contributions:
 
 \textbf{TSFM Adaptation.} Standard adaptation uses LoRA~\cite{hu2022lora} or bottleneck adapters~\cite{houlsby2019adapters} with manually chosen configurations. A growing body of work searches over \textit{how} to finetune, but not \textit{what} adapter architecture to use. MSFT~\cite{qiao2025msft} proposes multi-scale finetuning strategies for encoder-based TSFMs (Moirai, MOMENT, UniTS). TRACE~\cite{li2025trace} introduces importance-based LoRA module selection and reconstructed prediction heads---the closest work to ours---but the head architectures are still hand-designed rather than searched. Beyond LoRA~\cite{gupta2024beyondlora} surveys PEFT alternatives (BitFit, VeRA, FourierFT) for Chronos, comparing methods that modify \textit{backbone weights} rather than the adapter module itself. AdaPTS~\cite{benechehab2025adapts} learns feature-space transformations \textit{before} the frozen FM, adapting the input representation rather than the output architecture. Prune-then-Finetune~\cite{zhao2025prune} applies structured pruning before adaptation. In-context fine-tuning~\cite{faw2025icf} adapts TSFMs at inference time. TEMPLATE~\cite{zhang2025template} addresses \textit{model selection} via transferability metrics. GIFT-Eval~\cite{woo2024gifteval} provides a comprehensive evaluation benchmark. All of these search over finetuning \textit{strategies}, input \textit{transformations}, or model \textit{selection}---none search the adapter \textit{architecture} itself. This is the gap we address.
 
-\textbf{NAS for Adapters.} Classical NAS methods such as DARTS~\cite{liu2019darts} search over differentiable cell spaces. Shears~\cite{munoz2024shears} searches discrete adapter hyperparameters for LLMs. RZ-NAS~\cite{ji2025rznas} uses LLM reflection with zero-cost proxies. In vision, NAS-LoRA~\cite{chen2025naslora} integrates NAS blocks between LoRA encoder and decoder for SAM adaptation---the closest methodological peer, but applied to vision segmentation rather than time series. ONE-NAS~\cite{li2022onenas} applies evolutionary NAS to time series but searches raw architectures, not adapters on frozen backbones. TSFM-Bench~\cite{li2025tsfmbench} provides comprehensive benchmarking of TSFMs across adaptation strategies but does not explore adapter architecture search. No prior work searches an \textit{unbounded} architecture space for time series foundation model adapters.
+\textbf{NAS for Adapters.} Neural architecture search~\cite{zoph2017nas} has evolved from RL-based methods to weight-sharing approaches like ENAS~\cite{pham2018enas} and differentiable methods like DARTS~\cite{liu2019darts}. Regularized evolution~\cite{real2019regularized} demonstrated that evolutionary NAS matches or exceeds RL-based search. Shears~\cite{munoz2024shears} searches discrete adapter hyperparameters for LLMs. RZ-NAS~\cite{ji2025rznas} uses LLM reflection with zero-cost proxies. In vision, NAS-LoRA~\cite{chen2025naslora} integrates NAS blocks between LoRA encoder and decoder for SAM adaptation---the closest methodological peer, but applied to vision segmentation rather than time series. ONE-NAS~\cite{li2022onenas} and related evolutionary TS-NAS work~\cite{liang2024tsnas} search raw architectures for time series but not adapters on frozen backbones. TSFM-Bench~\cite{li2025tsfmbench} provides comprehensive benchmarking of TSFMs across adaptation strategies but does not explore adapter architecture search. No prior work searches an \textit{unbounded} architecture space for time series foundation model adapters.
 
-\textbf{LLM-Guided Code Search.} FunSearch~\cite{romera2024funsearch} demonstrated LLM-guided evolutionary program search for mathematical discovery. Evolution through Large Models (ELM)~\cite{lehman2023elm} showed LLMs can serve as mutation operators for design. EvoPrompting~\cite{chen2023evoprompting} combines LLMs with evolutionary search for neural architecture search. LLMatic~\cite{nasir2024llmatic} pairs LLMs with MAP-Elites quality-diversity search. PartEvo~\cite{hu2025partevo} introduces niching for LLM-based algorithm discovery (NeurIPS 2025). SOAR~\cite{pourcel2025soar} adds self-improvement via hindsight learning (ICML 2025). EvoTune~\cite{surina2025evotune} fine-tunes the LLM search operator via RL. SEA-TS~\cite{xu2026seats} applies MCTS-based code generation to time series forecasting. The AI Research Agents study~\cite{toledo2025aiagents} (NeurIPS 2025 Spotlight) formalizes search strategies for automated ML. Our work applies this paradigm to TSFM \textit{adapter} search---1000$\times$ cheaper than full-model evolution---with a systematic decomposition of what drives improvement.
+\textbf{LLM-Guided Code Search.} Large language models trained on code~\cite{chen2021codex} can generate syntactically valid programs, enabling a new paradigm of code-level search. FunSearch~\cite{romera2024funsearch} demonstrated LLM-guided evolutionary program search for mathematical discovery. Evolution through Large Models (ELM)~\cite{lehman2023elm} showed LLMs can serve as mutation operators for design. EvoPrompting~\cite{chen2023evoprompting} combines LLMs with evolutionary search for neural architecture search. ReEvo~\cite{ye2024reevo} introduces reflective evolution for combinatorial optimization heuristics. LLMatic~\cite{nasir2024llmatic} pairs LLMs with MAP-Elites quality-diversity search. PartEvo~\cite{hu2025partevo} introduces niching for LLM-based algorithm discovery (NeurIPS 2025). SOAR~\cite{pourcel2025soar} adds self-improvement via hindsight learning (ICML 2025). EvoTune~\cite{surina2025evotune} fine-tunes the LLM search operator via RL. GENESYS~\cite{cheng2025genesys} uses multi-agent LLMs to evolve entire LM architectures at 14M--350M scale. SEA-TS~\cite{xu2026seats} applies MCTS-based code generation to time series forecasting. The AI Research Agents study~\cite{toledo2025aiagents} (NeurIPS 2025 Spotlight) formalizes search strategies for automated ML. Recent surveys~\cite{sobania2023program, zhang2025llm4opt} formalize the broader landscape of LLM-driven evolutionary program synthesis. Our work applies this paradigm to TSFM \textit{adapter} search---1000$\times$ cheaper than full-model evolution---with a systematic decomposition of what drives improvement.
 
 \section{Method}
 
@@ -143,7 +143,7 @@ Constraints: ${\leq}500$K parameters, imports restricted to \texttt{torch}, \tex
 
 \textbf{Population and search budget.} We maintain a population of 20 adapter code strings, evolved over 12 generations---yielding ${\sim}240$ total adapter evaluations per search run. The \textit{population size} (20) controls how many candidate architectures compete in each generation: larger populations explore more designs per generation but increase GPU cost linearly. The \textit{number of generations} (12) controls how many rounds of selection and offspring generation occur: more generations allow the population to refine toward better architectures. Together, they define the total search budget. We chose 20$\times$12{=}240 total evaluations as a practical tradeoff: comparable to EvoPrompting~\cite{chen2023evoprompting} (${\sim}200$ evaluations) and smaller than LLMatic~\cite{nasir2024llmatic} (2,000 evaluations), while completing in ${\sim}30$ minutes on a single A10G GPU. Elitism preserves the top 2 architectures across generations to prevent regression. The population is initialized with 5 hand-designed seed adapters (mean pooling + linear, MLP, last-token, attention pooling, Conv1d) to bootstrap with known-good designs, plus 15 randomly generated adapters from a template-based code generator to ensure initial diversity.
 
-\textbf{Template-Based Code Generator.} Inspired by grammar-guided program synthesis~\cite{koza1994genetic, mckay2010grammar}, we design a compositional code generator that produces valid adapter architectures by sampling and assembling building blocks from a predefined vocabulary. Each adapter is composed in three stages: (1)~a \textit{pooling strategy} is selected from \{mean, last-token, max, attention-weighted, Conv1d-based\}; (2)~a \textit{post-pooling MLP} with 1--3 linear layers, hidden dimensions sampled from \{64, 128, 192, 256, 384\}, and activations from \{GELU, ReLU, SiLU\}; (3)~optional \textit{pre-normalization} (LayerNorm) and dropout. The generator constructs the full \texttt{\_\_init\_\_} and \texttt{forward} methods as a code string, with shape correctness guaranteed by construction---each stage's output dimension feeds correctly into the next. This yields 100\% validity (vs.\ ${\sim}75\%$ for LLM-generated code), enabling a fair comparison that isolates the effect of the code generator from evaluation budget differences. The total combinatorial space is ${\sim}1{,}200$ unique architectures, substantially larger than the discrete hyperparameter space (2,160 configs) while remaining bounded, in contrast to the unbounded LLM code space.
+\textbf{Template-Based Code Generator.} Inspired by grammar-guided program synthesis~\cite{koza1994genetic, mckay2010grammar} and regularized evolutionary search~\cite{real2019regularized, hansen2016cmaes}, we design a compositional code generator that produces valid adapter architectures by sampling and assembling building blocks from a predefined vocabulary. Each adapter is composed in three stages: (1)~a \textit{pooling strategy} is selected from \{mean, last-token, max, attention-weighted, Conv1d-based\}; (2)~a \textit{post-pooling MLP} with 1--3 linear layers, hidden dimensions sampled from \{64, 128, 192, 256, 384\}, and activations from \{GELU, ReLU, SiLU\}; (3)~optional \textit{pre-normalization} (LayerNorm) and dropout. The generator constructs the full \texttt{\_\_init\_\_} and \texttt{forward} methods as a code string, with shape correctness guaranteed by construction---each stage's output dimension feeds correctly into the next. This yields 100\% validity (vs.\ ${\sim}75\%$ for LLM-generated code), enabling a fair comparison that isolates the effect of the code generator from evaluation budget differences. The total combinatorial space is ${\sim}1{,}200$ unique architectures, substantially larger than the discrete hyperparameter space (2,160 configs) while remaining bounded, in contrast to the unbounded LLM code space.
 
 \textbf{Evolutionary Loop.} For 12 generations:
 \begin{enumerate}
@@ -194,7 +194,7 @@ Balance exploitation with exploration.
 
 \textbf{Backbone.} MOMENT-small ($d_\text{model}{=}512$, 8 transformer blocks). Last 4 blocks unfrozen.
 
-\textbf{Datasets.} ETTh1, ETTh2, ETTm1, ETTm2~\cite{zhou2021informer}, Weather (21 channels). These are the standard LTSF benchmarks used by PatchTST~\cite{nie2023patchtst}, iTransformer~\cite{liu2024itransformer}, TimesNet~\cite{wu2023timesnet}, DLinear~\cite{zeng2023dlinear}, and Autoformer~\cite{wu2021autoformer}.
+\textbf{Datasets.} ETTh1, ETTh2, ETTm1, ETTm2~\cite{zhou2021informer}, Weather (21 channels). These are the standard LTSF benchmarks~\cite{godahewa2021monash, wen2023tssurvey} used by PatchTST~\cite{nie2023patchtst}, iTransformer~\cite{liu2024itransformer}, TimesNet~\cite{wu2023timesnet}, DLinear~\cite{zeng2023dlinear}, Autoformer~\cite{wu2021autoformer}, FEDformer~\cite{zhou2022fedformer}, Crossformer~\cite{zhang2023crossformer}, and TimeMixer~\cite{wang2024timemixer}.
 
 \textbf{Training.} Adam optimizer, lr$=10^{-3}$, MSE loss, batch size 32--64. During evolution, each candidate adapter is trained for 3 epochs on the \textit{training} set and its fitness is measured as $-\text{MSE}$ on the \textit{validation} set. After evolution (12 generations), the top-5 adapters are retrained for 15 epochs and evaluated on the held-out \textit{test} set. This three-way split ensures that architecture search (validation) and final evaluation (test) use disjoint data.
 
@@ -320,7 +320,7 @@ Code Evolution discovers adapter architectures that import cross-domain design p
 
 \textbf{Depthwise separable convolution} (Weather, 158K params). Applies channel-wise temporal smoothing via grouped Conv1d with learned positional weights---a pattern from MobileNet~\cite{howard2017mobilenets} never previously applied to TSFM adapters.
 
-\textbf{Conv1d + BatchNorm} (ETTh1, 118K params). Two-layer convolutional feature extractor with batch normalization~\cite{ioffe2015batchnorm} before pooling---a standard vision CNN pattern~\cite{he2016resnet} that stabilizes training with unfrozen backbone layers. This architecture has not previously been applied to TSFM adapters.
+\textbf{Conv1d + BatchNorm} (ETTh1, 118K params). Two-layer convolutional feature extractor with batch normalization~\cite{ioffe2015batchnorm} before pooling---a standard vision CNN pattern~\cite{he2016resnet} related to pre-norm architectures~\cite{xiong2020prenorm} that stabilize training with unfrozen backbone layers. This architecture has not previously been applied to TSFM adapters.
 
 \textbf{Learned feature attention} (ETTm1, 50K params). A learnable weight vector applies soft feature selection via softmax before temporal aggregation, related to channel attention mechanisms~\cite{hu2018senet} but simpler---inverting the standard pool-then-project order used in all existing TSFM adapters.
 
@@ -638,6 +638,158 @@ Robert~I. McKay, Nguyen~Xuan Hoai, Peter~Alexander Whigham, Yin Shan, and Michae
 Zipeng Ji, Guanghui Zhu, Chunfeng Yuan, and Yihua Huang.
 \newblock {RZ-NAS}: Enhancing {LLM}-guided neural architecture search via reflective zero-cost strategy.
 \newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
+
+% --- Additional TSFMs ---
+
+\bibitem[Liu et~al.(2025b)]{liu2025timerxl}
+Yong Liu, Guo Qin, Xiangdong Huang, Jianmin Wang, and Mingsheng Long.
+\newblock {Timer-XL}: Long-context transformers for unified time series forecasting.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2025.
+
+\bibitem[Liu et~al.(2025c)]{liu2025moiraimoe}
+Xu Liu, Juncheng Liu, Gerald Woo, Taha Aksu, Yuxuan Liang, Roger Zimmermann, Chenghao Liu, Junnan Li, Silvio Savarese, Caiming Xiong, and Doyen Sahoo.
+\newblock {Moirai-MoE}: Empowering time series foundation models with sparse mixture of experts.
+\newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
+
+\bibitem[Rasul et~al.(2024)]{rasul2024lagllama}
+Kashif Rasul, Arjun Ashok, Andrew~Robert Williams, Arian Khorasani, George Adamopoulos, Rishika Bhagwatkar, Marin Bilos, Hena Ghonia, Nadhir~Vincent Hassen, Anderson Schneider, Sahil Garg, Alexandre Drouin, Nicolas Chapados, Yuriy Nevmyvaka, and Irina Rish.
+\newblock {Lag-Llama}: Towards foundation models for probabilistic time series forecasting.
+\newblock \textit{arXiv preprint arXiv:2310.08278}, 2024.
+
+% --- Classic TS forecasting ---
+
+\bibitem[Zhou et~al.(2022)]{zhou2022fedformer}
+Tian Zhou, Ziqing Ma, Qingsong Wen, Xue Wang, Liang Sun, and Rong Jin.
+\newblock {FEDformer}: Frequency enhanced decomposed transformer for long-term series forecasting.
+\newblock In \textit{Proceedings of the 39th International Conference on Machine Learning (ICML)}, 2022.
+
+\bibitem[Zhang and Yan(2023)]{zhang2023crossformer}
+Yunhao Zhang and Junchi Yan.
+\newblock Crossformer: Transformer utilizing cross-dimension dependency for multivariate time series forecasting.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2023.
+
+% --- Foundational ML ---
+
+\bibitem[Vaswani et~al.(2017)]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan~N. Gomez, Lukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, volume~30, 2017.
+
+\bibitem[Devlin et~al.(2019)]{devlin2019bert}
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
+\newblock {BERT}: Pre-training of deep bidirectional transformers for language understanding.
+\newblock In \textit{Proceedings of the Conference of the North American Chapter of the Association for Computational Linguistics (NAACL)}, pages 4171--4186, 2019.
+
+\bibitem[Dosovitskiy et~al.(2021)]{dosovitskiy2021vit}
+Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby.
+\newblock An image is worth 16x16 words: Transformers for image recognition at scale.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2021.
+
+\bibitem[Brown et~al.(2020)]{brown2020gpt3}
+Tom~B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et~al.
+\newblock Language models are few-shot learners.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, volume~33, pages 1877--1901, 2020.
+
+% --- NAS classics ---
+
+\bibitem[Pham et~al.(2018)]{pham2018enas}
+Hieu Pham, Melody~Y. Guan, Barret Zoph, Quoc~V. Le, and Jeff Dean.
+\newblock Efficient neural architecture search via parameter sharing.
+\newblock In \textit{Proceedings of the 35th International Conference on Machine Learning (ICML)}, pages 4095--4104, 2018.
+
+\bibitem[Zoph and Le(2017)]{zoph2017nas}
+Barret Zoph and Quoc~V. Le.
+\newblock Neural architecture search with reinforcement learning.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2017.
+
+% --- Evolutionary computation ---
+
+\bibitem[Hansen(2016)]{hansen2016cmaes}
+Nikolaus Hansen.
+\newblock The {CMA} evolution strategy: A tutorial.
+\newblock \textit{arXiv preprint arXiv:1604.00772}, 2016.
+
+\bibitem[Real et~al.(2019)]{real2019regularized}
+Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc~V. Le.
+\newblock Regularized evolution for image classifier architecture search.
+\newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~33, pages 4780--4789, 2019.
+
+% --- More TS forecasting methods ---
+
+\bibitem[Wang et~al.(2024)]{wang2024timemixer}
+Shiyu Wang, Haixu Wu, Xiaoming Shi, Tengge Hu, Huakun Luo, Lintao Ma, James~Y. Zhang, and Jun Zhou.
+\newblock {TimeMixer}: Decomposable multiscale mixing for time series forecasting.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2024.
+
+\bibitem[Ye et~al.(2024)]{ye2024reevo}
+Haoran Ye, Jiarui Wang, Zhiguang Cao, Federico Berto, Chuanbo Hua, Haeyeon Kim, Jinkyoo Park, and Guojie Song.
+\newblock {ReEvo}: Large language models as hyper-heuristics with reflective evolution.
+\newblock \textit{arXiv preprint arXiv:2402.01145}, 2024.
+
+\bibitem[Sobania et~al.(2023)]{sobania2023program}
+Dominik Sobania, Dirk Schweim, and Franz Rothlauf.
+\newblock A comprehensive survey on program synthesis with evolutionary algorithms.
+\newblock \textit{IEEE Transactions on Evolutionary Computation}, 27(1):82--97, 2023.
+
+\bibitem[Zhang et~al.(2025b)]{zhang2025llm4opt}
+Yisong Zhang, Ran Cheng, Guoxing Yi, and Kay~Chen Tan.
+\newblock A systematic survey on large language models for evolutionary optimization.
+\newblock \textit{arXiv preprint arXiv:2509.08269}, 2025.
+
+\bibitem[Bommasani et~al.(2021)]{bommasani2021foundation}
+Rishi Bommasani, Drew~A. Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von~Arx, et~al.
+\newblock On the opportunities and risks of foundation models.
+\newblock \textit{arXiv preprint arXiv:2108.07258}, 2021.
+
+\bibitem[Liang et~al.(2024)]{liang2024tsnas}
+Zhen Liang and Jiale Sun.
+\newblock Evolutionary neural architecture search for multivariate time series forecasting.
+\newblock In \textit{Asian Conference on Machine Learning (ACML)}, 2024.
+
+\bibitem[Cheng et~al.(2025)]{cheng2025genesys}
+Junyan Cheng, Peter Clark, and Kyle Richardson.
+\newblock {Genesys}: Language modeling by language models.
+\newblock \textit{arXiv preprint arXiv:2506.20249}, 2025.
+
+% --- Time series surveys and benchmarks ---
+
+\bibitem[Godahewa et~al.(2021)]{godahewa2021monash}
+Rakshitha Godahewa, Christoph Bergmeir, Geoffrey~I. Webb, Rob~J. Hyndman, and Pablo Montero-Manso.
+\newblock Monash time series forecasting archive.
+\newblock In \textit{NeurIPS Track on Datasets and Benchmarks}, 2021.
+
+\bibitem[Wen et~al.(2023)]{wen2023tssurvey}
+Qingsong Wen, Tian Zhou, Chaoli Zhang, Weiqi Chen, Ziqing Ma, Junchi Yan, and Liang Sun.
+\newblock Transformers in time series: A survey.
+\newblock In \textit{Proceedings of the International Joint Conference on Artificial Intelligence (IJCAI)}, 2023.
+
+% --- Pre-norm transformer ---
+
+\bibitem[Xiong et~al.(2020)]{xiong2020prenorm}
+Ruibin Xiong, Yunchang Yang, Di He, Kai Zheng, Shuxin Zheng, Chen Xing, Huishuai Zhang, Yanyan Lan, Liwei Wang, and Tie-Yan Liu.
+\newblock On layer normalization in the transformer architecture.
+\newblock In \textit{Proceedings of the 37th International Conference on Machine Learning (ICML)}, pages 10524--10533, 2020.
+
+% --- LLM for code ---
+
+\bibitem[Chen et~al.(2021)]{chen2021codex}
+Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique~Ponde de~Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et~al.
+\newblock Evaluating large language models trained on code.
+\newblock \textit{arXiv preprint arXiv:2107.03374}, 2021.
+
+% --- Time-MoE ---
+
+\bibitem[Shi et~al.(2024)]{shi2024timemoe}
+Xiaoming Shi, Shiyu Wang, Yuqi Nie, Dianqi Li, Zhou Ye, Qingsong Wen, and Ming Jin.
+\newblock {Time-MoE}: Billion-scale time series foundation models with mixture of experts.
+\newblock \textit{arXiv preprint arXiv:2409.16040}, 2024.
+
+% --- TTM ---
+
+\bibitem[Ekambaram et~al.(2024)]{ekambaram2024ttm}
+Vijay Ekambaram, Arindam Jati, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam.
+\newblock {TTMs}: Fast multi-level tiny time mixers for improved zero-shot and few-shot forecasting of multivariate time series.
+\newblock \textit{arXiv preprint arXiv:2401.03955}, 2024.
 
 \end{thebibliography}
 
