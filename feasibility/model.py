@@ -12,18 +12,49 @@ from feasibility.config import AdapterConfig
 _MOMENT_MODULE_MAP = None
 
 
-def load_moment(device: str = "cpu") -> nn.Module:
-    """Load MOMENT-small pretrained model."""
+def load_moment(device: str = "cpu", model_name: str = "AutonLab/MOMENT-1-small") -> nn.Module:
+    """Load MOMENT pretrained model (small, base, or large)."""
     from momentfm import MOMENTPipeline
 
     model = MOMENTPipeline.from_pretrained(
-        "AutonLab/MOMENT-1-small",
+        model_name,
         model_kwargs={"task_name": "reconstruction"},
     )
     model.init()
     model = model.to(device)
     model.eval()
     return model
+
+
+def load_chronos(device: str = "cpu", model_name: str = "amazon/chronos-t5-small") -> nn.Module:
+    """Load Chronos T5 model. Returns the T5 encoder-decoder model."""
+    from chronos import ChronosPipeline
+    pipe = ChronosPipeline.from_pretrained(
+        model_name, device_map=device, torch_dtype=torch.float32,
+    )
+    # Return the inner T5 model (has .encoder with .block layers)
+    return pipe.model.model
+
+
+def load_moirai(device: str = "cpu", model_name: str = "Salesforce/moirai-1.1-R-small") -> nn.Module:
+    """Load Moirai model. Returns the MoiraiModule with .encoder."""
+    from uni2ts.model.moirai import MoiraiModule
+    model = MoiraiModule.from_pretrained(model_name)
+    model = model.to(device)
+    model.eval()
+    return model
+
+
+def load_backbone(backbone_name: str, device: str = "cpu") -> nn.Module:
+    """Load any supported TSFM backbone by name."""
+    if "MOMENT" in backbone_name or "moment" in backbone_name.lower():
+        return load_moment(device, model_name=backbone_name)
+    elif "chronos" in backbone_name.lower():
+        return load_chronos(device, model_name=backbone_name)
+    elif "moirai" in backbone_name.lower():
+        return load_moirai(device, model_name=backbone_name)
+    else:
+        raise ValueError("Unknown backbone: %s" % backbone_name)
 
 
 def discover_module_names(model: nn.Module) -> Dict[str, List[str]]:
@@ -173,25 +204,30 @@ def attach_bottleneck(
 
 
 def _get_encoder_blocks(model: nn.Module) -> list:
-    """Navigate MOMENT model structure to find encoder blocks."""
-    # Try common paths in MOMENT architecture
+    """Navigate model structure to find encoder blocks. Supports MOMENT, Chronos, Moirai."""
+    # Try common paths across architectures
     for path_fn in [
-        lambda m: m.encoder.block,
-        lambda m: m.model.encoder.block,
-        lambda m: m.backbone.encoder.block,
+        lambda m: m.encoder.block,           # MOMENT
+        lambda m: m.model.encoder.block,     # MOMENT variant
+        lambda m: m.backbone.encoder.block,  # MOMENT variant
+        lambda m: m.encoder.layers,          # Moirai (TransformerEncoder)
+        lambda m: m.encoder.layer,           # Generic transformer
     ]:
         try:
             blocks = list(path_fn(model))
-            return blocks
-        except AttributeError:
+            if len(blocks) > 0:
+                return blocks
+        except (AttributeError, TypeError):
             continue
 
-    # Fallback: search for 'block' in named modules
+    # Fallback: search for 'block' or 'layers' in named modules
     for name, module in model.named_modules():
-        if hasattr(module, '__len__') and 'block' in name.lower():
-            return list(module)
+        if hasattr(module, '__len__') and ('block' in name.lower() or 'layers' in name.lower()):
+            items = list(module)
+            if len(items) > 0:
+                return items
 
-    raise RuntimeError("Could not find encoder blocks in model. Run discover_module_names() first to inspect architecture.")
+    raise RuntimeError("Could not find encoder blocks in model.")
 
 
 def _get_hidden_dim(model: nn.Module) -> int:

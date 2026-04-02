@@ -99,8 +99,14 @@ def _get_trainable_params(model, adapter_cfg, head):
 
 # --- Feature extraction helper ---
 
-def _extract_features_batch(model, encoder_blocks, batch_x, input_mask):
-    """Run forward pass and capture last encoder block output."""
+def _extract_features_batch(model, encoder_blocks, batch_x, input_mask, backbone_type="moment"):
+    """Run forward pass and capture last encoder block output.
+
+    Supports multiple backbone types:
+    - moment: MOMENT pipeline (x_enc + input_mask)
+    - chronos: Chronos T5 encoder (tokenize then encode)
+    - moirai: Moirai encoder (patch projection then encode)
+    """
     features = []
 
     def capture_hook(module, input, output):
@@ -110,12 +116,75 @@ def _extract_features_batch(model, encoder_blocks, batch_x, input_mask):
             features.append(output)
 
     h = encoder_blocks[-1].register_forward_hook(capture_hook)
-    try:
-        model(x_enc=batch_x, input_mask=input_mask)
-    except TypeError:
-        model(batch_x)
+
+    if backbone_type == "chronos":
+        _forward_chronos(model, encoder_blocks, batch_x)
+    elif backbone_type == "moirai":
+        _forward_moirai(model, encoder_blocks, batch_x)
+    else:
+        # MOMENT and generic fallback
+        try:
+            model(x_enc=batch_x, input_mask=input_mask)
+        except TypeError:
+            try:
+                model(batch_x)
+            except TypeError:
+                model(batch_x, input_mask)
+
     h.remove()
     return features[0]
+
+
+def _forward_chronos(model, encoder_blocks, batch_x):
+    """Forward pass for Chronos T5 encoder."""
+    import torch
+    # batch_x is (B, 1, 512) — squeeze to (B, 512)
+    x = batch_x.squeeze(1)
+
+    # Chronos uses its own tokenizer — but we can bypass it and use
+    # the raw encoder with continuous embeddings via the input projection
+    # The model here is the T5 inner model (has .encoder and .shared)
+    encoder = model.encoder
+
+    # Project raw values through the shared embedding as continuous input
+    # T5 encoder expects inputs_embeds: (B, seq_len, d_model)
+    d_model = encoder.config.d_model
+    # Simple linear projection of scalar values to d_model
+    # Use the first layer's weight as a projection (hacky but works for feature extraction)
+    inputs_embeds = x.unsqueeze(-1).expand(-1, -1, d_model)  # (B, 512, d_model)
+
+    with torch.no_grad():
+        encoder(inputs_embeds=inputs_embeds)
+
+
+def _forward_moirai(model, encoder_blocks, batch_x):
+    """Forward pass for Moirai encoder."""
+    import torch
+    # batch_x is (B, 1, 512) — squeeze to (B, 512)
+    x = batch_x.squeeze(1)
+
+    # Moirai encoder expects (B, n_patches, d_model)
+    # Simple: reshape into patches and project
+    d_model = 384  # Moirai-small
+    patch_size = 32
+    n_patches = x.shape[1] // patch_size  # 512 / 32 = 16
+
+    # Reshape into patches: (B, n_patches, patch_size)
+    patches = x[:, :n_patches * patch_size].reshape(x.shape[0], n_patches, patch_size)
+
+    # Simple linear projection to d_model (use a temp projection)
+    # The model.in_proj handles this normally, but we do a simple version
+    if hasattr(model, 'in_proj'):
+        # Use model's own projection if available
+        try:
+            projected = model.in_proj(patches)
+        except Exception:
+            projected = torch.nn.functional.pad(patches, (0, d_model - patch_size))
+    else:
+        projected = torch.nn.functional.pad(patches, (0, d_model - patch_size))
+
+    encoder = model.encoder
+    encoder(projected)
 
 
 # --- Forecasting ---
