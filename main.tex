@@ -55,7 +55,11 @@ Current TSFM adaptation relies on a narrow set of hand-designed adapter architec
     \item \textit{LoRA}~\cite{hu2022lora}: low-rank weight perturbations injected into backbone attention layers, adapting backbone weights while retaining a fixed linear head.
     \item \textit{Bottleneck adapters}~\cite{houlsby2019adapters}: down-project $\rightarrow$ nonlinearity $\rightarrow$ up-project modules inserted between transformer layers, following the NLP adapter paradigm.
 \end{itemize}
-Critically, all of these share the same underlying computational graph: temporal pooling followed by dense projection. No existing TSFM adapter uses convolutional feature extraction, learned channel attention, batch normalization, or depthwise separable operations---architectural patterns that are standard in vision~\cite{howard2017mobilenets, he2016resnet, hu2018senet} but absent from the time series adapter vocabulary. The only searchable parameters are scalar hyperparameters (LoRA rank, bottleneck dimension, number of MLP layers, pooling type), yielding a discrete space of ${\sim}2{,}000$ configurations with two limitations. First, novel structural ideas cannot be discovered if they are absent from the menu. Second, the space is small enough that random search achieves near-optimal coverage, leaving no room for intelligent exploration.
+Critically, all of these share the same underlying computational graph: temporal pooling followed by dense projection. No existing TSFM adapter uses convolutional feature extraction, learned channel attention, batch normalization, or depthwise separable operations---architectural patterns that are standard in vision~\cite{howard2017mobilenets, he2016resnet, hu2018senet} but absent from the time series adapter vocabulary.
+
+Why has the community not explored richer adapter architectures? We identify three reasons. First, the NLP-inherited assumption that linear probing is sufficient: if the backbone learns good representations, a simple projection should suffice~\cite{bommasani2021foundation}. Yet Xu et~al.~\cite{xu2025fmstruggle} recently showed that specialized foundation models---including TSFMs---\textit{struggle to beat supervised baselines} with well-tuned simple architectures like ResNet, suggesting that the adaptation strategy, not just the backbone, is the bottleneck. Second, TSFMs are recent (most published 2024), so the community has focused on pretraining and zero-shot evaluation~\cite{li2025tsfmbench, kottapalli2025tssurvey} rather than downstream adapter design. Third, adapter architecture search requires training each candidate, which was considered too expensive---until the frozen-backbone paradigm made each evaluation take seconds rather than hours.
+
+The discrete search space of existing adapters (typically ${\sim}2{,}000$ configurations) has two further limitations. Novel structural ideas cannot be discovered if they are absent from the menu. And the space is small enough that random search achieves near-optimal coverage, leaving no room for intelligent exploration.
 
 We propose a shift from \textbf{configuration search} to \textbf{code search}: instead of picking hyperparameters, the search process generates arbitrary PyTorch \texttt{nn.Module} adapter programs. Each candidate is a complete class definition with \texttt{\_\_init\_\_} and \texttt{forward} methods, validated locally for correctness, then evaluated on GPU via short training runs. Evolutionary selection preserves the best architectures while new candidates explore the unbounded program space.
 
@@ -727,6 +731,11 @@ Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc~V. Le.
 Shiyu Wang, Haixu Wu, Xiaoming Shi, Tengge Hu, Huakun Luo, Lintao Ma, James~Y. Zhang, and Jun Zhou.
 \newblock {TimeMixer}: Decomposable multiscale mixing for time series forecasting.
 \newblock In \textit{International Conference on Learning Representations (ICLR)}, 2024.
+
+\bibitem[Xu et~al.(2025)]{xu2025fmstruggle}
+Zongzhe Xu, Ritvik Gupta, Wenduo Cheng, Alexander Shen, Junhong Shen, Ameet Talwalkar, and Mikhail Khodak.
+\newblock Specialized foundation models struggle to beat supervised baselines.
+\newblock \textit{arXiv preprint arXiv:2411.02796}, 2025.
 
 \bibitem[Kottapalli et~al.(2025)]{kottapalli2025tssurvey}
 Siva Rama~Krishna Kottapalli, Karthik Hubli, Sandeep Chandrashekhara, Garima Jain, Sunayana Hubli, Gayathri Botla, and Ramesh Doddaiah.
