@@ -48,7 +48,14 @@ Adapting time series foundation models (TSFMs) to downstream forecasting tasks t
 
 The transformer architecture~\cite{vaswani2017attention} has enabled foundation models~\cite{bommasani2021foundation} across modalities---from language~\cite{devlin2019bert, brown2020gpt3} to vision~\cite{dosovitskiy2021vit}. Time series foundation models (TSFMs) such as MOMENT~\cite{goswami2024moment}, TimesFM~\cite{das2024timesfm}, Chronos~\cite{ansari2024chronos}, Timer/Timer-XL~\cite{liu2024timer, liu2025timerxl}, Moirai/Moirai-MoE~\cite{woo2024moirai, liu2025moiraimoe}, UniTS~\cite{lee2024units}, Lag-Llama~\cite{rasul2024lagllama}, Time-MoE~\cite{shi2024timemoe}, and TTM~\cite{ekambaram2024ttm} have emerged as powerful pretrained representations for temporal tasks. A critical practical question remains: \textit{how should one design the adapter that connects a frozen TSFM to a specific downstream dataset?}
 
-Current practice selects from a fixed menu: LoRA~\cite{hu2022lora} rank, bottleneck dimension, prediction head type, pooling strategy. This discrete search space (typically ${\sim}2{,}000$ configurations) has two limitations. First, the designer must enumerate candidate architectures upfront; novel structural ideas---depthwise convolutions, learned feature weighting---cannot be discovered if they are absent from the menu. Second, the space is small enough that random search achieves near-optimal coverage, leaving no room for intelligent exploration.
+Current TSFM adaptation relies on a narrow set of hand-designed adapter architectures~\cite{kottapalli2025tssurvey}. Across the major TSFMs, the adapter design follows a universal pattern: \textit{pool hidden states} $\rightarrow$ \textit{project to output}. Specifically:
+\begin{itemize}
+    \item \textit{Linear probing}: mean-pool encoder hidden states across the temporal dimension, then project via a single linear layer $\mathbb{R}^{d_\text{model}} \rightarrow \mathbb{R}^{H}$. This is the default in MOMENT~\cite{goswami2024moment}, TimesFM~\cite{das2024timesfm}, and most TSFM evaluations~\cite{li2025tsfmbench}.
+    \item \textit{MLP head}: mean-pool followed by a 1--2 layer MLP with GELU or ReLU activation. Used in PatchTST~\cite{nie2023patchtst} and TimesNet~\cite{wu2023timesnet} fine-tuning.
+    \item \textit{LoRA}~\cite{hu2022lora}: low-rank weight perturbations injected into backbone attention layers, adapting backbone weights while retaining a fixed linear head.
+    \item \textit{Bottleneck adapters}~\cite{houlsby2019adapters}: down-project $\rightarrow$ nonlinearity $\rightarrow$ up-project modules inserted between transformer layers, following the NLP adapter paradigm.
+\end{itemize}
+Critically, all of these share the same underlying computational graph: temporal pooling followed by dense projection. No existing TSFM adapter uses convolutional feature extraction, learned channel attention, batch normalization, or depthwise separable operations---architectural patterns that are standard in vision~\cite{howard2017mobilenets, he2016resnet, hu2018senet} but absent from the time series adapter vocabulary. The only searchable parameters are scalar hyperparameters (LoRA rank, bottleneck dimension, number of MLP layers, pooling type), yielding a discrete space of ${\sim}2{,}000$ configurations with two limitations. First, novel structural ideas cannot be discovered if they are absent from the menu. Second, the space is small enough that random search achieves near-optimal coverage, leaving no room for intelligent exploration.
 
 We propose a shift from \textbf{configuration search} to \textbf{code search}: instead of picking hyperparameters, the search process generates arbitrary PyTorch \texttt{nn.Module} adapter programs. Each candidate is a complete class definition with \texttt{\_\_init\_\_} and \texttt{forward} methods, validated locally for correctness, then evaluated on GPU via short training runs. Evolutionary selection preserves the best architectures while new candidates explore the unbounded program space.
 
@@ -720,6 +727,11 @@ Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc~V. Le.
 Shiyu Wang, Haixu Wu, Xiaoming Shi, Tengge Hu, Huakun Luo, Lintao Ma, James~Y. Zhang, and Jun Zhou.
 \newblock {TimeMixer}: Decomposable multiscale mixing for time series forecasting.
 \newblock In \textit{International Conference on Learning Representations (ICLR)}, 2024.
+
+\bibitem[Kottapalli et~al.(2025)]{kottapalli2025tssurvey}
+Siva Rama~Krishna Kottapalli, Karthik Hubli, Sandeep Chandrashekhara, Garima Jain, Sunayana Hubli, Gayathri Botla, and Ramesh Doddaiah.
+\newblock Foundation models for time series: A survey.
+\newblock \textit{arXiv preprint arXiv:2504.04011}, 2025.
 
 \bibitem[Ye et~al.(2024)]{ye2024reevo}
 Haoran Ye, Jiarui Wang, Zhiguang Cao, Federico Berto, Chuanbo Hua, Haeyeon Kim, Jinkyoo Park, and Guojie Song.
