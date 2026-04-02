@@ -320,9 +320,9 @@ Code Evolution discovers adapter architectures that import cross-domain design p
 
 \textbf{Depthwise separable convolution} (Weather, 158K params). Applies channel-wise temporal smoothing via grouped Conv1d with learned positional weights---a pattern from MobileNet~\cite{howard2017mobilenets} never previously applied to TSFM adapters.
 
-\textbf{Conv1d + BatchNorm} (ETTh1, 118K params). Two-layer convolutional feature extractor with batch normalization before pooling---a standard vision CNN pattern that stabilizes training with unfrozen backbone layers.
+\textbf{Conv1d + BatchNorm} (ETTh1, 118K params). Two-layer convolutional feature extractor with batch normalization~\cite{ioffe2015batchnorm} before pooling---a standard vision CNN pattern~\cite{he2016resnet} that stabilizes training with unfrozen backbone layers. This architecture has not previously been applied to TSFM adapters.
 
-\textbf{Learned feature attention} (ETTm1, 50K params). A learnable weight vector applies soft feature selection via softmax before temporal aggregation, inverting the standard pool-then-project order.
+\textbf{Learned feature attention} (ETTm1, 50K params). A learnable weight vector applies soft feature selection via softmax before temporal aggregation, related to channel attention mechanisms~\cite{hu2018senet} but simpler---inverting the standard pool-then-project order used in all existing TSFM adapters.
 
 \begin{figure}[h]
 \centering
@@ -408,7 +408,9 @@ Code Evolution exhibits 6--7$\times$ lower variance across random seeds compared
 
 \textbf{Relationship to FunSearch-style methods.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. Random templates with 100\% validity outperform a static LLM with 75\% validity in aggregate, despite the LLM's individually superior designs.
 
-\textbf{Limitations.} We demonstrate cross-backbone generalization on two MOMENT variants (small and large) with Chronos and Moirai experiments in progress. The standard benchmark MSEs (${\sim}1.0$ on ETTh1) are higher than published numbers from full fine-tuning methods (${\sim}0.37$ for PatchTST), reflecting the frozen-backbone adapter paradigm rather than a limitation of the search method. Multi-seed evaluation is complete for ETTh1 (3 seeds) and ETTm1 (3 seeds); extending to all datasets is straightforward.
+\textbf{Cross-domain architectural transfer.} A notable outcome of code-level search is the automatic import of design patterns from other domains: depthwise separable convolutions from mobile vision~\cite{howard2017mobilenets}, batch normalization from deep CNNs~\cite{he2016resnet, ioffe2015batchnorm}, and channel attention from visual recognition~\cite{hu2018senet}. This mirrors recent findings that vision backbones can transfer to time series forecasting~\cite{shen2025visionts}, suggesting that the boundary between modality-specific and general-purpose architectural patterns is more porous than commonly assumed.
+
+\textbf{Limitations.} We demonstrate cross-backbone generalization on two MOMENT variants (small and large) with Chronos and Moirai experiments in progress. The standard benchmark MSEs (${\sim}1.0$ on ETTh1) are higher than published numbers from full fine-tuning methods (${\sim}0.37$ for PatchTST~\cite{nie2023patchtst}), reflecting the frozen-backbone adapter paradigm rather than a limitation of the search method. Multi-seed evaluation is complete for ETTh1 (3 seeds) and ETTm1 (3 seeds); extending to all datasets is straightforward.
 
 \section{Conclusion}
 
@@ -416,6 +418,26 @@ We presented Code Evolution, a framework for searching the unbounded space of Py
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
+
+\bibitem[Ioffe and Szegedy(2015)]{ioffe2015batchnorm}
+Sergey Ioffe and Christian Szegedy.
+\newblock Batch normalization: Accelerating deep network training by reducing internal covariate shift.
+\newblock In \textit{Proceedings of the 32nd International Conference on Machine Learning (ICML)}, pages 448--456, 2015.
+
+\bibitem[He et~al.(2016)]{he2016resnet}
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+\newblock Deep residual learning for image recognition.
+\newblock In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 770--778, 2016.
+
+\bibitem[Hu et~al.(2018)]{hu2018senet}
+Jie Hu, Li Shen, and Gang Sun.
+\newblock Squeeze-and-excitation networks.
+\newblock In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 7132--7141, 2018.
+
+\bibitem[Shen et~al.(2025)]{shen2025visionts}
+Lefei Shen, Mouxiang Chen, Xu Liu, Han Fu, Xiaoxue Ren, Jianling Sun, Zhuo Li, and Chenghao Liu.
+\newblock {VisionTS++}: Cross-modal time series foundation model with continual pre-trained vision backbones.
+\newblock \textit{arXiv preprint arXiv:2508.04379}, 2025.
 
 \bibitem[Chen et~al.(2025b)]{chen2025naslora}
 Renqi Chen, Haoyang Su, and Shixiang Tang.
