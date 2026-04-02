@@ -66,9 +66,9 @@ Our contributions:
 
 \section{Related Work}
 
-\textbf{TSFM Adaptation.} Standard adaptation uses LoRA~\cite{hu2022lora} or bottleneck adapters~\cite{houlsby2019adapters} with manually chosen configurations. MSFT~\cite{qiao2025msft} proposes multi-scale finetuning for encoder-based TSFMs (Moirai, MOMENT, UniTS). Prune-then-Finetune~\cite{zhao2025prune} applies structured pruning before adaptation. In-context fine-tuning~\cite{faw2025icf} adapts TSFMs at inference time via context examples. TEMPLATE~\cite{zhang2025template} addresses a complementary problem---\textit{model selection}---by proposing transferability metrics to identify the best pretrained TSFM for a given task. GIFT-Eval~\cite{woo2024gifteval} provides a comprehensive benchmark for TSFM evaluation. These methods search over \textit{finetuning strategies} or \textit{model selection}, not adapter \textit{architectures}.
+\textbf{TSFM Adaptation.} Standard adaptation uses LoRA~\cite{hu2022lora} or bottleneck adapters~\cite{houlsby2019adapters} with manually chosen configurations. A growing body of work searches over \textit{how} to finetune, but not \textit{what} adapter architecture to use. MSFT~\cite{qiao2025msft} proposes multi-scale finetuning strategies for encoder-based TSFMs (Moirai, MOMENT, UniTS). TRACE~\cite{li2025trace} introduces importance-based LoRA module selection and reconstructed prediction heads---the closest work to ours---but the head architectures are still hand-designed rather than searched. Beyond LoRA~\cite{gupta2024beyondlora} surveys PEFT alternatives (BitFit, VeRA, FourierFT) for Chronos, comparing methods that modify \textit{backbone weights} rather than the adapter module itself. AdaPTS~\cite{benechehab2025adapts} learns feature-space transformations \textit{before} the frozen FM, adapting the input representation rather than the output architecture. Prune-then-Finetune~\cite{zhao2025prune} applies structured pruning before adaptation. In-context fine-tuning~\cite{faw2025icf} adapts TSFMs at inference time. TEMPLATE~\cite{zhang2025template} addresses \textit{model selection} via transferability metrics. GIFT-Eval~\cite{woo2024gifteval} provides a comprehensive evaluation benchmark. All of these search over finetuning \textit{strategies}, input \textit{transformations}, or model \textit{selection}---none search the adapter \textit{architecture} itself. This is the gap we address.
 
-\textbf{NAS for Adapters.} Classical NAS methods such as DARTS~\cite{liu2019darts} search over differentiable cell spaces. NAS-LoRA and Shears~\cite{munoz2024shears} search discrete adapter hyperparameters for LLMs. RZ-NAS~\cite{ji2025rznas} uses LLM reflection with zero-cost proxies. ONE-NAS~\cite{li2022onenas} applies evolutionary NAS to time series but searches raw architectures, not adapters on frozen backbones. No prior work searches an \textit{unbounded} architecture space for foundation model adapters.
+\textbf{NAS for Adapters.} Classical NAS methods such as DARTS~\cite{liu2019darts} search over differentiable cell spaces. Shears~\cite{munoz2024shears} searches discrete adapter hyperparameters for LLMs. RZ-NAS~\cite{ji2025rznas} uses LLM reflection with zero-cost proxies. In vision, NAS-LoRA~\cite{chen2025naslora} integrates NAS blocks between LoRA encoder and decoder for SAM adaptation---the closest methodological peer, but applied to vision segmentation rather than time series. ONE-NAS~\cite{li2022onenas} applies evolutionary NAS to time series but searches raw architectures, not adapters on frozen backbones. TSFM-Bench~\cite{li2025tsfmbench} provides comprehensive benchmarking of TSFMs across adaptation strategies but does not explore adapter architecture search. No prior work searches an \textit{unbounded} architecture space for time series foundation model adapters.
 
 \textbf{LLM-Guided Code Search.} FunSearch~\cite{romera2024funsearch} demonstrated LLM-guided evolutionary program search for mathematical discovery. Evolution through Large Models (ELM)~\cite{lehman2023elm} showed LLMs can serve as mutation operators for design. EvoPrompting~\cite{chen2023evoprompting} combines LLMs with evolutionary search for neural architecture search. LLMatic~\cite{nasir2024llmatic} pairs LLMs with MAP-Elites quality-diversity search. PartEvo~\cite{hu2025partevo} introduces niching for LLM-based algorithm discovery (NeurIPS 2025). SOAR~\cite{pourcel2025soar} adds self-improvement via hindsight learning (ICML 2025). EvoTune~\cite{surina2025evotune} fine-tunes the LLM search operator via RL. SEA-TS~\cite{xu2026seats} applies MCTS-based code generation to time series forecasting. The AI Research Agents study~\cite{toledo2025aiagents} (NeurIPS 2025 Spotlight) formalizes search strategies for automated ML. Our work applies this paradigm to TSFM \textit{adapter} search---1000$\times$ cheaper than full-model evolution---with a systematic decomposition of what drives improvement.
 
@@ -416,6 +416,31 @@ We presented Code Evolution, a framework for searching the unbounded space of Py
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
+
+\bibitem[Chen et~al.(2025b)]{chen2025naslora}
+Renqi Chen, Haoyang Su, and Shixiang Tang.
+\newblock {NAS-LoRA}: Empowering parameter-efficient fine-tuning for visual foundation models with searchable adaptation.
+\newblock \textit{arXiv preprint arXiv:2512.03499}, 2025.
+
+\bibitem[Li et~al.(2025b)]{li2025tsfmbench}
+Zhe Li, Xiangfei Qiu, Peng Chen, Yihang Wang, Hanyin Cheng, Yang Shu, Jilin Hu, Chenjuan Guo, Aoying Zhou, Christian~S. Jensen, and Bin Yang.
+\newblock {TSFM-Bench}: A comprehensive and unified benchmarking of foundation models for time series forecasting.
+\newblock In \textit{Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)}, 2025.
+
+\bibitem[Li and Zhu(2025)]{li2025trace}
+Yuze Li and Wei Zhu.
+\newblock {TRACE}: Time series parameter efficient fine-tuning.
+\newblock \textit{arXiv preprint arXiv:2503.16991}, 2025.
+
+\bibitem[Gupta et~al.(2024)]{gupta2024beyondlora}
+Divij Gupta, Anubhav Bhatti, and Surajsinh Parmar.
+\newblock Beyond {LoRA}: Exploring efficient fine-tuning techniques for time series foundational models.
+\newblock \textit{arXiv preprint arXiv:2409.11302}, 2024.
+
+\bibitem[Benechehab et~al.(2025)]{benechehab2025adapts}
+Abdelhakim Benechehab, Vasilii Feofanov, Giuseppe Paolo, Albert Thomas, Maurizio Filippone, and Balazs K\'{e}gl.
+\newblock {AdaPTS}: Adapting univariate foundation models to probabilistic multivariate time series forecasting.
+\newblock \textit{arXiv preprint arXiv:2502.10235}, 2025.
 
 \bibitem[Goswami et~al.(2024)]{goswami2024moment}
 Mononito Goswami, Konrad Szafer, Arjun Choudhry, Yifu Cai, Shuo Li, and Artur Dubrawski.
