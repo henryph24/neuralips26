@@ -29,7 +29,7 @@ from sklearn.preprocessing import StandardScaler
 from urllib.request import urlopen
 
 from feasibility.model import (
-    load_moment, _get_encoder_blocks, _get_hidden_dim,
+    load_moment, load_backbone, _get_encoder_blocks, _get_hidden_dim,
     _disable_gradient_checkpointing,
 )
 from feasibility.code_evolution import (
@@ -101,9 +101,21 @@ def load_standard_data(dataset_name, forecast_horizon=96, max_samples=5000):
     return splits, n_ch
 
 
+def _detect_backbone_type(backbone_name):
+    """Detect backbone type from name string."""
+    name = backbone_name.lower()
+    if "chronos" in name: return "chronos"
+    if "moirai" in name: return "moirai"
+    return "moment"
+
+
 def train_adapter(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
-                  device="cuda", n_epochs=3, forecast_horizon=96, batch_size=64):
-    """Train adapter on train set, evaluate on eval set (val or test)."""
+                  device="cuda", n_epochs=3, forecast_horizon=96, batch_size=128,
+                  backbone_type="moment"):
+    """Train adapter on train set, evaluate on eval set (val or test).
+
+    Uses bf16 mixed precision and larger batch size for ~3x speedup on A10G.
+    """
     hdim = _get_hidden_dim(model)
     namespace = {"torch": torch, "nn": nn, "F": torch.nn.functional, "math": __import__("math")}
     exec(code, namespace)
@@ -118,6 +130,7 @@ def train_adapter(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
 
     optimizer = torch.optim.Adam(trainable, lr=1e-3)
     mse_fn = nn.MSELoss()
+    use_amp = device == "cuda"
 
     loader = DataLoader(TensorDataset(
         torch.from_numpy(X_train).float(), torch.from_numpy(Y_train).float(),
@@ -128,9 +141,12 @@ def train_adapter(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
         for bx, by in loader:
             bx, by = bx.to(device).unsqueeze(1), by.to(device)
             mask = torch.ones(bx.shape[0], bx.shape[2], device=device)
-            feat = _extract_features_batch(model, blocks, bx, mask)
-            loss = mse_fn(adapter(feat), by)
-            optimizer.zero_grad(); loss.backward(); optimizer.step()
+            with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
+                feat = _extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)
+                loss = mse_fn(adapter(feat), by)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
     # Evaluate
     model.eval(); adapter.eval()
@@ -138,11 +154,11 @@ def train_adapter(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
         torch.from_numpy(X_eval).float(), torch.from_numpy(Y_eval).float(),
     ), batch_size=batch_size)
     preds, tgts = [], []
-    with torch.no_grad():
+    with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
         for bx, by in eval_loader:
             bx, by = bx.to(device).unsqueeze(1), by.to(device)
             mask = torch.ones(bx.shape[0], bx.shape[2], device=device)
-            preds.append(adapter(_extract_features_batch(model, blocks, bx, mask)).cpu())
+            preds.append(adapter(_extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)).cpu())
             tgts.append(by.cpu())
 
     preds, tgts = torch.cat(preds), torch.cat(tgts)
@@ -158,24 +174,34 @@ def main():
     parser.add_argument("--n-generations", type=int, default=12)
     parser.add_argument("--pop-size", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--unfreeze", default="last4", choices=["last4", "all"])
+    parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small",
+                        help="HuggingFace model name for MOMENT variant")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
 
     os.makedirs("results/standard_evolution", exist_ok=True)
 
     # Load model
-    print("Loading MOMENT...")
-    model = load_moment(args.device)
+    print("Loading %s..." % args.backbone)
+    model = load_backbone(args.backbone, args.device)
     _disable_gradient_checkpointing(model)
     blocks = _get_encoder_blocks(model)
     hdim = _get_hidden_dim(model)
-    print("MOMENT: %d blocks, d_model=%d" % (len(blocks), hdim))
+    bb_type = _detect_backbone_type(args.backbone)
+    print("%s: %d blocks, d_model=%d, type=%s" % (args.backbone.split("/")[-1], len(blocks), hdim, bb_type))
 
     for p in model.parameters():
         p.requires_grad = False
-    for i in range(max(0, len(blocks)-4), len(blocks)):
-        for p in blocks[i].parameters():
+    if args.unfreeze == "all":
+        for p in model.parameters():
             p.requires_grad = True
+        print("Unfreezing ALL encoder blocks")
+    else:
+        for i in range(max(0, len(blocks)-4), len(blocks)):
+            for p in blocks[i].parameters():
+                p.requires_grad = True
+        print("Unfreezing last 4 encoder blocks")
 
     # Load data
     splits, n_ch = load_standard_data(args.dataset, args.horizon)
@@ -194,6 +220,7 @@ def main():
                 result = train_adapter(
                     code, model, blocks, X_train, Y_train, X_val, Y_val,
                     device=args.device, n_epochs=3, forecast_horizon=args.horizon,
+                    backbone_type=bb_type,
                 )
                 results.append(result)
             except Exception as e:
@@ -231,6 +258,7 @@ def main():
             tr = train_adapter(
                 ind["code"], model, blocks, X_train, Y_train, X_test, Y_test,
                 device=args.device, n_epochs=15, forecast_horizon=args.horizon,
+                backbone_type=bb_type,
             )
             test_results.append({
                 "code": ind["code"],
@@ -261,6 +289,7 @@ def main():
             tr = train_adapter(
                 code, model, blocks, X_train, Y_train, X_test, Y_test,
                 device=args.device, n_epochs=15, forecast_horizon=args.horizon,
+                backbone_type=bb_type,
             )
             baseline_results[name] = tr
             print("  %-15s test_mse=%.4f test_mae=%.4f params=%d" % (
@@ -292,12 +321,15 @@ def main():
         "dataset": args.dataset,
         "horizon": args.horizon,
         "seed": args.seed,
+        "unfreeze": args.unfreeze,
         "elapsed": elapsed,
         "evolved": test_results,
         "baselines": {k: v for k, v in baseline_results.items()},
         "generations": result["logger"].to_dict()["generations"],
     }
-    path = "results/standard_evolution/%s_H%d_%d.json" % (args.dataset, args.horizon, args.seed)
+    unfreeze_suffix = "_allunfreeze" if args.unfreeze == "all" else ""
+    backbone_suffix = "_large" if "large" in args.backbone else ""
+    path = "results/standard_evolution/%s_H%d_%d%s%s.json" % (args.dataset, args.horizon, args.seed, backbone_suffix, unfreeze_suffix)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
