@@ -1,0 +1,219 @@
+{
+  "horizon": 96,
+  "transfer_matrix": {
+    "ETTh1": {
+      "ETTh1": {
+        "test_mse": 1.1493843793869019,
+        "test_mae": 0.831052839756012,
+        "param_count": 39072,
+        "beats_baseline": true,
+        "delta_vs_baseline": -0.3777524863625256
+      },
+      "ETTh2": {
+        "test_mse": 3.0532519817352295,
+        "test_mae": 1.3392661809921265,
+        "param_count": 39072,
+        "beats_baseline": false,
+        "delta_vs_baseline": 12.948988445857498
+      },
+      "ETTm1": {
+        "test_mse": 1.1226906776428223,
+        "test_mae": 0.8039458394050598,
+        "param_count": 39072,
+        "beats_baseline": true,
+        "delta_vs_baseline": -5.439125950108253
+      },
+      "ETTm2": {
+        "test_mse": 3.1025989055633545,
+        "test_mae": 1.3510771989822388,
+        "param_count": 39072,
+        "beats_baseline": false,
+        "delta_vs_baseline": 1.352828207477118
+      },
+      "Weather": {
+        "test_mse": 0.6050801873207092,
+        "test_mae": 0.5863742232322693,
+        "param_count": 39072,
+        "beats_baseline": true,
+        "delta_vs_baseline": -0.07174041074928862
+      }
+    },
+    "ETTh2": {
+      "ETTh1": {
+        "test_mse": 1.1584419012069702,
+        "test_mae": 0.8662137389183044,
+        "param_count": 79072,
+        "beats_baseline": false,
+        "delta_vs_baseline": 0.407303145853686
+      },
+      "ETTh2": {
+        "test_mse": 2.806551456451416,
+        "test_mae": 1.280564308166504,
+        "param_count": 79072,
+        "beats_baseline": false,
+        "delta_vs_baseline": 3.8227928529106032
+      },
+      "ETTm1": {
+        "test_mse": 1.315198540687561,
+        "test_mae": 0.9256344437599182,
+        "param_count": 79072,
+        "beats_baseline": false,
+        "delta_vs_baseline": 10.775234918379123
+      },
+      "ETTm2": {
+        "test_mse": 3.3874921798706055,
+        "test_mae": 1.411029577255249,
+        "param_count": 79072,
+        "beats_baseline": false,
+        "delta_vs_baseline": 10.659457896720024
+      },
+      "Weather": {
+        "test_mse": 0.5160658359527588,
+        "test_mae": 0.513571560382843,
+        "param_count": 79072,
+        "beats_baseline": true,
+        "delta_vs_baseline": -14.772352655305735
+      }
+    },
+    "ETTm1": {
+      "ETTh1": {
+        "test_mse": 1.4020421504974365,
+        "test_mae": 0.9762237071990967,
+        "param_count": 50272,
+        "beats_baseline": false,
+        "delta_vs_baseline": 21.521218355092504
+      },
+      "ETTh2": {
+        "test_mse": 2.973914861679077,
+        "test_mae": 1.3369327783584595,
+        "param_count": 50272,
+        "beats_baseline": false,
+        "delta_vs_baseline": 10.014069379185116
+      },
+      "ETTm1": {
+        "test_mse": 1.1251907348632812,
+        "test_mae": 0.8399986624717712,
+        "param_count": 50272,
+        "beats_baseline": true,
+        "delta_vs_baseline": -5.228553616473399
+      },
+      "ETTm2": {
+        "test_mse": 3.086920738220215,
+        "test_mae": 1.3488662242889404,
+        "param_count": 50272,
+        "beats_baseline": false,
+        "delta_vs_baseline": 0.8406683538498947
+      },
+      "Weather": {
+        "test_mse": 0.5365104079246521,
+        "test_mae": 0.5489633679389954,
+        "param_count": 50272,
+        "beats_baseline": true,
+        "delta_vs_baseline": -11.395956372616622
+      }
+    },
+    "ETTm2": {
+      "ETTh1": {
+        "test_mse": 1.354318618774414,
+        "test_mae": 0.9337692856788635,
+        "param_count": 103904,
+        "beats_baseline": false,
+        "delta_vs_baseline": 17.384807964626
+      },
+      "ETTh2": {
+        "test_mse": 2.8077361583709717,
+        "test_mae": 1.3067713975906372,
+        "param_count": 103904,
+        "beats_baseline": false,
+        "delta_vs_baseline": 3.8666185457208075
+      },
+      "ETTm1": {
+        "test_mse": 1.1675591468811035,
+        "test_mae": 0.8455634713172913,
+        "param_count": 103904,
+        "beats_baseline": true,
+        "delta_vs_baseline": -1.6599891380340202
+      },
+      "ETTm2": {
+        "test_mse": 3.1805551052093506,
+        "test_mae": 1.3811447620391846,
+        "param_count": 103904,
+        "beats_baseline": false,
+        "delta_vs_baseline": 3.8994291542707193
+      },
+      "Weather": {
+        "test_mse": 0.5399699807167053,
+        "test_mae": 0.5212888717651367,
+        "param_count": 103904,
+        "beats_baseline": true,
+        "delta_vs_baseline": -10.824612118951665
+      }
+    },
+    "Weather": {
+      "ETTh1": {
+        "test_mse": 1.2653783559799194,
+        "test_mae": 0.8931019306182861,
+        "param_count": 157537,
+        "beats_baseline": false,
+        "delta_vs_baseline": 9.675960486841948
+      },
+      "ETTh2": {
+        "test_mse": 2.9170820713043213,
+        "test_mae": 1.3270483016967773,
+        "param_count": 157537,
+        "beats_baseline": false,
+        "delta_vs_baseline": 7.911653259656074
+      },
+      "ETTm1": {
+        "test_mse": 1.1524848937988281,
+        "test_mae": 0.8452517986297607,
+        "param_count": 157537,
+        "beats_baseline": true,
+        "delta_vs_baseline": -2.9296483375760065
+      },
+      "ETTm2": {
+        "test_mse": 3.338013172149658,
+        "test_mae": 1.4190129041671753,
+        "param_count": 157537,
+        "beats_baseline": false,
+        "delta_vs_baseline": 9.043123487388105
+      },
+      "Weather": {
+        "test_mse": 0.5424742102622986,
+        "test_mae": 0.5407804250717163,
+        "param_count": 157537,
+        "beats_baseline": true,
+        "delta_vs_baseline": -10.411041644580012
+      }
+    }
+  },
+  "baseline_mses": {
+    "ETTh1": 1.1537426710128784,
+    "ETTh2": 2.7032132148742676,
+    "ETTm1": 1.1872676610946655,
+    "ETTm2": 3.0611863136291504,
+    "Weather": 0.6055145859718323
+  },
+  "source_codes": {
+    "ETTh1": {
+      "source_mse": 0.4502372443675995,
+      "param_count": 30880
+    },
+    "ETTh2": {
+      "source_mse": 2.73534893989563,
+      "param_count": 79072
+    },
+    "ETTm1": {
+      "source_mse": 0.9919959902763367,
+      "param_count": 50272
+    },
+    "ETTm2": {
+      "source_mse": 2.8283936977386475,
+      "param_count": 103904
+    },
+    "Weather": {
+      "source_mse": 0.4932919144630432,
+      "param_count": 157537
+    }
+  }
+}

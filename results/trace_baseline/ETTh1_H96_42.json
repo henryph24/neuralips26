@@ -1,0 +1,43 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "seed": 42,
+  "results": {
+    "trace_reconstructed": {
+      "test_mse": 1.3807928562164307,
+      "test_mae": 0.9337629079818726,
+      "param_count": 40609,
+      "elapsed": 43.11395859718323
+    },
+    "trace_full": {
+      "test_mse": 1.2685823440551758,
+      "test_mae": 0.9141261577606201,
+      "param_count": 342432,
+      "elapsed": 43.45604729652405
+    },
+    "mlp2_mean": {
+      "test_mse": 1.3810197114944458,
+      "test_mae": 0.9651280045509338,
+      "param_count": 176608,
+      "elapsed": 42.30630087852478
+    },
+    "linear": {
+      "test_mse": 1.3201603889465332,
+      "test_mae": 0.9225427508354187,
+      "param_count": 49248,
+      "elapsed": 42.24704909324646
+    },
+    "attention": {
+      "test_mse": 1.0327166318893433,
+      "test_mae": 0.8006026744842529,
+      "param_count": 49761,
+      "elapsed": 42.543166637420654
+    },
+    "conv": {
+      "test_mse": 1.0332791805267334,
+      "test_mae": 0.7770119905471802,
+      "param_count": 209248,
+      "elapsed": 42.53803467750549
+    }
+  }
+}

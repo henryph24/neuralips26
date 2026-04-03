@@ -1,0 +1,81 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "seed": 99,
+  "unfreeze": "last4",
+  "elapsed": 427.925185918808,
+  "evolved": [
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        self.pre_norm = nn.LayerNorm(d_model)\n        self.fc0 = nn.Linear(d_model, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        hidden_states = self.pre_norm(hidden_states)\n        x = hidden_states[:, -1, :]\n        x = self.fc0(x)\n        return x",
+      "val_mse": 1.4196566343307495,
+      "test_mse": 0.9660403728485107,
+      "test_mae": 0.7741148471832275,
+      "param_count": 100448
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        mid = d_model // 2\n        self.net = nn.Sequential(\n            nn.Linear(d_model, mid),\n            nn.GELU(),\n            nn.Dropout(0.1),\n            nn.Linear(mid, output_dim),\n        )\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        last = hidden_states[:, -1, :]\n        return self.net(last)",
+      "val_mse": 1.5715237855911255,
+      "test_mse": 1.134765386581421,
+      "test_mae": 0.8473973870277405,
+      "param_count": 574048
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        self.proj_conv = nn.Linear(d_model, 128)\n        self.conv = nn.Conv1d(128, 128, kernel_size=9, stride=4)\n        self.act_conv = nn.GELU()\n        self.fc0 = nn.Linear(128, 256)\n        self.act0 = nn.Tanh()\n        self.drop0 = nn.Dropout(0.2)\n        self.fc1 = nn.Linear(256, 128)\n        self.act1 = nn.Tanh()\n        self.drop1 = nn.Dropout(0.2)\n        self.fc2 = nn.Linear(128, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        x = self.proj_conv(hidden_states)\n        x = x.transpose(1, 2)\n        x = self.act_conv(self.conv(x))\n        x = x.mean(dim=2)\n        x = self.fc0(x)\n        x = self.act0(x)\n        x = self.drop0(x)\n        x = self.fc1(x)\n        x = self.act1(x)\n        x = self.drop1(x)\n        x = self.fc2(x)\n        return x",
+      "val_mse": 1.7178640365600586,
+      "test_mse": 1.1501648426055908,
+      "test_mae": 0.8327416777610779,
+      "param_count": 357088
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        ch = 128\n        self.proj = nn.Linear(d_model, ch)\n        self.conv = nn.Conv1d(ch, ch, kernel_size=8, stride=4)\n        self.relu = nn.ReLU()\n        self.linear = nn.Linear(ch, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        x = self.proj(hidden_states)\n        x = x.transpose(1, 2)\n        x = self.relu(self.conv(x))\n        x = x.mean(dim=2)\n        return self.linear(x)",
+      "val_mse": 1.8063673973083496,
+      "test_mse": 1.1492846012115479,
+      "test_mae": 0.831580400466919,
+      "param_count": 274784
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        self.fc0 = nn.Linear(d_model, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        x = hidden_states.max(dim=1)[0]\n        x = self.fc0(x)\n        return x",
+      "val_mse": 5.194629669189453,
+      "test_mse": 10.021096229553223,
+      "test_mae": 2.478691816329956,
+      "param_count": 98400
+    }
+  ],
+  "baselines": {
+    "linear": {
+      "mse": 1.3901193141937256,
+      "mae": 0.9472995400428772,
+      "param_count": 98400
+    },
+    "attention": {
+      "mse": 1.3688514232635498,
+      "mae": 0.9348320364952087,
+      "param_count": 99425
+    },
+    "conv": {
+      "mse": 1.2667982578277588,
+      "mae": 0.908161461353302,
+      "param_count": 274784
+    }
+  },
+  "generations": [
+    {
+      "gen": 0,
+      "n_valid": 5,
+      "n_invalid": 0,
+      "best_mse": 1.5715237855911255,
+      "best_fitness": -1.5715237855911255,
+      "mean_mse": 1.8649703502655028,
+      "best_param_count": 574048
+    },
+    {
+      "gen": 1,
+      "n_valid": 5,
+      "n_invalid": 0,
+      "best_mse": 1.4196566343307495,
+      "best_fitness": -1.4196566343307495,
+      "mean_mse": 2.3420083045959474,
+      "best_param_count": 100448
+    }
+  ]
+}

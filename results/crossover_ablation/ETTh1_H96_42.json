@@ -1,0 +1,17 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "seed": 42,
+  "results": {
+    "crossover": {
+      "best_val_mse": 1.292968511581421,
+      "best_test_mse": 1.163985252380371,
+      "elapsed": 7753.706155061722
+    },
+    "random": {
+      "best_val_mse": 1.4864119291305542,
+      "best_test_mse": 1.1443661451339722,
+      "elapsed": 5814.2906975746155
+    }
+  }
+}
