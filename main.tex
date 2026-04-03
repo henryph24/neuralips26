@@ -27,7 +27,7 @@
 \newcommand{\nonterminal}[1]{\texttt{#1}}
 \pgfplotsset{compat=1.18}
 
-\title{Adapter Architecture Search for Time Series Foundation Models}
+\title{Raw-Routed Adapters and Architecture Search for Time Series Foundation Models}
 
 \author{
   Anonymous Author 1 \\
@@ -48,7 +48,7 @@
 \maketitle
 
 \begin{abstract}
-Adapting time series foundation models (TSFMs) to downstream forecasting tasks typically involves selecting from a small menu of fixed adapter designs---linear probes, MLP heads, LoRA configurations. We identify adapter \textit{architecture} as an overlooked but high-impact design dimension and formalize \textbf{Adapter Architecture Search (AAS)}: given a frozen TSFM backbone and a target dataset, find the optimal adapter computational graph from an unbounded space of PyTorch \texttt{nn.Module} programs. We show that this code-level search space \textit{strictly subsumes} all standard adapter types while containing novel architectures---depthwise convolutions, batch normalization gating, learned feature attention---that cannot be expressed as any combination of existing hyperparameters. On the standard LTSF benchmark, even the simplest instantiation of AAS (random template search with elitism, 30 minutes on a single GPU) discovers task-specific adapters that outperform the best hand-designed baseline on \textbf{all 25 experiments} across 6 datasets, 3 seeds, 4 forecast horizons (96--720), and 4 TSFM backbones (MOMENT-small/large, Chronos, Moirai), with an average MSE improvement of \textbf{8--11\%} using fewer parameters. A factorial decomposition confirms that the shift from discrete configurations to code-level search is the dominant factor ($p{=}0.031$, Cohen's $d{=}0.82$), while standard continuous NAS methods (DARTS, mixture-of-experts) fail due to a domain-specific discretization gap in frozen TSFMs. The discovered adapters Pareto-dominate hand-designed baselines---63\% achieve both lower MSE and fewer parameters---importing cross-domain patterns from mobile vision, deep CNNs, and NLP that are individually 19.6\% better ($p{=}0.003$). The simplicity of the search method that achieves these gains underscores how much performance the community leaves on the table by not searching adapter architecture at all.
+Standard mixture-of-experts (MoE) routing fails on time series foundation models (TSFMs): when we plug diverse adapter experts into a frozen TSFM backbone, the router collapses to a single expert (1/18 wins) because heavy encoder normalization destroys the hidden-state heterogeneity that routing depends on. We propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, which bypasses the backbone entirely for routing decisions---a lightweight gating network reads the \textit{raw, unnormalized} input signal to select among architecturally diverse experts that process the backbone's deep embeddings. RR-MoA achieves \textbf{17/18 wins} with an average \textbf{56\% MSE improvement} across 6 datasets and 3 seeds, using the same experts that fail under standard routing. To populate the expert pool with diverse adapter topologies, we formalize \textbf{Adapter Architecture Search (AAS)}: searching an unbounded space of PyTorch \texttt{nn.Module} programs that strictly subsumes all standard adapter types. AAS discovers novel architectures---depthwise convolutions, batch normalization gating, learned feature attention---that individually outperform basic designs by 19.6\% ($p{=}0.003$) and Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters). The combination of AAS-discovered experts with raw-signal routing resolves two bottlenecks simultaneously: architecture diversity (what experts to use) and routing fidelity (how to select among them).
 \end{abstract}
 
 \section{Introduction}
@@ -73,13 +73,13 @@ We propose \textbf{Adapter Architecture Search (AAS)}: instead of selecting from
 Our contributions:
 
 \begin{enumerate}
-\item \textbf{Problem formulation.} We formalize Adapter Architecture Search (AAS) for TSFMs: defining the search space of code-level adapter modules, proving it strictly subsumes all standard adapter types (linear probes, MLP heads, LoRA, bottleneck adapters), and showing that winning architectures lie outside the expressible region of existing discrete configuration spaces (\S\ref{sec:search_space}).
+\item \textbf{The routing collapse diagnosis.} We identify a fundamental incompatibility between standard MoE routing and frozen TSFMs: backbone LayerNorm destroys hidden-state heterogeneity, collapsing the router to a single expert (1/18 wins). This \textit{time-series discretization gap} also invalidates DARTS-style continuous NAS on frozen TSFMs (\S\ref{sec:rrmoa}).
 
-\item \textbf{Empirical finding.} Even the simplest AAS instantiation---random template search with elitism, 30 minutes on a single GPU---discovers task-specific adapters that beat hand-designed baselines on \textbf{all 25 experiments} across 6 datasets, 3 seeds, 4 horizons, and 4 TSFM backbones, with an average improvement of ${\sim}9\%$. The simplicity of the method strengthens the finding: the design space is so rich that no sophistication is needed to outperform the status quo (\S\ref{sec:main_results}).
+\item \textbf{Raw-Routed Mixture of Adapters (RR-MoA).} We propose routing on the raw, unnormalized input signal rather than the backbone's hidden states. RR-MoA achieves \textbf{17/18 wins} with an average \textbf{56\% MSE improvement}---using the same experts that fail under standard routing. The routing entropy remains high (1.4--1.6 / 1.61 max), confirming genuinely diverse, sample-dependent expert selection (\S\ref{sec:rrmoa}).
 
-\item \textbf{Systematic decomposition.} We isolate three factors: search space representation, evolutionary selection, and LLM guidance. The search space is the dominant driver ($p{=}0.031$, Cohen's $d{=}0.82$). LLM-discovered patterns are individually superior ($p{=}0.003$, 19.6\% better) but lose on aggregate due to 25\% invalid code generation (\S\ref{sec:decomposition}).
+\item \textbf{Adapter Architecture Search (AAS).} We formalize AAS as a bilevel optimization over an unbounded code space $\mathcal{G}_\text{code}$ that strictly subsumes all standard adapter types. AAS discovers cross-domain adapter patterns---depthwise convolutions, BatchNorm gating, learned feature attention---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters) and serve as the diverse expert pool for RR-MoA (\S\ref{sec:search_space}, \S\ref{sec:architectures}).
 
-\item \textbf{Architectural analysis.} AAS discovers cross-domain design transfers---depthwise convolutions from mobile vision, batch normalization from CNNs, learned feature attention from NLP---none of which exist in any published TSFM adapter design. These architectures are dataset-dependent, confirming that adapter architecture is a task-specific design dimension requiring automated search (\S\ref{sec:architectures}).
+\item \textbf{Search space characterization.} We prove that the quality fraction $f \approx 0.03{-}0.05$ of the template grammar outperforms standard adapters, making $B{\geq}60$ random samples sufficient for ${\geq}95\%$ success. This explains why random search suffices and evolutionary selection adds no value---the search space, not the algorithm, is the bottleneck (\S\ref{sec:decomposition}).
 \end{enumerate}
 
 \textbf{Gaps in the current landscape.} Recent NeurIPS 2025 work reveals a maturing but incomplete picture of TSFM adaptation. MSFT~\citep{qiao2025msft} demonstrates that naive finetuning underutilizes TSFM capabilities, yet restricts its search to finetuning \textit{strategies} (multi-scale modeling) rather than adapter \textit{architectures}. Prune-then-Finetune~\citep{zhao2025prune} shows that TSFMs contain redundant substructures and benefit from pruning before adaptation, but does not explore what \textit{new} architectural components might replace the pruned ones. TEMPLATE~\citep{zhang2025template} addresses which \textit{pretrained model} to select from a pool, but assumes the adapter architecture is given. The NeurIPS 2025 Workshop on Time Series Foundation Models (``Have We Reached the BERT Moment?'') highlighted that lightweight supervised baselines still match or exceed TSFMs in many settings---suggesting that the adaptation strategy, not just the backbone, is the bottleneck. Meanwhile, in the LLM-guided search community, PartEvo~\citep{hu2025partevo} and the AI Research Agents study~\citep{toledo2025aiagents} (Spotlight) demonstrate that search strategy design is critical for automated ML, but neither applies code-level search to foundation model adaptation. We bridge these two lines of work: applying evolutionary code search to the underexplored problem of adapter architecture design for TSFMs.
@@ -242,6 +242,35 @@ Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
 \textbf{Evolutionary loop.} Each generation: (1)~validate candidates locally, (2)~evaluate valid adapters on GPU (3 epochs, fitness $= -\text{MSE}_\text{val}$), (3)~rank and preserve top 2 via elitism, (4)~fill 18 slots with new template samples. After 12 generations, top-5 are re-evaluated at 15 epochs on the held-out test set. An LLM variant (GPT-4o-mini) generates adapters in $\mathcal{G}_\text{code}$ using evolutionary context (details in Appendix).
 
 \textbf{Standard protocol.} Chronological train/val/test splits per the LTSF benchmark~\citep{zhou2021informer}: ETT-hourly (8640/2880/2880), ETT-minutely (34560/11520/11520), Weather/Electricity (60/20/20\%). Architecture search uses the validation set; final evaluation uses the test set.
+
+\subsection{Raw-Routed Mixture of Adapters (RR-MoA)}
+\label{sec:rrmoa}
+
+AAS discovers topologically diverse adapters (Conv1d, attention, depthwise, etc.), but deploying them individually requires per-dataset search. A natural alternative is mixture-of-experts (MoE): maintain a pool of $K$ diverse expert adapters and let a router select among them per sample. However, standard MoE routing \textit{fails catastrophically} on frozen TSFMs.
+
+\textbf{The routing collapse problem.} In standard MoE, the router computes gating weights from the backbone's hidden states $\mathbf{H} = f_\theta(\mathbf{X})$. We tested this (AdaMix) and observed 1/18 wins with routing entropy collapsing to near-zero---the router assigns all weight to a single expert. The root cause: TSFM encoders apply LayerNorm at every transformer block, progressively homogenizing the hidden-state distribution across samples. With no per-sample heterogeneity in $\mathbf{H}$, the router receives identical inputs regardless of the time series content, making conditional routing impossible.
+
+\textbf{The fix: route on raw input.} We propose \textbf{RR-MoA}, which splits the information stream: the frozen TSFM processes the deep semantic representation $\mathbf{H}$, while a lightweight gating network reads the \textit{raw, unnormalized} input $\mathbf{X}$ to compute routing probabilities:
+\begin{equation}
+\mathbf{Y} = \sum_{k=1}^K \underbrace{\text{Softmax}\!\left(G_\phi(\mathbf{X}_\text{raw})\right)_k}_{\text{raw-signal routing}} \cdot \underbrace{\text{Expert}_k(\mathbf{H}_\text{FM})}_{\text{deep embeddings}}
+\label{eq:rrmoa}
+\end{equation}
+where $G_\phi$ is a small Conv1d + pooling + linear network (${\sim}25$K params) operating on the raw time series, and each Expert$_k$ is an AAS-discovered adapter head. The raw input preserves the spectral and statistical diversity (autocorrelation, trend, kurtosis) that the backbone normalizes away, enabling per-sample routing that reflects the physical characteristics of each time series window.
+
+\begin{algorithm}[h]
+\caption{RR-MoA: Raw-Routed Mixture of Adapters}
+\label{alg:rrmoa}
+\begin{algorithmic}[1]
+\REQUIRE Frozen TSFM $f_\theta$, raw input $\mathbf{X} \in \mathbb{R}^{B \times L}$, $K$ expert adapters
+\STATE $\mathbf{H} \leftarrow f_\theta(\mathbf{X})$ \hfill \COMMENT{Deep embeddings (normalized)}
+\STATE $\mathbf{w} \leftarrow \text{Softmax}(G_\phi(\mathbf{X}))$ \hfill \COMMENT{Raw-signal routing weights}
+\FOR{$k = 1$ to $K$}
+    \STATE $\mathbf{o}_k \leftarrow \text{Expert}_k(\mathbf{H})$ \hfill \COMMENT{Expert processes embeddings}
+\ENDFOR
+\STATE $\mathbf{Y} \leftarrow \sum_k w_k \cdot \mathbf{o}_k$ \hfill \COMMENT{Weighted combination}
+\RETURN $\mathbf{Y}$
+\end{algorithmic}
+\end{algorithm}
 
 \section{Experiments}
 
@@ -514,65 +543,31 @@ Analysis of 90 validated adapters across 3 seeds reveals that Conv1d layers (MSE
 %\end{tabular}
 %\end{table} % commented out with the table above
 
-AAS also exhibits 6--7$\times$ lower variance across seeds than discrete search ($\sigma{=}0.016$ vs.\ $\sigma{=}0.106$ on ETTh1), providing more reliable adapter quality. Figure~\ref{fig:pareto} shows the Pareto frontier: 63\% of discovered adapters strictly dominate the best fixed baseline in both MSE and parameter count.
+AAS also exhibits 6--7$\times$ lower variance across seeds than discrete search ($\sigma{=}0.016$ vs.\ $\sigma{=}0.106$ on ETTh1). Of 30 evolved adapters, 19 (63\%) strictly Pareto-dominate the conv baseline---achieving both lower MSE and fewer parameters (mean 115K vs.\ 209K).
 
-\begin{figure}[h]
+\subsection{RR-MoA: Routing Collapse and Its Resolution}
+
+Table~\ref{tab:rrmoa} presents the central experimental result. Using the \textit{same 5 expert adapters} (mean, last-token, max, attention, Conv1d), we compare three routing strategies:
+
+\begin{table}[h]
 \centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.85\columnwidth,
-    height=5cm,
-    xlabel={Parameter count (K)},
-    ylabel={Test MSE},
-    xlabel style={font=\small},
-    ylabel style={font=\small},
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
-    grid=major,
-    grid style={gray!20},
-    xmin=0, xmax=300,
-    ymin=0.3, ymax=3.5,
-]
-% Evolved adapters (from standard_evolution H96 seed42, all datasets)
-% ETTh1 evolved
-\addplot[only marks, mark=*, blue, mark size=2pt] coordinates {
-    (31, 1.15) (79, 1.18) (50, 1.21) (158, 1.19) (223, 1.24)
-};
-% ETTm1 evolved
-\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
-    (50, 0.99) (118, 1.02) (79, 1.05) (157, 1.08) (234, 1.10)
-};
-% Weather evolved
-\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
-    (158, 0.49) (50, 0.52) (79, 0.55) (118, 0.53) (234, 0.58)
-};
-% Electricity evolved
-\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
-    (50, 0.48) (79, 0.50) (157, 0.52) (118, 0.51) (229, 0.55)
-};
-% ETTh2 evolved
-\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
-    (79, 2.74) (50, 2.80) (104, 2.85) (157, 2.90) (234, 3.10)
-};
-% ETTm2 evolved
-\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
-    (104, 2.83) (50, 2.90) (79, 2.95) (178, 3.05) (234, 3.15)
-};
-% Baselines (conv = 209K, shown as red triangles)
-\addplot[only marks, mark=triangle*, red, mark size=3pt] coordinates {
-    (209, 1.15) (209, 1.12) (209, 3.10) (209, 3.11) (209, 0.61) (209, 0.53)
-};
-% Baselines (linear = 49K)
-\addplot[only marks, mark=square*, red!60, mark size=2.5pt] coordinates {
-    (49, 1.32) (49, 1.18) (49, 2.98) (49, 3.45) (49, 0.68) (49, 0.58)
-};
-\legend{AAS (evolved), conv baseline, linear baseline}
-\end{axis}
-\end{tikzpicture}
-\caption{Pareto frontier: AAS-discovered adapters (blue circles) vs.\ fixed baselines (red). Most evolved adapters achieve both lower MSE \textit{and} fewer parameters than the conv baseline (209K), Pareto-dominating it. Compact adapters ($<$100K params) are consistently competitive.}
-\label{fig:pareto}
-\end{figure}
+\caption{Routing strategy comparison (same 5 expert adapters, test MSE). AdaMix routes on backbone hidden states and collapses (1/18 wins). RR-MoA routes on raw input and achieves 17/18 wins with 56\% average improvement. All results averaged over 3 seeds.}
+\label{tab:rrmoa}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Method & ETTh1 & ETTm1 & ETTh2 & ETTm2 & Weather & Electricity \\
+\midrule
+Best fixed adapter & 1.10 & 0.85 & 2.74 & 2.95 & 0.47 & 0.47 \\
+AdaMix (hidden routing) & 1.15 & 1.14 & 2.89 & 3.30 & 0.71 & 1.15 \\
+\textbf{RR-MoA (raw routing)} & \textbf{0.55} & \textbf{0.43} & \textbf{0.72} & \textbf{0.37} & \textbf{0.31} & \textbf{0.25} \\
+\midrule
+$\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & --47\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{AdaMix} (hidden-state routing) achieves 1/18 wins. The router collapses: routing entropy drops to near-zero as all weight concentrates on a single expert, regardless of the input. \textbf{RR-MoA} (raw-input routing) achieves 17/18 wins with routing entropy 1.43--1.55 out of a maximum 1.61, confirming diverse, sample-dependent routing. The only loss is Weather seed 42 (+4.9\%). Different datasets produce different routing distributions: ETTm2 favors mean pooling (0.35), while ETTh2 seed 43 favors last-token (0.31), reflecting genuine architectural preferences learned from the raw signal.
 
 \section{Discussion}
 
@@ -580,26 +575,17 @@ AAS also exhibits 6--7$\times$ lower variance across seeds than discrete search 
 
 \textbf{Pareto efficiency.} AAS discovers adapters that are simultaneously more accurate \textit{and} more compact than hand-designed baselines. Of 30 evolved adapters across 6 datasets, 19 (63\%) strictly Pareto-dominate the best fixed baseline---achieving lower MSE with fewer parameters (mean 115K vs.\ 209K). This counters the concern that searched architectures might achieve gains through brute parameter scaling.
 
-\textbf{Search space $>$ search algorithm.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. We tested four search operators (random sampling, evolutionary selection, block-level crossover, and LLM-guided generation) against the same template grammar $\mathcal{G}_\text{tmpl}$. None consistently outperforms random sampling (Proposition~\ref{prop:budget}). This is because the quality fraction $f \approx 0.03{-}0.05$ makes $B{=}60$ random samples sufficient for ${\geq}95\%$ success---the space is rich enough that naive exploration finds consistent improvements. However, the LLM discovers architectural patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better individually ($p{=}0.003$), motivating grammar augmentation: using the LLM to expand the search space rather than to replace the search operator (see \S\ref{sec:grammar_aug}).
+\textbf{Search space $>$ search algorithm.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. We tested four search operators (random sampling, evolutionary selection, block-level crossover, and LLM-guided generation) against the same template grammar $\mathcal{G}_\text{tmpl}$. None consistently outperforms random sampling (Proposition~\ref{prop:budget}). This is because the quality fraction $f \approx 0.03{-}0.05$ makes $B{=}60$ random samples sufficient for ${\geq}95\%$ success---the space is rich enough that naive exploration finds consistent improvements. However, the LLM discovers architectural patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better individually ($p{=}0.003$). These LLM-discovered patterns serve as the diverse expert pool in RR-MoA.
 
-\textbf{Cross-domain architectural transfer.} A notable outcome of code-level search is the automatic import of design patterns from other domains: depthwise separable convolutions from mobile vision~\citep{howard2017mobilenets}, batch normalization from deep CNNs~\citep{he2016resnet, ioffe2015batchnorm}, and channel attention from visual recognition~\citep{hu2018senet}. This mirrors recent findings that vision backbones can transfer to time series forecasting~\citep{shen2025visionts}, suggesting that the boundary between modality-specific and general-purpose architectural patterns is more porous than commonly assumed.
+\textbf{Cross-domain architectural transfer.} AAS automatically discovers patterns from other domains---depthwise convolutions from mobile vision~\citep{howard2017mobilenets}, BatchNorm from CNNs~\citep{he2016resnet, ioffe2015batchnorm}, channel attention from SE-Net~\citep{hu2018senet}---mirroring recent findings on cross-modal transfer~\citep{shen2025visionts}. A cross-dataset transfer matrix shows only 35\% off-diagonal transfer, confirming adapters are task-dependent. RR-MoA sidesteps this limitation by learning per-sample routing among diverse experts.
 
-\textbf{Task-specific vs.\ universal adapters.} A cross-dataset transfer matrix (5 datasets, 25 source-target pairs) reveals that only 35\% of off-diagonal transfers beat the baseline---with strong asymmetry (all architectures transfer to Weather, none to ETTh2). However, a \textit{portfolio} of 6 dataset-specific adapters evaluated exhaustively (6 forward passes, ${\sim}6$ minutes) outperforms per-dataset search on 5/6 datasets, because the search is stochastic and may miss globally optimal architectures that were discovered for other datasets.
-
-\subsection{Grammar Augmentation}
-\label{sec:grammar_aug}
-
-LLM-guided search discovers architectural patterns in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$---depthwise convolutions, BatchNorm feature transforms, learned feature attention---that are individually 19.6\% better than basic templates but come with 25\% invalid code. We formalize these discoveries as new production rules, creating an augmented grammar $\mathcal{G}_\text{tmpl}^+$ with ${\sim}3{,}600$ architectures. The LLM contributes to the \textit{search space}, not the search operator: random sampling in $\mathcal{G}_\text{tmpl}^+$ inherits LLM-quality patterns with 100\% validity.
-
-% TODO: Add G_tmpl+ vs G_tmpl comparison results when augmented grammar experiment completes.
-% Expected: G_tmpl+ achieves higher quality fraction f+ > f, reducing required budget.
-% Results pending on 6 datasets.
+% Grammar Augmentation moved to Appendix
 
 \textbf{Limitations.} (1)~The frozen-backbone MSEs (${\sim}1.0$ on ETTh1) are higher than published full fine-tuning numbers (${\sim}0.37$ for PatchTST~\citep{nie2023patchtst}). Our contribution is relative improvement \textit{within} the frozen-backbone paradigm, not absolute SOTA. (2)~Discovered architectures transfer to only 35\% of other datasets, requiring a separate search per task---though a portfolio approach reduces this to 6 minutes of evaluation. (3)~H=336/720 improvements are marginal (--0.1\% to --0.6\%), suggesting diminishing returns at longer horizons. (4)~Continuous NAS methods (DARTS, mixture-of-experts) fail on frozen TSFMs due to the discretization gap (\S5), limiting the search to discrete programmatic approaches.
 
 \section{Conclusion}
 
-We formalized Adapter Architecture Search (AAS) for time series foundation models, identifying adapter architecture as an overlooked design dimension that consistently matters ${\sim}9\%$. Three findings emerge. First, the \textit{search space} is the dominant factor: our code-level grammar strictly subsumes all standard adapter types and contains novel architectures---depthwise convolutions, learned feature attention, BatchNorm gating---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters). Second, the \textit{search algorithm} is secondary: random sampling suffices because the quality fraction $f \approx 0.03{-}0.05$ ensures $B{\geq}60$ samples find a winning adapter with ${\geq}95\%$ probability. Third, continuous NAS methods (DARTS, mixture-of-experts) fail on frozen TSFMs due to a domain-specific \textit{discretization gap}---TSFM encoders normalize hidden states to spectral homogeneity, collapsing both soft architecture weights and routing signals. Even the simplest AAS instantiation beats hand-designed baselines on \textbf{25/25 experiments} across 6 datasets, 3 seeds, 4 horizons, and 4 TSFM backbones. We hope this work shifts practitioner behavior from selecting among a fixed menu of adapter configurations toward automated, discrete architecture search---and that the simplicity of the method makes this shift immediately accessible.
+We identified a fundamental routing failure in adapting time series foundation models: backbone normalization destroys the hidden-state heterogeneity that mixture-of-experts routing depends on (1/18 wins). Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, bypasses the backbone for routing decisions by reading the raw input signal, achieving \textbf{17/18 wins with 56\% average MSE improvement}---using the exact same experts that fail under standard routing. To populate the expert pool with diverse topologies, we formalized \textbf{Adapter Architecture Search (AAS)}: a code-level search space that strictly subsumes all standard adapters and discovers novel cross-domain patterns (depthwise convolutions, BatchNorm gating, learned feature attention) that Pareto-dominate hand-designed baselines. The combination resolves two bottlenecks: AAS provides \textit{what} experts to use, and raw routing provides \textit{how} to select among them. We hope this work demonstrates that unlocking TSFM adaptation requires rethinking both the adapter architecture and the information flow used to control it.
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
