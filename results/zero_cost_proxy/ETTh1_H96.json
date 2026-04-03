@@ -1,0 +1,87 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "n_adapters": 8,
+  "adapters": [
+    {
+      "mse": 0.45126524567604065,
+      "params": 45344,
+      "source": "evolved",
+      "scores": {
+        "synflow": 3191299.8531951904,
+        "grad_norm": 111.55695241687931,
+        "jacobian": -959.4539794921875
+      }
+    },
+    {
+      "mse": 0.48629191517829895,
+      "params": 37728,
+      "source": "evolved",
+      "scores": {
+        "synflow": 13426.676147460938,
+        "grad_norm": 2.5166291044187212,
+        "jacobian": -1019.5681762695312
+      }
+    },
+    {
+      "mse": 0.4502372443675995,
+      "params": 30880,
+      "source": "evolved",
+      "scores": {
+        "synflow": 488932.74087524414,
+        "grad_norm": 351.4927870133629,
+        "jacobian": -916.3651123046875
+      }
+    },
+    {
+      "mse": 0.46212390065193176,
+      "params": 37345,
+      "source": "evolved",
+      "scores": {
+        "synflow": 160391.5331868798,
+        "grad_norm": 1189.8068160153086,
+        "jacobian": -884.2564086914062
+      }
+    },
+    {
+      "mse": 0.46439144015312195,
+      "params": 36960,
+      "source": "evolved",
+      "scores": {
+        "synflow": 111539.40075683594,
+        "grad_norm": 819.5230019484932,
+        "jacobian": -942.9736938476562
+      }
+    },
+    {
+      "mse": 0.47210368514060974,
+      "params": 49248,
+      "source": "baseline_linear",
+      "scores": {
+        "synflow": 111539.40075683594,
+        "grad_norm": 819.5230019484932,
+        "jacobian": -942.9736938476562
+      }
+    },
+    {
+      "mse": 0.4695718288421631,
+      "params": 49761,
+      "source": "baseline_attention",
+      "scores": {
+        "synflow": 160391.5331868798,
+        "grad_norm": 1189.8068160153086,
+        "jacobian": -884.2564086914062
+      }
+    },
+    {
+      "mse": 0.4639281928539276,
+      "params": 209248,
+      "source": "baseline_conv",
+      "scores": {
+        "synflow": 14113153.158874512,
+        "grad_norm": 129.44224870244395,
+        "jacobian": -998.7444458007812
+      }
+    }
+  ]
+}

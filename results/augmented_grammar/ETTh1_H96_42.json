@@ -1,0 +1,23 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "seed": 42,
+  "results": {
+    "augmented": {
+      "best_test_mse": 1.1536365747451782,
+      "elapsed": 1761.6726083755493
+    },
+    "base": {
+      "best_test_mse": 1.1450742483139038,
+      "elapsed": 2091.1125168800354
+    },
+    "delta_pct": 0.7477529464907842,
+    "winner": "G_tmpl"
+  },
+  "baselines": {
+    "linear": 4205.3125,
+    "attention": 5126.7978515625,
+    "conv": 1.1450941562652588
+  },
+  "delta_vs_baseline": 0.7460014037431345
+}

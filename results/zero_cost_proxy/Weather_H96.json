@@ -1,0 +1,87 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "n_adapters": 8,
+  "adapters": [
+    {
+      "mse": 0.6098153591156006,
+      "params": 156000,
+      "source": "evolved",
+      "scores": {
+        "synflow": 772711.7585983276,
+        "grad_norm": 262.70037907832494,
+        "jacobian": -932.8453369140625
+      }
+    },
+    {
+      "mse": 0.4932919144630432,
+      "params": 157537,
+      "source": "evolved",
+      "scores": {
+        "synflow": 48465.12884193142,
+        "grad_norm": 0.8501029250457615,
+        "jacobian": -1200.66455078125
+      }
+    },
+    {
+      "mse": 0.5252829790115356,
+      "params": 77216,
+      "source": "evolved",
+      "scores": {
+        "synflow": 1425140.1827316284,
+        "grad_norm": 0.11372265540561308,
+        "jacobian": -1295.770751953125
+      }
+    },
+    {
+      "mse": 0.5028370022773743,
+      "params": 50272,
+      "source": "evolved",
+      "scores": {
+        "synflow": 11319.145874023438,
+        "grad_norm": 2.8272820115094177,
+        "jacobian": -1047.6561279296875
+      }
+    },
+    {
+      "mse": 0.5214987397193909,
+      "params": 300768,
+      "source": "evolved",
+      "scores": {
+        "synflow": 10565973.25767517,
+        "grad_norm": 0.26449999399897567,
+        "jacobian": -1264.654052734375
+      }
+    },
+    {
+      "mse": 26.673017501831055,
+      "params": 49248,
+      "source": "baseline_linear",
+      "scores": {
+        "synflow": 108050.31481933594,
+        "grad_norm": 1247.717523688163,
+        "jacobian": -959.341064453125
+      }
+    },
+    {
+      "mse": 2.1580007076263428,
+      "params": 49761,
+      "source": "baseline_attention",
+      "scores": {
+        "synflow": 167311.27145438213,
+        "grad_norm": 1703.4605945342785,
+        "jacobian": -905.5646362304688
+      }
+    },
+    {
+      "mse": 0.6084709763526917,
+      "params": 209248,
+      "source": "baseline_conv",
+      "scores": {
+        "synflow": 13408275.658874512,
+        "grad_norm": 214.06529980375038,
+        "jacobian": -1021.5439453125
+      }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "dataset": "Electricity",
+  "horizon": 96,
+  "n_adapters": 8,
+  "adapters": [
+    {
+      "mse": 0.47725847363471985,
+      "params": 50272,
+      "source": "evolved",
+      "scores": {
+        "synflow": 13396.106811523438,
+        "grad_norm": 2.4555169420884924,
+        "jacobian": -1099.190185546875
+      }
+    },
+    {
+      "mse": 0.46495160460472107,
+      "params": 234976,
+      "source": "evolved",
+      "scores": {
+        "synflow": 140667.32789611816,
+        "grad_norm": 0.9094664851868123,
+        "jacobian": -1073.2906494140625
+      }
+    },
+    {
+      "mse": 0.4640410244464874,
+      "params": 157024,
+      "source": "evolved",
+      "scores": {
+        "synflow": 429238.2288131714,
+        "grad_norm": 0.6212476713422649,
+        "jacobian": -1100.5252685546875
+      }
+    },
+    {
+      "mse": 0.46681517362594604,
+      "params": 124384,
+      "source": "evolved",
+      "scores": {
+        "synflow": 571450.2005462646,
+        "grad_norm": 0.3936536083094421,
+        "jacobian": -1190.1802978515625
+      }
+    },
+    {
+      "mse": 0.45979875326156616,
+      "params": 228896,
+      "source": "evolved",
+      "scores": {
+        "synflow": 2747699.7537841797,
+        "grad_norm": 0.26727520236193375,
+        "jacobian": -1177.435302734375
+      }
+    },
+    {
+      "mse": 0.7547213435173035,
+      "params": 49248,
+      "source": "baseline_linear",
+      "scores": {
+        "synflow": 122240.12731933594,
+        "grad_norm": 795.6810683036251,
+        "jacobian": -928.36376953125
+      }
+    },
+    {
+      "mse": 0.6784523725509644,
+      "params": 49761,
+      "source": "baseline_attention",
+      "scores": {
+        "synflow": 197320.87301698708,
+        "grad_norm": 1114.3691649363066,
+        "jacobian": -861.8172607421875
+      }
+    },
+    {
+      "mse": 0.48358529806137085,
+      "params": 209248,
+      "source": "baseline_conv",
+      "scores": {
+        "synflow": 15573283.908874512,
+        "grad_norm": 127.96438362312126,
+        "jacobian": -1002.3949584960938
+      }
+    }
+  ]
+}

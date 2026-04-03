@@ -1,0 +1,23 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 42,
+  "results": {
+    "augmented": {
+      "best_test_mse": 0.489031046628952,
+      "elapsed": 1764.800010919571
+    },
+    "base": {
+      "best_test_mse": 0.5019693970680237,
+      "elapsed": 2094.909474134445
+    },
+    "delta_pct": -2.577517775913007,
+    "winner": "G_tmpl+"
+  },
+  "baselines": {
+    "linear": 4381.69677734375,
+    "attention": 1763.3626708984375,
+    "conv": 0.6093981862068176
+  },
+  "delta_vs_baseline": -19.751804698843557
+}

@@ -1,0 +1,87 @@
+{
+  "dataset": "ETTm2",
+  "horizon": 96,
+  "n_adapters": 8,
+  "adapters": [
+    {
+      "mse": 3.105103015899658,
+      "params": 40609,
+      "source": "evolved",
+      "scores": {
+        "synflow": 23445.35744954693,
+        "grad_norm": 0.654522490831198,
+        "jacobian": -1216.119384765625
+      }
+    },
+    {
+      "mse": 2.9643993377685547,
+      "params": 137121,
+      "source": "evolved",
+      "scores": {
+        "synflow": 140643.01700600854,
+        "grad_norm": 0.08649716230977761,
+        "jacobian": -1272.666259765625
+      }
+    },
+    {
+      "mse": 2.8283936977386475,
+      "params": 103904,
+      "source": "evolved",
+      "scores": {
+        "synflow": 4193344.5868148804,
+        "grad_norm": 0.09127548894362068,
+        "jacobian": -1277.609375
+      }
+    },
+    {
+      "mse": 2.876352548599243,
+      "params": 50272,
+      "source": "evolved",
+      "scores": {
+        "synflow": 11075.885620117188,
+        "grad_norm": 2.6207708645224654,
+        "jacobian": -1061.452880859375
+      }
+    },
+    {
+      "mse": 3.1757569313049316,
+      "params": 40096,
+      "source": "evolved",
+      "scores": {
+        "synflow": 23451.421295166016,
+        "grad_norm": 1.0384851371530657,
+        "jacobian": -1210.9395751953125
+      }
+    },
+    {
+      "mse": 606.1637573242188,
+      "params": 49248,
+      "source": "baseline_linear",
+      "scores": {
+        "synflow": 106639.67419433594,
+        "grad_norm": 1192.5607622791786,
+        "jacobian": -970.3938598632812
+      }
+    },
+    {
+      "mse": 140.40335083007812,
+      "params": 49761,
+      "source": "baseline_attention",
+      "scores": {
+        "synflow": 166444.3144304782,
+        "grad_norm": 1572.8222445079218,
+        "jacobian": -911.391845703125
+      }
+    },
+    {
+      "mse": 3.1058847904205322,
+      "params": 209248,
+      "source": "baseline_conv",
+      "scores": {
+        "synflow": 13424463.158874512,
+        "grad_norm": 197.66324923297248,
+        "jacobian": -1026.0611572265625
+      }
+    }
+  ]
+}
