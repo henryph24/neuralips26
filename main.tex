@@ -53,18 +53,18 @@ Adapting time series foundation models (TSFMs) to downstream forecasting tasks t
 
 \section{Introduction}
 
-The transformer architecture~\cite{vaswani2017attention} has enabled foundation models~\cite{bommasani2021foundation} across modalities---from language~\cite{devlin2019bert, brown2020gpt3} to vision~\cite{dosovitskiy2021vit}. Time series foundation models (TSFMs) such as MOMENT~\cite{goswami2024moment}, TimesFM~\cite{das2024timesfm}, Chronos~\cite{ansari2024chronos}, Timer/Timer-XL~\cite{liu2024timer, liu2025timerxl}, Moirai/Moirai-MoE~\cite{woo2024moirai, liu2025moiraimoe}, UniTS~\cite{lee2024units}, Lag-Llama~\cite{rasul2024lagllama}, Time-MoE~\cite{shi2024timemoe}, and TTM~\cite{ekambaram2024ttm} have emerged as powerful pretrained representations for temporal tasks. A critical practical question remains: \textit{how should one design the adapter that connects a frozen TSFM to a specific downstream dataset?}
+The transformer architecture~\citep{vaswani2017attention} has enabled foundation models~\citep{bommasani2021foundation} across modalities---from language~\citep{devlin2019bert, brown2020gpt3} to vision~\citep{dosovitskiy2021vit}. Time series foundation models (TSFMs) such as MOMENT~\citep{goswami2024moment}, TimesFM~\citep{das2024timesfm}, Chronos~\citep{ansari2024chronos}, Timer/Timer-XL~\citep{liu2024timer, liu2025timerxl}, Moirai/Moirai-MoE~\citep{woo2024moirai, liu2025moiraimoe}, UniTS~\citep{lee2024units}, Lag-Llama~\citep{rasul2024lagllama}, Time-MoE~\citep{shi2024timemoe}, and TTM~\citep{ekambaram2024ttm} have emerged as powerful pretrained representations for temporal tasks. A critical practical question remains: \textit{how should one design the adapter that connects a frozen TSFM to a specific downstream dataset?}
 
-Current TSFM adaptation relies on a narrow set of hand-designed adapter architectures~\cite{kottapalli2025tssurvey}. Across the major TSFMs, the adapter design follows a universal pattern: \textit{pool hidden states} $\rightarrow$ \textit{project to output}. Specifically:
+Current TSFM adaptation relies on a narrow set of hand-designed adapter architectures~\citep{kottapalli2025tssurvey}. Across the major TSFMs, the adapter design follows a universal pattern: \textit{pool hidden states} $\rightarrow$ \textit{project to output}. Specifically:
 \begin{itemize}
-    \item \textit{Linear probing}: mean-pool encoder hidden states across the temporal dimension, then project via a single linear layer $\mathbb{R}^{d_\text{model}} \rightarrow \mathbb{R}^{H}$. This is the default in MOMENT~\cite{goswami2024moment}, TimesFM~\cite{das2024timesfm}, and most TSFM evaluations~\cite{li2025tsfmbench}.
-    \item \textit{MLP head}: mean-pool followed by a 1--2 layer MLP with GELU or ReLU activation. Used in PatchTST~\cite{nie2023patchtst} and TimesNet~\cite{wu2023timesnet} fine-tuning.
-    \item \textit{LoRA}~\cite{hu2022lora}: low-rank weight perturbations injected into backbone attention layers, adapting backbone weights while retaining a fixed linear head.
-    \item \textit{Bottleneck adapters}~\cite{houlsby2019adapters}: down-project $\rightarrow$ nonlinearity $\rightarrow$ up-project modules inserted between transformer layers, following the NLP adapter paradigm.
+    \item \textit{Linear probing}: mean-pool encoder hidden states across the temporal dimension, then project via a single linear layer $\mathbb{R}^{d_\text{model}} \rightarrow \mathbb{R}^{H}$. This is the default in MOMENT~\citep{goswami2024moment}, TimesFM~\citep{das2024timesfm}, and most TSFM evaluations~\citep{li2025tsfmbench}.
+    \item \textit{MLP head}: mean-pool followed by a 1--2 layer MLP with GELU or ReLU activation. Used in PatchTST~\citep{nie2023patchtst} and TimesNet~\citep{wu2023timesnet} fine-tuning.
+    \item \textit{LoRA}~\citep{hu2022lora}: low-rank weight perturbations injected into backbone attention layers, adapting backbone weights while retaining a fixed linear head.
+    \item \textit{Bottleneck adapters}~\citep{houlsby2019adapters}: down-project $\rightarrow$ nonlinearity $\rightarrow$ up-project modules inserted between transformer layers, following the NLP adapter paradigm.
 \end{itemize}
-Critically, all of these share the same underlying computational graph: temporal pooling followed by dense projection. No existing TSFM adapter uses convolutional feature extraction, learned channel attention, batch normalization, or depthwise separable operations---architectural patterns that are standard in vision~\cite{howard2017mobilenets, he2016resnet, hu2018senet} but absent from the time series adapter vocabulary.
+Critically, all of these share the same underlying computational graph: temporal pooling followed by dense projection. No existing TSFM adapter uses convolutional feature extraction, learned channel attention, batch normalization, or depthwise separable operations---architectural patterns that are standard in vision~\citep{howard2017mobilenets, he2016resnet, hu2018senet} but absent from the time series adapter vocabulary.
 
-Why has the community not explored richer adapter architectures? We identify three reasons. First, the NLP-inherited assumption that linear probing is sufficient: if the backbone learns good representations, a simple projection should suffice~\cite{bommasani2021foundation}. Yet Xu et~al.~\cite{xu2025fmstruggle} recently showed that specialized foundation models---including TSFMs---\textit{struggle to beat supervised baselines} with well-tuned simple architectures like ResNet, suggesting that the adaptation strategy, not just the backbone, is the bottleneck. Second, TSFMs are recent (most published 2024), so the community has focused on pretraining and zero-shot evaluation~\cite{li2025tsfmbench, kottapalli2025tssurvey} rather than downstream adapter design. Third, adapter architecture search requires training each candidate, which was considered too expensive---until the frozen-backbone paradigm made each evaluation take seconds rather than hours.
+Why has the community not explored richer adapter architectures? We identify three reasons. First, the NLP-inherited assumption that linear probing is sufficient: if the backbone learns good representations, a simple projection should suffice~\citep{bommasani2021foundation}. Yet \citet{xu2025fmstruggle} recently showed that specialized foundation models---including TSFMs---\textit{struggle to beat supervised baselines} with well-tuned simple architectures like ResNet, suggesting that the adaptation strategy, not just the backbone, is the bottleneck. Second, TSFMs are recent (most published 2024), so the community has focused on pretraining and zero-shot evaluation~\citep{li2025tsfmbench, kottapalli2025tssurvey} rather than downstream adapter design. Third, adapter architecture search requires training each candidate, which was considered too expensive---until the frozen-backbone paradigm made each evaluation take seconds rather than hours.
 
 The discrete search space of existing adapters (typically ${\sim}2{,}000$ configurations) has two further limitations. Novel structural ideas cannot be discovered if they are absent from the menu. And the space is small enough that random search achieves near-optimal coverage, leaving no room for intelligent exploration.
 
@@ -82,15 +82,15 @@ Our contributions:
 \item \textbf{Architectural analysis.} AAS discovers cross-domain design transfers---depthwise convolutions from mobile vision, batch normalization from CNNs, learned feature attention from NLP---none of which exist in any published TSFM adapter design. These architectures are dataset-dependent, confirming that adapter architecture is a task-specific design dimension requiring automated search (\S\ref{sec:architectures}).
 \end{enumerate}
 
-\textbf{Gaps in the current landscape.} Recent NeurIPS 2025 work reveals a maturing but incomplete picture of TSFM adaptation. MSFT~\cite{qiao2025msft} demonstrates that naive finetuning underutilizes TSFM capabilities, yet restricts its search to finetuning \textit{strategies} (multi-scale modeling) rather than adapter \textit{architectures}. Prune-then-Finetune~\cite{zhao2025prune} shows that TSFMs contain redundant substructures and benefit from pruning before adaptation, but does not explore what \textit{new} architectural components might replace the pruned ones. TEMPLATE~\cite{zhang2025template} addresses which \textit{pretrained model} to select from a pool, but assumes the adapter architecture is given. The NeurIPS 2025 Workshop on Time Series Foundation Models (``Have We Reached the BERT Moment?'') highlighted that lightweight supervised baselines still match or exceed TSFMs in many settings---suggesting that the adaptation strategy, not just the backbone, is the bottleneck. Meanwhile, in the LLM-guided search community, PartEvo~\cite{hu2025partevo} and the AI Research Agents study~\cite{toledo2025aiagents} (Spotlight) demonstrate that search strategy design is critical for automated ML, but neither applies code-level search to foundation model adaptation. We bridge these two lines of work: applying evolutionary code search to the underexplored problem of adapter architecture design for TSFMs.
+\textbf{Gaps in the current landscape.} Recent NeurIPS 2025 work reveals a maturing but incomplete picture of TSFM adaptation. MSFT~\citep{qiao2025msft} demonstrates that naive finetuning underutilizes TSFM capabilities, yet restricts its search to finetuning \textit{strategies} (multi-scale modeling) rather than adapter \textit{architectures}. Prune-then-Finetune~\citep{zhao2025prune} shows that TSFMs contain redundant substructures and benefit from pruning before adaptation, but does not explore what \textit{new} architectural components might replace the pruned ones. TEMPLATE~\citep{zhang2025template} addresses which \textit{pretrained model} to select from a pool, but assumes the adapter architecture is given. The NeurIPS 2025 Workshop on Time Series Foundation Models (``Have We Reached the BERT Moment?'') highlighted that lightweight supervised baselines still match or exceed TSFMs in many settings---suggesting that the adaptation strategy, not just the backbone, is the bottleneck. Meanwhile, in the LLM-guided search community, PartEvo~\citep{hu2025partevo} and the AI Research Agents study~\citep{toledo2025aiagents} (Spotlight) demonstrate that search strategy design is critical for automated ML, but neither applies code-level search to foundation model adaptation. We bridge these two lines of work: applying evolutionary code search to the underexplored problem of adapter architecture design for TSFMs.
 
 \section{Related Work}
 
-\textbf{TSFM Adaptation.} Standard adaptation uses LoRA~\cite{hu2022lora} or bottleneck adapters~\cite{houlsby2019adapters} with manually chosen configurations. A growing body of work searches over \textit{how} to finetune, but not \textit{what} adapter architecture to use. MSFT~\cite{qiao2025msft} proposes multi-scale finetuning strategies for encoder-based TSFMs (Moirai, MOMENT, UniTS). TRACE~\cite{li2025trace} introduces importance-based LoRA module selection and reconstructed prediction heads---the closest work to ours---but the head architectures are still hand-designed rather than searched. Beyond LoRA~\cite{gupta2024beyondlora} surveys PEFT alternatives (BitFit, VeRA, FourierFT) for Chronos, comparing methods that modify \textit{backbone weights} rather than the adapter module itself. AdaPTS~\cite{benechehab2025adapts} learns feature-space transformations \textit{before} the frozen FM, adapting the input representation rather than the output architecture. Prune-then-Finetune~\cite{zhao2025prune} applies structured pruning before adaptation. In-context fine-tuning~\cite{faw2025icf} adapts TSFMs at inference time. TEMPLATE~\cite{zhang2025template} addresses \textit{model selection} via transferability metrics. GIFT-Eval~\cite{woo2024gifteval} provides a comprehensive evaluation benchmark. All of these search over finetuning \textit{strategies}, input \textit{transformations}, or model \textit{selection}---none search the adapter \textit{architecture} itself. This is the gap we address.
+\textbf{TSFM Adaptation.} Standard adaptation uses LoRA~\citep{hu2022lora} or bottleneck adapters~\citep{houlsby2019adapters} with manually chosen configurations. A growing body of work searches over \textit{how} to finetune, but not \textit{what} adapter architecture to use. MSFT~\citep{qiao2025msft} proposes multi-scale finetuning strategies for encoder-based TSFMs (Moirai, MOMENT, UniTS). TRACE~\citep{li2025trace} introduces importance-based LoRA module selection and reconstructed prediction heads---the closest work to ours---but the head architectures are still hand-designed rather than searched. Beyond LoRA~\citep{gupta2024beyondlora} surveys PEFT alternatives (BitFit, VeRA, FourierFT) for Chronos, comparing methods that modify \textit{backbone weights} rather than the adapter module itself. AdaPTS~\citep{benechehab2025adapts} learns feature-space transformations \textit{before} the frozen FM, adapting the input representation rather than the output architecture. Prune-then-Finetune~\citep{zhao2025prune} applies structured pruning before adaptation. In-context fine-tuning~\citep{faw2025icf} adapts TSFMs at inference time. TEMPLATE~\citep{zhang2025template} addresses \textit{model selection} via transferability metrics. GIFT-Eval~\citep{woo2024gifteval} provides a comprehensive evaluation benchmark. All of these search over finetuning \textit{strategies}, input \textit{transformations}, or model \textit{selection}---none search the adapter \textit{architecture} itself. This is the gap we address.
 
-\textbf{NAS for Adapters.} Neural architecture search~\cite{zoph2017nas} has evolved from RL-based methods to weight-sharing approaches like ENAS~\cite{pham2018enas} and differentiable methods like DARTS~\cite{liu2019darts}. Regularized evolution~\cite{real2019regularized} demonstrated that evolutionary NAS matches or exceeds RL-based search. Shears~\cite{munoz2024shears} searches discrete adapter hyperparameters for LLMs. RZ-NAS~\cite{ji2025rznas} uses LLM reflection with zero-cost proxies. In vision, NAS-LoRA~\cite{chen2025naslora} integrates NAS blocks between LoRA encoder and decoder for SAM adaptation---the closest methodological peer, but applied to vision segmentation rather than time series. ONE-NAS~\cite{li2022onenas} and related evolutionary TS-NAS work~\cite{liang2024tsnas} search raw architectures for time series but not adapters on frozen backbones. TSFM-Bench~\cite{li2025tsfmbench} provides comprehensive benchmarking of TSFMs across adaptation strategies but does not explore adapter architecture search. No prior work searches an \textit{unbounded} architecture space for time series foundation model adapters.
+\textbf{NAS for Adapters.} Neural architecture search~\citep{zoph2017nas} has evolved from RL-based methods to weight-sharing approaches like ENAS~\citep{pham2018enas} and differentiable methods like DARTS~\citep{liu2019darts}. Regularized evolution~\citep{real2019regularized} demonstrated that evolutionary NAS matches or exceeds RL-based search. Shears~\citep{munoz2024shears} searches discrete adapter hyperparameters for LLMs. RZ-NAS~\citep{ji2025rznas} uses LLM reflection with zero-cost proxies. In vision, NAS-LoRA~\citep{chen2025naslora} integrates NAS blocks between LoRA encoder and decoder for SAM adaptation---the closest methodological peer, but applied to vision segmentation rather than time series. ONE-NAS~\citep{li2022onenas} and related evolutionary TS-NAS work~\citep{liang2024tsnas} search raw architectures for time series but not adapters on frozen backbones. TSFM-Bench~\citep{li2025tsfmbench} provides comprehensive benchmarking of TSFMs across adaptation strategies but does not explore adapter architecture search. No prior work searches an \textit{unbounded} architecture space for time series foundation model adapters.
 
-\textbf{LLM-Guided Code Search.} Large language models trained on code~\cite{chen2021codex} can generate syntactically valid programs, enabling a new paradigm of code-level search. FunSearch~\cite{romera2024funsearch} demonstrated LLM-guided evolutionary program search for mathematical discovery. Evolution through Large Models (ELM)~\cite{lehman2023elm} showed LLMs can serve as mutation operators for design. EvoPrompting~\cite{chen2023evoprompting} combines LLMs with evolutionary search for neural architecture search. ReEvo~\cite{ye2024reevo} introduces reflective evolution for combinatorial optimization heuristics. LLMatic~\cite{nasir2024llmatic} pairs LLMs with MAP-Elites quality-diversity search. PartEvo~\cite{hu2025partevo} introduces niching for LLM-based algorithm discovery (NeurIPS 2025). SOAR~\cite{pourcel2025soar} adds self-improvement via hindsight learning (ICML 2025). EvoTune~\cite{surina2025evotune} fine-tunes the LLM search operator via RL. GENESYS~\cite{cheng2025genesys} uses multi-agent LLMs to evolve entire LM architectures at 14M--350M scale. SEA-TS~\cite{xu2026seats} applies MCTS-based code generation to time series forecasting. The AI Research Agents study~\cite{toledo2025aiagents} (NeurIPS 2025 Spotlight) formalizes search strategies for automated ML. Recent surveys~\cite{sobania2023program, zhang2025llm4opt} formalize the broader landscape of LLM-driven evolutionary program synthesis. Our work applies this paradigm to TSFM \textit{adapter} search---1000$\times$ cheaper than full-model evolution---with a systematic decomposition of what drives improvement.
+\textbf{LLM-Guided Code Search.} Large language models trained on code~\citep{chen2021codex} can generate syntactically valid programs, enabling a new paradigm of code-level search. FunSearch~\citep{romera2024funsearch} demonstrated LLM-guided evolutionary program search for mathematical discovery. Evolution through Large Models (ELM)~\citep{lehman2023elm} showed LLMs can serve as mutation operators for design. EvoPrompting~\citep{chen2023evoprompting} combines LLMs with evolutionary search for neural architecture search. ReEvo~\citep{ye2024reevo} introduces reflective evolution for combinatorial optimization heuristics. LLMatic~\citep{nasir2024llmatic} pairs LLMs with MAP-Elites quality-diversity search. PartEvo~\citep{hu2025partevo} introduces niching for LLM-based algorithm discovery (NeurIPS 2025). SOAR~\citep{pourcel2025soar} adds self-improvement via hindsight learning (ICML 2025). EvoTune~\citep{surina2025evotune} fine-tunes the LLM search operator via RL. GENESYS~\citep{cheng2025genesys} uses multi-agent LLMs to evolve entire LM architectures at 14M--350M scale. SEA-TS~\citep{xu2026seats} applies MCTS-based code generation to time series forecasting. The AI Research Agents study~\citep{toledo2025aiagents} (NeurIPS 2025 Spotlight) formalizes search strategies for automated ML. Recent surveys~\citep{sobania2023program, zhang2025llm4opt} formalize the broader landscape of LLM-driven evolutionary program synthesis. Our work applies this paradigm to TSFM \textit{adapter} search---1000$\times$ cheaper than full-model evolution---with a systematic decomposition of what drives improvement.
 
 \section{Adapter Architecture Search}
 \label{sec:aas}
@@ -235,24 +235,13 @@ Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
 
 \subsection{Search Instantiations}
 
-\textbf{Population and search budget.} We maintain a population of 20 adapters evolved over 12 generations (${\sim}240$ total evaluations), comparable to EvoPrompting~\cite{chen2023evoprompting} (${\sim}200$) and completing in ${\sim}30$ minutes on a single A10G GPU. Elitism preserves the top 2 architectures each generation. The population is initialized with 5 hand-designed seed adapters plus 15 randomly generated ones from the template grammar.
+\textbf{Population and search budget.} We maintain a population of 20 adapters evolved over 12 generations (${\sim}240$ total evaluations), comparable to EvoPrompting~\citep{chen2023evoprompting} (${\sim}200$) and completing in ${\sim}30$ minutes on a single A10G GPU. Elitism preserves the top 2 architectures each generation. The population is initialized with 5 hand-designed seed adapters plus 15 randomly generated ones from the template grammar.
 
-\textbf{Template-based code generator.} The default search in AAS samples from $\mathcal{G}_\text{tmpl}$ (Definition~\ref{def:template}), inspired by grammar-guided program synthesis~\cite{koza1994genetic, mckay2010grammar}. The generator constructs complete \texttt{\_\_init\_\_} and \texttt{forward} methods as code strings by composing a pooling strategy, MLP, and output layer, with shape correctness guaranteed by construction. This yields 100\% validity (vs.\ ${\sim}75\%$ for LLM-generated code in $\mathcal{G}_\text{code}$), enabling fair comparison that isolates search space effects from evaluation budget differences.
+\textbf{Template-based code generator.} The default search in AAS samples from $\mathcal{G}_\text{tmpl}$ (Definition~\ref{def:template}), inspired by grammar-guided program synthesis~\citep{koza1994genetic, mckay2010grammar}. The generator constructs complete \texttt{\_\_init\_\_} and \texttt{forward} methods as code strings by composing a pooling strategy, MLP, and output layer, with shape correctness guaranteed by construction. This yields 100\% validity (vs.\ ${\sim}75\%$ for LLM-generated code in $\mathcal{G}_\text{code}$), enabling fair comparison that isolates search space effects from evaluation budget differences.
 
-\textbf{Evolutionary Loop.} For 12 generations:
-\begin{enumerate}
-    \item \textbf{Validate} each new adapter locally (exec, shape check, param count).
-    \item \textbf{Evaluate} valid adapters on GPU: train 3 epochs, fitness $= -\text{MSE}_\text{val}$.
-    \item \textbf{Rank} population by fitness; log generation statistics.
-    \item \textbf{Elitism}: top 2 individuals pass unchanged to next generation.
-    \item \textbf{Generate} 18 new adapters via template generator (or LLM, see \S\ref{sec:decomposition}).
-    \item \textbf{Deduplicate} and fill remaining slots.
-\end{enumerate}
-After evolution, top-5 adapters are re-evaluated at 15 epochs on the held-out test set.
+\textbf{Evolutionary loop.} Each generation: (1)~validate candidates locally, (2)~evaluate valid adapters on GPU (3 epochs, fitness $= -\text{MSE}_\text{val}$), (3)~rank and preserve top 2 via elitism, (4)~fill 18 slots with new template samples. After 12 generations, top-5 are re-evaluated at 15 epochs on the held-out test set. An LLM variant (GPT-4o-mini) generates adapters in $\mathcal{G}_\text{code}$ using evolutionary context (details in Appendix).
 
-\textbf{LLM Code Generator.} As an alternative to templates, an LLM (GPT-4o-mini) generates adapters in $\mathcal{G}_\text{code}$ by receiving the adapter interface contract, top-5 and bottom-3 current adapters with their fitness, failed adapters with error messages, and the fitness trajectory across generations. This feedback loop enables learning from population dynamics. The full prompt is in the Appendix.
-
-\textbf{Standard Protocol.} We use chronological train/val/test splits following the LTSF benchmark: ETT-hourly (8640/2880/2880), ETT-minutely (34560/11520/11520), Weather (60/20/20\%). Fitness during evolution uses the validation set; final evaluation uses the test set. Normalization is fit on the training set only.
+\textbf{Standard protocol.} Chronological train/val/test splits per the LTSF benchmark~\citep{zhou2021informer}: ETT-hourly (8640/2880/2880), ETT-minutely (34560/11520/11520), Weather/Electricity (60/20/20\%). Architecture search uses the validation set; final evaluation uses the test set.
 
 \section{Experiments}
 
@@ -260,17 +249,11 @@ After evolution, top-5 adapters are re-evaluated at 15 epochs on the held-out te
 
 \textbf{Backbone.} MOMENT-small ($d_\text{model}{=}512$, 8 transformer blocks). Last 4 blocks unfrozen.
 
-\textbf{Datasets.} ETTh1, ETTh2, ETTm1, ETTm2~\cite{zhou2021informer}, Weather (21 channels), Electricity (321 channels). These are the standard LTSF benchmarks~\cite{godahewa2021monash, wen2023tssurvey} used by PatchTST~\cite{nie2023patchtst}, iTransformer~\cite{liu2024itransformer}, TimesNet~\cite{wu2023timesnet}, DLinear~\cite{zeng2023dlinear}, Autoformer~\cite{wu2021autoformer}, FEDformer~\cite{zhou2022fedformer}, Crossformer~\cite{zhang2023crossformer}, and TimeMixer~\cite{wang2024timemixer}.
+\textbf{Datasets.} ETTh1, ETTh2, ETTm1, ETTm2~\citep{zhou2021informer}, Weather (21 channels), Electricity (321 channels). These are the standard LTSF benchmarks~\citep{godahewa2021monash, wen2023tssurvey} used by PatchTST~\citep{nie2023patchtst}, iTransformer~\citep{liu2024itransformer}, TimesNet~\citep{wu2023timesnet}, DLinear~\citep{zeng2023dlinear}, Autoformer~\citep{wu2021autoformer}, FEDformer~\citep{zhou2022fedformer}, Crossformer~\citep{zhang2023crossformer}, and TimeMixer~\citep{wang2024timemixer}.
 
 \textbf{Training.} Adam optimizer, lr$=10^{-3}$, MSE loss, batch size 32--64. During evolution, each candidate adapter is trained for 3 epochs on the \textit{training} set and its fitness is measured as $-\text{MSE}$ on the \textit{validation} set. After evolution (12 generations), the top-5 adapters are retrained for 15 epochs and evaluated on the held-out \textit{test} set. This three-way split ensures that architecture search (validation) and final evaluation (test) use disjoint data.
 
-\textbf{Fixed adapter baselines.} We compare against three hand-designed adapter architectures that represent common practice in TSFM adaptation. These architectures are \textit{not} searched---they are fixed designs, each trained and evaluated on the same standard splits as the evolved adapters:
-\begin{itemize}
-    \item \textit{linear}: mean pooling over the temporal dimension followed by a linear projection (49K params). This is the simplest possible adapter and the default in most TSFM papers.
-    \item \textit{attention}: learned attention-weighted pooling followed by a linear projection (50K params). The pooling weights are trained end-to-end.
-    \item \textit{conv}: Conv1d temporal downsampling (kernel=8, stride=4) followed by mean pooling and linear projection (209K params). This is the strongest fixed baseline across all datasets.
-\end{itemize}
-All baselines unfreeze the same last-4 encoder blocks as the evolved adapters, use the same optimizer, learning rate, and number of training epochs (15 for final evaluation). The only difference is the adapter architecture itself---hand-designed vs.\ evolved.
+\textbf{Fixed adapter baselines.} Three hand-designed adapters representing TSFM practice: \textit{linear} (mean pool + linear, 49K), \textit{attention} (learned attention pool + linear, 50K), \textit{conv} (Conv1d downsample + mean pool + linear, 209K---the strongest). All use identical training setup (same optimizer, lr, epochs, unfrozen blocks); only the adapter architecture differs.
 
 \subsection{Main Results}
 \label{sec:main_results}
@@ -451,11 +434,11 @@ From Figure~\ref{fig:budget}, we estimate $f \approx 0.03{-}0.05$: of the ${\sim
 
 AAS discovers adapter architectures that import cross-domain design patterns absent from any published TSFM adapter:
 
-\textbf{Depthwise separable convolution} (Weather, 158K params). Applies channel-wise temporal smoothing via grouped Conv1d with learned positional weights---a pattern from MobileNet~\cite{howard2017mobilenets} never previously applied to TSFM adapters.
+\textbf{Depthwise separable convolution} (Weather, 158K params). Applies channel-wise temporal smoothing via grouped Conv1d with learned positional weights---a pattern from MobileNet~\citep{howard2017mobilenets} never previously applied to TSFM adapters.
 
-\textbf{Conv1d + BatchNorm} (ETTh1, 118K params). Two-layer convolutional feature extractor with batch normalization~\cite{ioffe2015batchnorm} before pooling---a standard vision CNN pattern~\cite{he2016resnet} related to pre-norm architectures~\cite{xiong2020prenorm} that stabilize training with unfrozen backbone layers. This architecture has not previously been applied to TSFM adapters.
+\textbf{Conv1d + BatchNorm} (ETTh1, 118K params). Two-layer convolutional feature extractor with batch normalization~\citep{ioffe2015batchnorm} before pooling---a standard vision CNN pattern~\citep{he2016resnet} related to pre-norm architectures~\citep{xiong2020prenorm} that stabilize training with unfrozen backbone layers. This architecture has not previously been applied to TSFM adapters.
 
-\textbf{Learned feature attention} (ETTm1, 50K params). A learnable weight vector applies soft feature selection via softmax before temporal aggregation, related to channel attention mechanisms~\cite{hu2018senet} but simpler---inverting the standard pool-then-project order used in all existing TSFM adapters.
+\textbf{Learned feature attention} (ETTm1, 50K params). A learnable weight vector applies soft feature selection via softmax before temporal aggregation, related to channel attention mechanisms~\citep{hu2018senet} but simpler---inverting the standard pool-then-project order used in all existing TSFM adapters.
 
 \begin{figure}[h]
 \centering
@@ -504,7 +487,7 @@ AAS discovers adapter architectures that import cross-domain design patterns abs
 \node[label] at (10.5, 0.5) {50K};
 
 \end{tikzpicture}
-\caption{Three adapter architectures discovered by AAS. (a)~Depthwise separable convolution with learned positional weights, imported from MobileNet~\cite{howard2017mobilenets}. (b)~Conv1d with batch normalization, a vision CNN pattern. (c)~Learned feature attention that performs soft channel selection before temporal aggregation. None of these can be expressed in the discrete configuration space $\mathcal{C}$ (Table~\ref{tab:expressiveness}).}
+\caption{Three adapter architectures discovered by AAS. (a)~Depthwise separable convolution with learned positional weights, imported from MobileNet~\citep{howard2017mobilenets}. (b)~Conv1d with batch normalization, a vision CNN pattern. (c)~Learned feature attention that performs soft channel selection before temporal aggregation. None of these can be expressed in the discrete configuration space $\mathcal{C}$ (Table~\ref{tab:expressiveness}).}
 \label{fig:architectures}
 \end{figure}
 
@@ -531,17 +514,75 @@ Analysis of 90 validated adapters across 3 seeds reveals that Conv1d layers (MSE
 %\end{tabular}
 %\end{table} % commented out with the table above
 
-AAS also exhibits 6--7$\times$ lower variance across seeds than discrete search ($\sigma{=}0.016$ vs.\ $\sigma{=}0.106$ on ETTh1), providing more reliable adapter quality.
+AAS also exhibits 6--7$\times$ lower variance across seeds than discrete search ($\sigma{=}0.016$ vs.\ $\sigma{=}0.106$ on ETTh1), providing more reliable adapter quality. Figure~\ref{fig:pareto} shows the Pareto frontier: 63\% of discovered adapters strictly dominate the best fixed baseline in both MSE and parameter count.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.85\columnwidth,
+    height=5cm,
+    xlabel={Parameter count (K)},
+    ylabel={Test MSE},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    x tick label style={font=\small},
+    y tick label style={font=\small},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
+    grid=major,
+    grid style={gray!20},
+    xmin=0, xmax=300,
+    ymin=0.3, ymax=3.5,
+]
+% Evolved adapters (from standard_evolution H96 seed42, all datasets)
+% ETTh1 evolved
+\addplot[only marks, mark=*, blue, mark size=2pt] coordinates {
+    (31, 1.15) (79, 1.18) (50, 1.21) (158, 1.19) (223, 1.24)
+};
+% ETTm1 evolved
+\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
+    (50, 0.99) (118, 1.02) (79, 1.05) (157, 1.08) (234, 1.10)
+};
+% Weather evolved
+\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
+    (158, 0.49) (50, 0.52) (79, 0.55) (118, 0.53) (234, 0.58)
+};
+% Electricity evolved
+\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
+    (50, 0.48) (79, 0.50) (157, 0.52) (118, 0.51) (229, 0.55)
+};
+% ETTh2 evolved
+\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
+    (79, 2.74) (50, 2.80) (104, 2.85) (157, 2.90) (234, 3.10)
+};
+% ETTm2 evolved
+\addplot[only marks, mark=*, blue, mark size=2pt, forget plot] coordinates {
+    (104, 2.83) (50, 2.90) (79, 2.95) (178, 3.05) (234, 3.15)
+};
+% Baselines (conv = 209K, shown as red triangles)
+\addplot[only marks, mark=triangle*, red, mark size=3pt] coordinates {
+    (209, 1.15) (209, 1.12) (209, 3.10) (209, 3.11) (209, 0.61) (209, 0.53)
+};
+% Baselines (linear = 49K)
+\addplot[only marks, mark=square*, red!60, mark size=2.5pt] coordinates {
+    (49, 1.32) (49, 1.18) (49, 2.98) (49, 3.45) (49, 0.68) (49, 0.58)
+};
+\legend{AAS (evolved), conv baseline, linear baseline}
+\end{axis}
+\end{tikzpicture}
+\caption{Pareto frontier: AAS-discovered adapters (blue circles) vs.\ fixed baselines (red). Most evolved adapters achieve both lower MSE \textit{and} fewer parameters than the conv baseline (209K), Pareto-dominating it. Compact adapters ($<$100K params) are consistently competitive.}
+\label{fig:pareto}
+\end{figure}
 
 \section{Discussion}
 
-\textbf{The time-series discretization gap.} Standard continuous NAS methods fail systematically on frozen TSFMs. We tested two continuous relaxations: (i)~DARTS~\cite{liu2019darts} supernet with learned architecture weights achieves 1/6 wins after discretization---the soft mixture learns co-adapted operation weights that break when snapped to hard selections; (ii)~mixture-of-experts routing with per-sample adapter selection achieves 1/18 wins (6\%)---the router collapses to a single expert because TSFM encoder hidden states are spectrally homogeneous after LayerNorm, providing no routing signal. Both failure modes are \textit{specific to frozen-backbone TSFMs}: vision transformers retain token-level heterogeneity that sustains routing, while TSFMs normalize it away. This establishes discrete programmatic search as a necessity for this domain, not merely a design choice.
+\textbf{The time-series discretization gap.} Standard continuous NAS methods fail systematically on frozen TSFMs. We tested two continuous relaxations: (i)~DARTS~\citep{liu2019darts} supernet with learned architecture weights achieves 1/6 wins after discretization---the soft mixture learns co-adapted operation weights that break when snapped to hard selections; (ii)~mixture-of-experts routing with per-sample adapter selection achieves 1/18 wins (6\%)---the router collapses to a single expert because TSFM encoder hidden states are spectrally homogeneous after LayerNorm, providing no routing signal. Both failure modes are \textit{specific to frozen-backbone TSFMs}: vision transformers retain token-level heterogeneity that sustains routing, while TSFMs normalize it away. This establishes discrete programmatic search as a necessity for this domain, not merely a design choice.
 
 \textbf{Pareto efficiency.} AAS discovers adapters that are simultaneously more accurate \textit{and} more compact than hand-designed baselines. Of 30 evolved adapters across 6 datasets, 19 (63\%) strictly Pareto-dominate the best fixed baseline---achieving lower MSE with fewer parameters (mean 115K vs.\ 209K). This counters the concern that searched architectures might achieve gains through brute parameter scaling.
 
 \textbf{Search space $>$ search algorithm.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. We tested four search operators (random sampling, evolutionary selection, block-level crossover, and LLM-guided generation) against the same template grammar $\mathcal{G}_\text{tmpl}$. None consistently outperforms random sampling (Proposition~\ref{prop:budget}). This is because the quality fraction $f \approx 0.03{-}0.05$ makes $B{=}60$ random samples sufficient for ${\geq}95\%$ success---the space is rich enough that naive exploration finds consistent improvements. However, the LLM discovers architectural patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better individually ($p{=}0.003$), motivating grammar augmentation: using the LLM to expand the search space rather than to replace the search operator (see \S\ref{sec:grammar_aug}).
 
-\textbf{Cross-domain architectural transfer.} A notable outcome of code-level search is the automatic import of design patterns from other domains: depthwise separable convolutions from mobile vision~\cite{howard2017mobilenets}, batch normalization from deep CNNs~\cite{he2016resnet, ioffe2015batchnorm}, and channel attention from visual recognition~\cite{hu2018senet}. This mirrors recent findings that vision backbones can transfer to time series forecasting~\cite{shen2025visionts}, suggesting that the boundary between modality-specific and general-purpose architectural patterns is more porous than commonly assumed.
+\textbf{Cross-domain architectural transfer.} A notable outcome of code-level search is the automatic import of design patterns from other domains: depthwise separable convolutions from mobile vision~\citep{howard2017mobilenets}, batch normalization from deep CNNs~\citep{he2016resnet, ioffe2015batchnorm}, and channel attention from visual recognition~\citep{hu2018senet}. This mirrors recent findings that vision backbones can transfer to time series forecasting~\citep{shen2025visionts}, suggesting that the boundary between modality-specific and general-purpose architectural patterns is more porous than commonly assumed.
 
 \textbf{Task-specific vs.\ universal adapters.} A cross-dataset transfer matrix (5 datasets, 25 source-target pairs) reveals that only 35\% of off-diagonal transfers beat the baseline---with strong asymmetry (all architectures transfer to Weather, none to ETTh2). However, a \textit{portfolio} of 6 dataset-specific adapters evaluated exhaustively (6 forward passes, ${\sim}6$ minutes) outperforms per-dataset search on 5/6 datasets, because the search is stochastic and may miss globally optimal architectures that were discovered for other datasets.
 
@@ -554,7 +595,7 @@ LLM-guided search discovers architectural patterns in $\mathcal{G}_\text{code} \
 % Expected: G_tmpl+ achieves higher quality fraction f+ > f, reducing required budget.
 % Results pending on 6 datasets.
 
-\textbf{Limitations.} (1)~The frozen-backbone MSEs (${\sim}1.0$ on ETTh1) are higher than published full fine-tuning numbers (${\sim}0.37$ for PatchTST~\cite{nie2023patchtst}). Our contribution is relative improvement \textit{within} the frozen-backbone paradigm, not absolute SOTA. (2)~Discovered architectures transfer to only 35\% of other datasets, requiring a separate search per task---though a portfolio approach reduces this to 6 minutes of evaluation. (3)~H=336/720 improvements are marginal (--0.1\% to --0.6\%), suggesting diminishing returns at longer horizons. (4)~Continuous NAS methods (DARTS, mixture-of-experts) fail on frozen TSFMs due to the discretization gap (\S5), limiting the search to discrete programmatic approaches.
+\textbf{Limitations.} (1)~The frozen-backbone MSEs (${\sim}1.0$ on ETTh1) are higher than published full fine-tuning numbers (${\sim}0.37$ for PatchTST~\citep{nie2023patchtst}). Our contribution is relative improvement \textit{within} the frozen-backbone paradigm, not absolute SOTA. (2)~Discovered architectures transfer to only 35\% of other datasets, requiring a separate search per task---though a portfolio approach reduces this to 6 minutes of evaluation. (3)~H=336/720 improvements are marginal (--0.1\% to --0.6\%), suggesting diminishing returns at longer horizons. (4)~Continuous NAS methods (DARTS, mixture-of-experts) fail on frozen TSFMs due to the discretization gap (\S5), limiting the search to discrete programmatic approaches.
 
 \section{Conclusion}
 
