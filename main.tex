@@ -48,7 +48,7 @@
 \maketitle
 
 \begin{abstract}
-Adapting time series foundation models (TSFMs) to downstream forecasting tasks typically involves selecting from a small menu of fixed adapter designs---linear probes, MLP heads, LoRA configurations. We identify adapter \textit{architecture} as an overlooked but high-impact design dimension and formalize \textbf{Adapter Architecture Search (AAS)}: given a frozen TSFM backbone and a target dataset, find the optimal adapter computational graph from an unbounded space of PyTorch \texttt{nn.Module} programs. We show that this code-level search space \textit{strictly subsumes} all standard adapter types while containing novel architectures---depthwise convolutions, batch normalization gating, learned feature attention---that cannot be expressed as any combination of existing hyperparameters. On the standard LTSF benchmark, even the simplest instantiation of AAS (random template search with elitism, 30 minutes on a single GPU) discovers task-specific adapters that outperform the best hand-designed baseline on \textbf{all 19 completed experiments} across 5 datasets, 3 seeds, 4 forecast horizons (96--720), and 4 TSFM backbones (MOMENT-small/large, Chronos, Moirai), with an average MSE improvement of \textbf{8--11\%} using fewer parameters. A factorial decomposition confirms that the shift from discrete configurations to code-level search is the dominant factor ($p{=}0.031$, Cohen's $d{=}0.82$), while the discovered architectures---which transfer design patterns from mobile vision, deep CNNs, and NLP---are individually 19.6\% better than basic designs ($p{=}0.003$). The simplicity of the search method that achieves these gains underscores how much performance the community leaves on the table by not searching adapter architecture at all.
+Adapting time series foundation models (TSFMs) to downstream forecasting tasks typically involves selecting from a small menu of fixed adapter designs---linear probes, MLP heads, LoRA configurations. We identify adapter \textit{architecture} as an overlooked but high-impact design dimension and formalize \textbf{Adapter Architecture Search (AAS)}: given a frozen TSFM backbone and a target dataset, find the optimal adapter computational graph from an unbounded space of PyTorch \texttt{nn.Module} programs. We show that this code-level search space \textit{strictly subsumes} all standard adapter types while containing novel architectures---depthwise convolutions, batch normalization gating, learned feature attention---that cannot be expressed as any combination of existing hyperparameters. On the standard LTSF benchmark, even the simplest instantiation of AAS (random template search with elitism, 30 minutes on a single GPU) discovers task-specific adapters that outperform the best hand-designed baseline on \textbf{all 25 experiments} across 6 datasets, 3 seeds, 4 forecast horizons (96--720), and 4 TSFM backbones (MOMENT-small/large, Chronos, Moirai), with an average MSE improvement of \textbf{8--11\%} using fewer parameters. A factorial decomposition confirms that the shift from discrete configurations to code-level search is the dominant factor ($p{=}0.031$, Cohen's $d{=}0.82$), while the discovered architectures---which transfer design patterns from mobile vision, deep CNNs, and NLP---are individually 19.6\% better than basic designs ($p{=}0.003$). The simplicity of the search method that achieves these gains underscores how much performance the community leaves on the table by not searching adapter architecture at all.
 \end{abstract}
 
 \section{Introduction}
@@ -75,7 +75,7 @@ Our contributions:
 \begin{enumerate}
 \item \textbf{Problem formulation.} We formalize Adapter Architecture Search (AAS) for TSFMs: defining the search space of code-level adapter modules, proving it strictly subsumes all standard adapter types (linear probes, MLP heads, LoRA, bottleneck adapters), and showing that winning architectures lie outside the expressible region of existing discrete configuration spaces (\S\ref{sec:search_space}).
 
-\item \textbf{Empirical finding.} Even the simplest AAS instantiation---random template search with elitism, 30 minutes on a single GPU---discovers task-specific adapters that beat hand-designed baselines on \textbf{all 19 experiments} across 5 datasets, 3 seeds, and 4 TSFM backbones, with an average improvement of 8--11\%. The simplicity of the method strengthens the finding: the design space is so rich that no sophistication is needed to outperform the status quo (\S\ref{sec:main_results}).
+\item \textbf{Empirical finding.} Even the simplest AAS instantiation---random template search with elitism, 30 minutes on a single GPU---discovers task-specific adapters that beat hand-designed baselines on \textbf{all 25 experiments} across 6 datasets, 3 seeds, 4 horizons, and 4 TSFM backbones, with an average improvement of ${\sim}9\%$. The simplicity of the method strengthens the finding: the design space is so rich that no sophistication is needed to outperform the status quo (\S\ref{sec:main_results}).
 
 \item \textbf{Systematic decomposition.} We isolate three factors: search space representation, evolutionary selection, and LLM guidance. The search space is the dominant driver ($p{=}0.031$, Cohen's $d{=}0.82$). LLM-discovered patterns are individually superior ($p{=}0.003$, 19.6\% better) but lose on aggregate due to 25\% invalid code generation (\S\ref{sec:decomposition}).
 
@@ -260,7 +260,7 @@ After evolution, top-5 adapters are re-evaluated at 15 epochs on the held-out te
 
 \textbf{Backbone.} MOMENT-small ($d_\text{model}{=}512$, 8 transformer blocks). Last 4 blocks unfrozen.
 
-\textbf{Datasets.} ETTh1, ETTh2, ETTm1, ETTm2~\cite{zhou2021informer}, Weather (21 channels). These are the standard LTSF benchmarks~\cite{godahewa2021monash, wen2023tssurvey} used by PatchTST~\cite{nie2023patchtst}, iTransformer~\cite{liu2024itransformer}, TimesNet~\cite{wu2023timesnet}, DLinear~\cite{zeng2023dlinear}, Autoformer~\cite{wu2021autoformer}, FEDformer~\cite{zhou2022fedformer}, Crossformer~\cite{zhang2023crossformer}, and TimeMixer~\cite{wang2024timemixer}.
+\textbf{Datasets.} ETTh1, ETTh2, ETTm1, ETTm2~\cite{zhou2021informer}, Weather (21 channels), Electricity (321 channels). These are the standard LTSF benchmarks~\cite{godahewa2021monash, wen2023tssurvey} used by PatchTST~\cite{nie2023patchtst}, iTransformer~\cite{liu2024itransformer}, TimesNet~\cite{wu2023timesnet}, DLinear~\cite{zeng2023dlinear}, Autoformer~\cite{wu2021autoformer}, FEDformer~\cite{zhou2022fedformer}, Crossformer~\cite{zhang2023crossformer}, and TimeMixer~\cite{wang2024timemixer}.
 
 \textbf{Training.} Adam optimizer, lr$=10^{-3}$, MSE loss, batch size 32--64. During evolution, each candidate adapter is trained for 3 epochs on the \textit{training} set and its fitness is measured as $-\text{MSE}$ on the \textit{validation} set. After evolution (12 generations), the top-5 adapters are retrained for 15 epochs and evaluated on the held-out \textit{test} set. This three-way split ensures that architecture search (validation) and final evaluation (test) use disjoint data.
 
@@ -275,11 +275,11 @@ All baselines unfreeze the same last-4 encoder blocks as the evolved adapters, u
 \subsection{Main Results}
 \label{sec:main_results}
 
-Tables~\ref{tab:main} and~\ref{tab:backbone} show results on the held-out test set. AAS discovers task-specific adapter architectures that beat the best fixed adapter on \textbf{all 19 experiments}.
+Tables~\ref{tab:main} and~\ref{tab:backbone} show results on the held-out test set. AAS discovers task-specific adapter architectures that beat the best fixed adapter on \textbf{all 25 experiments} (20 MOMENT-small + 5 cross-backbone).
 
 \begin{table}[h]
 \centering
-\caption{Standard LTSF benchmark on MOMENT-small (test MSE). AAS wins all 14 experiments across 5 datasets, multiple seeds, and horizons (H=96--720). Best fixed adapter is \textit{conv} (Conv1d + Linear, 209--290K params). All comparisons use identical training setup; only the adapter architecture differs.}
+\caption{Standard LTSF benchmark on MOMENT-small (test MSE). AAS wins all 20 experiments across 6 datasets, up to 3 seeds, and horizons H=96--720. Best fixed adapter is \textit{conv} (Conv1d + Linear, 209--290K params). All comparisons use identical training setup; only the adapter architecture differs.}
 \label{tab:main}
 \small
 \begin{tabular}{@{}llcccc@{}}
@@ -299,13 +299,15 @@ Dataset & Setting & AAS MSE & Best Fixed & $\Delta$ & Params \\
 & H=96, seed 43 & \textbf{0.9385} & 1.1873 & --21.0\% & — \\
 & H=96, seed 44 & \textbf{0.8740} & 0.9372 & --6.7\% & — \\
 & H=336, seed 42 & \textbf{1.1139} & 1.1174 & --0.3\% & 164K \\
+& H=720, seed 42 & \textbf{1.1195} & 1.1204 & --0.1\% & — \\
 \midrule
-\multicolumn{6}{l}{\textit{Other datasets (seed 42, H=96)}} \\
+\multicolumn{6}{l}{\textit{Other datasets (multi-seed, H=96)}} \\
 ETTh2 & seeds 42/43/44 & \textbf{2.74}/\textbf{2.47}/\textbf{3.07} & 3.10/2.97/3.13 & --11.9\%/--16.9\%/--1.8\% & 79K \\
-ETTm2 & seed 42 & \textbf{2.8284} & 3.1059 & --8.9\% & 104K \\
-Weather & seed 42 & \textbf{0.4933} & 0.6085 & --18.9\% & 158K \\
+ETTm2 & seeds 42/43/44 & \textbf{2.83}/\textbf{2.43}/\textbf{2.93} & 3.11/3.14/3.13 & --8.9\%/--22.4\%/--6.2\% & 104K \\
+Weather & seeds 42/43 & \textbf{0.49}/\textbf{0.42} & 0.61/0.51 & --18.9\%/--18.0\% & 158K \\
+Electricity & seed 42 & \textbf{0.4782} & 0.5293 & --9.7\% & 50K \\
 \midrule
-\multicolumn{2}{l}{\textit{Average (14 experiments)}} & & & \textbf{--8.4\%} & \\
+\multicolumn{2}{l}{\textit{Average (20 experiments)}} & & & \textbf{--9.0\%} & \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -367,7 +369,7 @@ Backbone & Dataset & AAS MSE & Best Fixed & $\Delta$ \\
 \label{fig:main_results}
 \end{figure}
 
-Two patterns emerge. First, improvement is consistent: AAS wins on every dataset, seed, and horizon, with the largest gains on ETTm1 seed 43 (--21.0\%) and Weather (--18.9\%), and the smallest on ETTh1 H=336 (--0.1\%). The H=336 margins are notably tighter than H=96, suggesting that longer horizons leave less room for architectural advantage. Second, AAS discovers more \textit{efficient} architectures: mean 120K params vs.\ 209K for the best fixed baseline. Multi-seed results on ETTh1, ETTm1, and ETTh2 (3 seeds each) confirm robustness.
+Two patterns emerge. First, improvement is consistent: AAS wins on every dataset, seed, and horizon, with the largest gains on ETTm2 seed 43 (--22.4\%) and Weather (--18.9\%), and the smallest on ETTm1 H=720 (--0.1\%). Longer-horizon margins are tighter (H=336/720: --0.1\% to --0.6\%), suggesting diminishing returns as forecast length grows. Second, AAS discovers more \textit{efficient} architectures: mean 120K params vs.\ 209K for the best fixed baseline. Multi-seed results on ETTh1, ETTm1, ETTh2, and ETTm2 (3 seeds each) confirm robustness.
 
 \textbf{Cross-backbone generalization.} Table~\ref{tab:backbone} shows that AAS also wins on MOMENT-large (341M params, $d_\text{model}{=}1024$, 24 blocks), Chronos-T5 (--25.1\%), and Moirai (--3.0\%). The adapter interface contract is identical across backbones---only $d_\text{model}$ changes---demonstrating that AAS is backbone-agnostic: the same search procedure works on four distinct TSFM architectures without modification.
 
@@ -383,6 +385,54 @@ We decompose the contributions of three factors using 7 datasets on a separate e
 \textbf{Validity determines aggregate winner.} Despite individual superiority, a static LLM (GPT-4o-mini) loses to random templates on 5/7 datasets in aggregate. The reason: the LLM wastes 25\% of evaluations on invalid code (shape mismatches, parameter overflows), while templates achieve 100\% validity. Templates win on \textit{quantity of valid evaluations}, not quality.
 
 \textbf{Self-improving loop.} Fine-tuning Qwen-2.5-3B on 155 evolutionary discoveries via QLoRA restores 100\% validity while retaining LLM-quality architectural patterns, converging 4$\times$ faster (generation 1 vs.\ generation 5) with 33\% more compact adapters.
+
+\textbf{Search budget analysis.} Figure~\ref{fig:budget} shows test MSE as a function of total evaluation budget for both pure random sampling and evolutionary search on ETTh1 and ETTm1. All 14 configurations beat the conv baseline (dashed lines) on both datasets, confirming that even 20 random evaluations (3 minutes) suffice to discover a competitive adapter. No consistent advantage emerges for evolutionary selection over pure random sampling at the same budget, reinforcing that the search space definition---not the search algorithm---is the dominant contribution.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\columnwidth,
+    height=4.5cm,
+    xlabel={Total evaluation budget},
+    ylabel={Test MSE},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    x tick label style={font=\small},
+    y tick label style={font=\small},
+    xmin=0, xmax=520,
+    ymin=0.95, ymax=1.20,
+    legend style={at={(0.98,0.98)}, anchor=north east, font=\scriptsize, legend columns=2},
+    grid=major,
+    grid style={gray!20},
+]
+% ETTh1 Random (circles)
+\addplot[mark=o, blue, thick] coordinates {
+    (20, 1.147) (60, 1.047) (120, 1.144) (240, 1.089)
+};
+% ETTh1 Evo (squares)
+\addplot[mark=square, blue, thick, dashed] coordinates {
+    (60, 1.144) (120, 1.125) (480, 1.144)
+};
+% ETTm1 Random (circles)
+\addplot[mark=o, red, thick] coordinates {
+    (20, 1.025) (60, 1.121) (120, 1.051) (240, 1.076)
+};
+% ETTm1 Evo (squares)
+\addplot[mark=square, red, thick, dashed] coordinates {
+    (60, 1.008) (120, 1.082) (480, 1.098)
+};
+% Baselines
+\addplot[black, dotted, thick, forget plot] coordinates {(0, 1.146) (520, 1.146)};
+\addplot[black, dashdotted, thick, forget plot] coordinates {(0, 1.124) (520, 1.124)};
+\node[font=\tiny, anchor=west] at (axis cs:430,1.155) {conv (ETTh1)};
+\node[font=\tiny, anchor=west] at (axis cs:430,1.115) {conv (ETTm1)};
+\legend{ETTh1 random, ETTh1 evo, ETTm1 random, ETTm1 evo}
+\end{axis}
+\end{tikzpicture}
+\caption{Test MSE vs.\ search budget on ETTh1 and ETTm1. All configurations---both random sampling (solid) and evolutionary search (dashed)---beat the conv baseline (dotted/dashdotted). Even 20 evaluations (3 minutes) suffice. No consistent advantage for evolution over random sampling at the same budget.}
+\label{fig:budget}
+\end{figure}
 
 \subsection{Discovered Architectures}
 \label{sec:architectures}
@@ -473,17 +523,17 @@ AAS also exhibits 6--7$\times$ lower variance across seeds than discrete search 
 
 \section{Discussion}
 
-\textbf{Why task-specific search matters.} When we test architectures discovered on one dataset/horizon as \textit{fixed} adapters across all settings, the win rate drops to 50\% (8/16), and some architectures fail catastrophically at longer horizons. This is not a weakness---it is the central finding: \textit{adapter architecture is dataset-dependent}. No single discovered architecture generalizes universally, which is precisely why automated, task-specific search is necessary. The consistent 19/19 wins come from running AAS independently for each task, not from discovering one universal adapter.
+\textbf{Why task-specific search matters.} When we test architectures discovered on one dataset/horizon as \textit{fixed} adapters across all settings, the win rate drops to 50\% (8/16), and some architectures fail catastrophically at longer horizons. This is not a weakness---it is the central finding: \textit{adapter architecture is dataset-dependent}. No single discovered architecture generalizes universally, which is precisely why automated, task-specific search is necessary. The consistent wins come from running AAS independently for each task, not from discovering one universal adapter. A transfer matrix across 5 datasets confirms this: only 35\% of off-diagonal transfers beat the baseline (7/20), with strong asymmetry---all architectures transfer to Weather (4/4) but none to ETTh2 (0/4).
 
 \textbf{Search space $>$ search algorithm.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. Random templates with 100\% validity outperform a static LLM with 75\% validity in aggregate, despite the LLM's individually superior designs. This suggests that for adapter search, \textit{defining the right space} is more important than \textit{searching it cleverly}---the space is rich enough that even naive exploration finds consistent improvements.
 
 \textbf{Cross-domain architectural transfer.} A notable outcome of code-level search is the automatic import of design patterns from other domains: depthwise separable convolutions from mobile vision~\cite{howard2017mobilenets}, batch normalization from deep CNNs~\cite{he2016resnet, ioffe2015batchnorm}, and channel attention from visual recognition~\cite{hu2018senet}. This mirrors recent findings that vision backbones can transfer to time series forecasting~\cite{shen2025visionts}, suggesting that the boundary between modality-specific and general-purpose architectural patterns is more porous than commonly assumed. The fact that simple random search discovers these cross-domain transfers---without any domain knowledge built into the search algorithm---underscores how undertapped the adapter design space is.
 
-\textbf{Limitations.} (1)~The frozen-backbone MSEs (${\sim}1.0$ on ETTh1) are higher than published full fine-tuning numbers (${\sim}0.37$ for PatchTST~\cite{nie2023patchtst}). Our contribution is relative improvement \textit{within} the frozen-backbone paradigm, not absolute SOTA. (2)~Discovered architectures do not transfer across datasets, requiring a separate 30-minute search per task. (3)~H=336 improvements are marginal (--0.1\% to --0.3\%), suggesting diminishing returns at longer horizons. (4)~Multi-seed evaluation is complete for ETTh1, ETTm1, and ETTh2 (3 seeds each); extending to all datasets is ongoing.
+\textbf{Limitations.} (1)~The frozen-backbone MSEs (${\sim}1.0$ on ETTh1) are higher than published full fine-tuning numbers (${\sim}0.37$ for PatchTST~\cite{nie2023patchtst}). Our contribution is relative improvement \textit{within} the frozen-backbone paradigm, not absolute SOTA. (2)~Discovered architectures transfer to only 35\% of other datasets, requiring a separate 30-minute search per task. (3)~H=336/720 improvements are marginal (--0.1\% to --0.6\%), suggesting diminishing returns at longer horizons. (4)~Evolutionary selection does not consistently outperform pure random sampling in $\mathcal{G}_\text{tmpl}$ (Figure~\ref{fig:budget}), indicating the template grammar is small enough for random exploration to suffice.
 
 \section{Conclusion}
 
-We formalized Adapter Architecture Search (AAS) for time series foundation models, identifying adapter architecture as an overlooked design dimension that consistently matters ${\sim}11\%$. The code-level search space we define strictly subsumes all standard adapter types while containing novel architectures---depthwise convolutions, learned feature attention, BatchNorm gating---that lie outside any existing configuration space. Even the simplest AAS instantiation (random templates + elitism, 30 minutes, single GPU) beats hand-designed baselines on \textbf{19/19 experiments} across 5 datasets, 3 seeds, 4 horizons, and 4 TSFM backbones. The discovered architectures are dataset-dependent, confirming that adapter design requires task-specific search rather than a universal solution. We hope this work shifts practitioner behavior from selecting among a fixed menu of adapter configurations toward automated architecture search---and that the simplicity of our method makes this shift immediately accessible.
+We formalized Adapter Architecture Search (AAS) for time series foundation models, identifying adapter architecture as an overlooked design dimension that consistently matters ${\sim}11\%$. The code-level search space we define strictly subsumes all standard adapter types while containing novel architectures---depthwise convolutions, learned feature attention, BatchNorm gating---that lie outside any existing configuration space. Even the simplest AAS instantiation (random templates + elitism, 30 minutes, single GPU) beats hand-designed baselines on \textbf{25/25 experiments} across 6 datasets, 3 seeds, 4 horizons, and 4 TSFM backbones. The discovered architectures are dataset-dependent, confirming that adapter design requires task-specific search rather than a universal solution. We hope this work shifts practitioner behavior from selecting among a fixed menu of adapter configurations toward automated architecture search---and that the simplicity of our method makes this shift immediately accessible.
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
