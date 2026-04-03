@@ -1,0 +1,23 @@
+{
+  "dataset": "Electricity",
+  "horizon": 96,
+  "seed": 42,
+  "results": {
+    "augmented": {
+      "best_test_mse": 0.6311477422714233,
+      "elapsed": 1768.9625453948975
+    },
+    "base": {
+      "best_test_mse": 0.676041841506958,
+      "elapsed": 2095.231817007065
+    },
+    "delta_pct": -6.640727907530351,
+    "winner": "G_tmpl+"
+  },
+  "baselines": {
+    "linear": 14211.90234375,
+    "attention": 3441.873046875,
+    "conv": 1.0616235733032227
+  },
+  "delta_vs_baseline": -40.54881992610446
+}

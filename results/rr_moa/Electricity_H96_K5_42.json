@@ -1,0 +1,40 @@
+{
+  "dataset": "Electricity",
+  "horizon": 96,
+  "seed": 42,
+  "K": 5,
+  "rr_moa": {
+    "mse": 0.240293487906456,
+    "mae": 0.3346457779407501,
+    "param_count": 426102,
+    "routing": {
+      "mean": 0.237,
+      "last": 0.162,
+      "max": 0.181,
+      "attention": 0.253,
+      "conv1d": 0.168
+    },
+    "routing_entropy": 1.552385687828064,
+    "routing_max_weight": 0.28783440589904785
+  },
+  "elapsed": 44.66202473640442,
+  "baselines": {
+    "linear": {
+      "mse": 0.508340060710907,
+      "mae": 0.5226683020591736,
+      "param_count": 49248
+    },
+    "attention": {
+      "mse": 0.5853810906410217,
+      "mae": 0.5732896327972412,
+      "param_count": 49761
+    },
+    "conv": {
+      "mse": 0.4548647701740265,
+      "mae": 0.48595184087753296,
+      "param_count": 209248
+    }
+  },
+  "winner": "RR-MoA",
+  "delta_pct": -47.1725436519249
+}

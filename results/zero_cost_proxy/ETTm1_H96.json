@@ -1,0 +1,87 @@
+{
+  "dataset": "ETTm1",
+  "horizon": 96,
+  "n_adapters": 8,
+  "adapters": [
+    {
+      "mse": 1.121656894683838,
+      "params": 233952,
+      "source": "evolved",
+      "scores": {
+        "synflow": 1065016.3988189697,
+        "grad_norm": 269.5259319842619,
+        "jacobian": -1012.4798583984375
+      }
+    },
+    {
+      "mse": 1.1218258142471313,
+      "params": 156000,
+      "source": "evolved",
+      "scores": {
+        "synflow": 827445.0771408081,
+        "grad_norm": 269.045510499792,
+        "jacobian": -930.5281982421875
+      }
+    },
+    {
+      "mse": 0.9919959902763367,
+      "params": 50272,
+      "source": "evolved",
+      "scores": {
+        "synflow": 11593.504272460938,
+        "grad_norm": 2.7702675957052394,
+        "jacobian": -1042.81640625
+      }
+    },
+    {
+      "mse": 1.0503813028335571,
+      "params": 77216,
+      "source": "evolved",
+      "scores": {
+        "synflow": 1493409.9558029175,
+        "grad_norm": 0.06257222625789415,
+        "jacobian": -1292.8302001953125
+      }
+    },
+    {
+      "mse": 1.2063682079315186,
+      "params": 228896,
+      "source": "evolved",
+      "scores": {
+        "synflow": 2593350.5037841797,
+        "grad_norm": 0.38375255665852304,
+        "jacobian": -1183.151123046875
+      }
+    },
+    {
+      "mse": 40.49660110473633,
+      "params": 49248,
+      "source": "baseline_linear",
+      "scores": {
+        "synflow": 107270.84606933594,
+        "grad_norm": 1064.1548996768609,
+        "jacobian": -959.7142333984375
+      }
+    },
+    {
+      "mse": 7.801206111907959,
+      "params": 49761,
+      "source": "baseline_attention",
+      "scores": {
+        "synflow": 155796.6249732604,
+        "grad_norm": 1600.8919978729573,
+        "jacobian": -899.3225708007812
+      }
+    },
+    {
+      "mse": 1.1222835779190063,
+      "params": 209248,
+      "source": "baseline_conv",
+      "scores": {
+        "synflow": 13444611.533874512,
+        "grad_norm": 175.26576783568163,
+        "jacobian": -1002.4495849609375
+      }
+    }
+  ]
+}
