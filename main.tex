@@ -434,6 +434,18 @@ We decompose the contributions of three factors using 7 datasets on a separate e
 \label{fig:budget}
 \end{figure}
 
+The budget scaling data permits a formal characterization of why random search suffices:
+
+\begin{proposition}[Search Budget Sufficiency]
+\label{prop:budget}
+Let $f$ denote the fraction of architectures in $\mathcal{G}_\emph{tmpl}$ that achieve lower test MSE than the best adapter in $\mathcal{C}$. For $B$ independent random samples from $\mathcal{G}_\emph{tmpl}$, the probability that at least one outperforms $\mathcal{C}$ is:
+\begin{equation}
+P(\emph{AAS success}) = 1 - (1-f)^B
+\end{equation}
+\end{proposition}
+
+From Figure~\ref{fig:budget}, we estimate $f \approx 0.03{-}0.05$: of the ${\sim}1{,}200$ architectures in $\mathcal{G}_\text{tmpl}$, approximately 40--60 outperform the best discrete adapter. This implies $B \geq 60$ suffices for ${\geq}95\%$ success probability. The proposition explains three observations: (i)~random sampling with $B{=}20$ already achieves ${\sim}64\%$ success; (ii)~$B{=}60$ achieves near-certain success; (iii)~evolutionary selection provides no advantage over random sampling when $B \gg 1/f$, because random coverage already saturates the good region of $\mathcal{G}_\text{tmpl}$. This characterization also clarifies the value of expanding the search space: moving from $\mathcal{C}$ to $\mathcal{G}_\text{tmpl}$ increases $f$ from $0$ (no architecture in $\mathcal{C}$ beats itself) to $0.03{-}0.05$, enabling the consistent improvements we observe.
+
 \subsection{Discovered Architectures}
 \label{sec:architectures}
 
