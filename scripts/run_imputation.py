@@ -40,58 +40,57 @@ from scripts.run_rr_moa import (
 # They need to reconstruct the full temporal sequence
 
 class ImputationMeanHead(nn.Module):
-    """Dense reconstruction: project each timestep independently."""
-    def __init__(self, d_model, seq_len, hidden=128):
+    """Dense reconstruction: upsample patches to timesteps."""
+    def __init__(self, d_model, seq_len=512, hidden=128):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(d_model, hidden),
-            nn.GELU(),
-            nn.Linear(hidden, 1),
-        )
+        self.net = nn.Sequential(nn.Linear(d_model, hidden), nn.GELU(), nn.Linear(hidden, 8))
+        self.seq_len = seq_len
     def forward(self, h):
-        # h: (B, T, d_model) -> (B, T, 1) -> (B, T)
-        return self.net(h).squeeze(-1)
+        return self.net(h).reshape(h.shape[0], -1)[:, :self.seq_len]
 
 class ImputationConvHead(nn.Module):
-    """Conv-based reconstruction: local context for gap filling."""
-    def __init__(self, d_model, seq_len, hidden=128):
+    """Conv-based: transpose conv to upsample patches."""
+    def __init__(self, d_model, seq_len=512, hidden=128):
         super().__init__()
-        self.conv1 = nn.Conv1d(d_model, hidden, kernel_size=5, padding=2)
-        self.conv2 = nn.Conv1d(hidden, 1, kernel_size=3, padding=1)
+        self.proj = nn.Linear(d_model, hidden)
+        self.up = nn.ConvTranspose1d(hidden, 1, kernel_size=16, stride=8, padding=4)
+        self.seq_len = seq_len
     def forward(self, h):
-        x = h.permute(0, 2, 1)  # (B, d, T)
-        x = F.gelu(self.conv1(x))
-        return self.conv2(x).squeeze(1)  # (B, T)
+        x = F.gelu(self.proj(h)).permute(0, 2, 1)
+        return self.up(x).squeeze(1)[:, :self.seq_len]
 
 class ImputationAttnHead(nn.Module):
-    """Attention-based reconstruction: global context."""
-    def __init__(self, d_model, seq_len, hidden=128):
+    """Attention + upsample for global context."""
+    def __init__(self, d_model, seq_len=512, hidden=128):
         super().__init__()
         self.attn = nn.MultiheadAttention(d_model, num_heads=4, batch_first=True)
-        self.proj = nn.Linear(d_model, 1)
+        self.proj = nn.Linear(d_model, 8)
+        self.seq_len = seq_len
     def forward(self, h):
         h2, _ = self.attn(h, h, h)
-        return self.proj(h2).squeeze(-1)  # (B, T)
+        return self.proj(h2).reshape(h.shape[0], -1)[:, :self.seq_len]
 
 class ImputationLinearHead(nn.Module):
-    """Simple per-timestep linear."""
-    def __init__(self, d_model, seq_len, hidden=64):
+    """Simple linear upsample."""
+    def __init__(self, d_model, seq_len=512, hidden=64):
         super().__init__()
-        self.proj = nn.Linear(d_model, 1)
+        self.proj = nn.Linear(d_model, 8)
+        self.seq_len = seq_len
     def forward(self, h):
-        return self.proj(h).squeeze(-1)
+        return self.proj(h).reshape(h.shape[0], -1)[:, :self.seq_len]
 
 class ImputationResidualConvHead(nn.Module):
-    """Residual conv: skip + local conv for dense prediction."""
-    def __init__(self, d_model, seq_len, hidden=128):
+    """Residual conv upsample."""
+    def __init__(self, d_model, seq_len=512, hidden=128):
         super().__init__()
-        self.skip = nn.Linear(d_model, 1)
-        self.conv = nn.Conv1d(d_model, hidden, kernel_size=7, padding=3)
-        self.out = nn.Conv1d(hidden, 1, kernel_size=1)
+        self.skip = nn.Linear(d_model, 8)
+        self.conv = nn.Conv1d(d_model, hidden, kernel_size=3, padding=1)
+        self.up = nn.ConvTranspose1d(hidden, 1, kernel_size=16, stride=8, padding=4)
+        self.seq_len = seq_len
     def forward(self, h):
-        skip = self.skip(h).squeeze(-1)  # (B, T)
+        skip = self.skip(h).reshape(h.shape[0], -1)[:, :self.seq_len]
         x = F.gelu(self.conv(h.permute(0, 2, 1)))
-        return skip + self.out(x).squeeze(1)  # (B, T)
+        return skip + self.up(x).squeeze(1)[:, :self.seq_len]
 
 IMPUTATION_HEADS = [ImputationLinearHead, ImputationMeanHead, ImputationConvHead,
                     ImputationAttnHead, ImputationResidualConvHead]
@@ -104,7 +103,7 @@ class ImputationRRMoA(nn.Module):
         super().__init__()
         self.K = K
         self.adapters = nn.ModuleList([
-            IMPUTATION_HEADS[i % len(IMPUTATION_HEADS)](d_model, seq_len, hidden)
+            IMPUTATION_HEADS[i % len(IMPUTATION_HEADS)](d_model, seq_len=seq_len, hidden=hidden)
             for i in range(K)
         ])
         self.router = nn.Sequential(
