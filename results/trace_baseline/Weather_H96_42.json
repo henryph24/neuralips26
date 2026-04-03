@@ -1,0 +1,43 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 42,
+  "results": {
+    "trace_reconstructed": {
+      "test_mse": 0.47655975818634033,
+      "test_mae": 0.4770554304122925,
+      "param_count": 40609,
+      "elapsed": 43.25679135322571
+    },
+    "trace_full": {
+      "test_mse": 0.42654579877853394,
+      "test_mae": 0.46353933215141296,
+      "param_count": 342432,
+      "elapsed": 43.563401222229004
+    },
+    "mlp2_mean": {
+      "test_mse": 0.5301198959350586,
+      "test_mae": 0.5440146923065186,
+      "param_count": 176608,
+      "elapsed": 42.459189891815186
+    },
+    "linear": {
+      "test_mse": 0.5746203064918518,
+      "test_mae": 0.5520821809768677,
+      "param_count": 49248,
+      "elapsed": 42.38191604614258
+    },
+    "attention": {
+      "test_mse": 0.6242528557777405,
+      "test_mae": 0.5869988203048706,
+      "param_count": 49761,
+      "elapsed": 42.6948344707489
+    },
+    "conv": {
+      "test_mse": 0.5397169589996338,
+      "test_mae": 0.5147252082824707,
+      "param_count": 209248,
+      "elapsed": 42.685752630233765
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 42,
+  "elapsed": 2887.450709581375,
+  "evolved": [
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        mid = d_model // 2\n        self.net = nn.Sequential(\n            nn.Linear(d_model, mid),\n            nn.GELU(),\n            nn.Dropout(0.1),\n            nn.Linear(mid, output_dim),\n        )\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        last = hidden_states[:, -1, :]\n        return self.net(last)",
+      "val_mse": 0.9622128009796143,
+      "test_mse": 0.6098153591156006,
+      "test_mae": 0.5902655124664307,
+      "param_count": 156000
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        self.pre_norm = nn.LayerNorm(d_model)\n        self.attn_w = nn.Linear(d_model, 1)\n        self.fc0 = nn.Linear(d_model, 256)\n        self.act0 = nn.ReLU()\n        self.fc1 = nn.Linear(256, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        hidden_states = self.pre_norm(hidden_states)\n        scores = self.attn_w(hidden_states).squeeze(-1)\n        weights = torch.softmax(scores, dim=1).unsqueeze(-1)\n        x = (hidden_states * weights).sum(dim=1)\n        x = self.fc0(x)\n        x = self.act0(x)\n        x = self.fc1(x)\n        return x",
+      "val_mse": 0.9744400382041931,
+      "test_mse": 0.4932919144630432,
+      "test_mae": 0.4958237111568451,
+      "param_count": 157537
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        self.pre_norm = nn.LayerNorm(d_model)\n        self.proj_conv = nn.Linear(d_model, 64)\n        self.conv = nn.Conv1d(64, 64, kernel_size=3, stride=2)\n        self.act_conv = nn.SiLU()\n        self.fc0 = nn.Linear(64, 192)\n        self.act0 = nn.GELU()\n        self.fc1 = nn.Linear(192, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        hidden_states = self.pre_norm(hidden_states)\n        x = self.proj_conv(hidden_states)\n        x = x.transpose(1, 2)\n        x = self.act_conv(self.conv(x))\n        x = x.mean(dim=2)\n        x = self.fc0(x)\n        x = self.act0(x)\n        x = self.fc1(x)\n        return x",
+      "val_mse": 1.0063620805740356,
+      "test_mse": 0.5252829790115356,
+      "test_mae": 0.5132274031639099,
+      "param_count": 77216
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        self.pre_norm = nn.LayerNorm(d_model)\n        self.fc0 = nn.Linear(d_model, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        hidden_states = self.pre_norm(hidden_states)\n        x = hidden_states[:, -1, :]\n        x = self.fc0(x)\n        return x",
+      "val_mse": 1.0605429410934448,
+      "test_mse": 0.5028370022773743,
+      "test_mae": 0.49821576476097107,
+      "param_count": 50272
+    },
+    {
+      "code": "class Adapter(nn.Module):\n    def __init__(self, d_model: int, output_dim: int):\n        super().__init__()\n        self.pre_norm = nn.LayerNorm(d_model)\n        self.proj_conv = nn.Linear(d_model, 128)\n        self.conv = nn.Conv1d(128, 128, kernel_size=9, stride=4)\n        self.act_conv = nn.ReLU()\n        self.fc0 = nn.Linear(128, 384)\n        self.act0 = nn.ReLU()\n        self.fc1 = nn.Linear(384, output_dim)\n\n    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        hidden_states = self.pre_norm(hidden_states)\n        x = self.proj_conv(hidden_states)\n        x = x.transpose(1, 2)\n        x = self.act_conv(self.conv(x))\n        x = x.mean(dim=2)\n        x = self.fc0(x)\n        x = self.act0(x)\n        x = self.fc1(x)\n        return x",
+      "val_mse": 1.069610595703125,
+      "test_mse": 0.5214987397193909,
+      "test_mae": 0.5230154991149902,
+      "param_count": 300768
+    }
+  ],
+  "baselines": {
+    "linear": {
+      "mse": 26.673017501831055,
+      "mae": 4.076786041259766,
+      "param_count": 49248
+    },
+    "attention": {
+      "mse": 2.1580007076263428,
+      "mae": 1.1529011726379395,
+      "param_count": 49761
+    },
+    "conv": {
+      "mse": 0.6084709763526917,
+      "mae": 0.5891752243041992,
+      "param_count": 209248
+    }
+  },
+  "generations": [
+    {
+      "gen": 0,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 1.1453036725521089,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 1,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 1.974168634414673,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 2,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 4.321559774875641,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 3,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 63.21712631583214,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 4,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 3.4422030717134477,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 5,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 149.62414942085744,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 6,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 3.3658520370721816,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 7,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 4.4066334754228595,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 8,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 238.06067650616168,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 9,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 15.791116479039193,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 10,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 81.46392706930638,
+      "best_param_count": 156000
+    },
+    {
+      "gen": 11,
+      "n_valid": 20,
+      "n_invalid": 0,
+      "best_mse": 0.9622128009796143,
+      "best_fitness": -0.9622128009796143,
+      "mean_mse": 161.01324218213557,
+      "best_param_count": 156000
+    }
+  ]
+}
