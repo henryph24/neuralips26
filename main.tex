@@ -97,6 +97,7 @@ Our contributions:
 
 \begin{figure}[t]
 \centering
+\resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[
     block/.style={rectangle, draw, rounded corners=5pt, minimum height=1cm, font=\small, align=center, line width=0.7pt, fill=#1},
     block/.default=white,
@@ -106,39 +107,39 @@ Our contributions:
 ]
 
 % ====== INPUT ======
-\node[block=gray!8, minimum width=\columnwidth-1cm, minimum height=1.1cm] (input) at (0, 0) {
+\node[block=gray!8, minimum width=\columnwidth-2cm, minimum height=1.1cm] (input) at (0, 0) {
     \textbf{Raw Time Series Input} \quad $\mathbf{X}_\text{raw} \in \mathbb{R}^{B \times L}$
 };
 
 % ====== TWO PATHS (side by side) ======
 % Left path: Backbone
-\node[block=blue!12, minimum width=4.8cm, minimum height=1.1cm] (backbone) at (-3.1, -1.8) {
+\node[block=blue!12, minimum width=4.2cm, minimum height=1.1cm] (backbone) at (-2.8, -1.8) {
     \textbf{Frozen TSFM Backbone} $f_\theta$\\[-2pt]
     {\scriptsize LayerNorm $\times K$ layers}
 };
-\node[block=blue!6, minimum width=4.8cm] (hidden) at (-3.1, -3.2) {
+\node[block=blue!6, minimum width=4.2cm] (hidden) at (-2.8, -3.2) {
     Hidden States $\mathbf{H} \in \mathbb{R}^{B \times T \times d}$\\[-2pt]
     {\scriptsize \textcolor{red!70}{homogenized by LayerNorm}}
 };
 
 % Right path: Router
-\node[block=orange!12, minimum width=4.8cm, minimum height=1.1cm] (router) at (3.1, -1.8) {
+\node[block=orange!12, minimum width=4.2cm, minimum height=1.1cm] (router) at (2.8, -1.8) {
     \textbf{Raw-Signal Router} $G_\phi(\mathbf{X}_\text{raw})$\\[-2pt]
     {\scriptsize Conv1d $\to$ AdaptivePool $\to$ Linear}
 };
-\node[block=orange!6, minimum width=4.8cm] (weights) at (3.1, -3.2) {
+\node[block=orange!6, minimum width=4.2cm] (weights) at (2.8, -3.2) {
     Routing Weights $\mathbf{w} \in \Delta^K$\\[-2pt]
     {\scriptsize \textcolor{green!50!black}{preserves spectral diversity}}
 };
 
 % ====== EXPERT POOL ======
-\node[block=purple!8, minimum width=\columnwidth-1cm, minimum height=1.2cm] (experts) at (0, -4.8) {
-    \textbf{AAS-Discovered Expert Pool} ($K{=}5$ diverse adapters)\\[-1pt]
-    {\small \fbox{MeanPool} \quad \fbox{LastToken} \quad \fbox{MaxPool} \quad \fbox{Attention} \quad \fbox{Conv1d}}
+\node[block=purple!8, minimum width=\columnwidth-2cm, minimum height=1.2cm] (experts) at (0, -4.8) {
+    \textbf{AAS Expert Pool} ($K{=}5$)\\[-1pt]
+    {\small \fbox{Mean} \; \fbox{Last} \; \fbox{Max} \; \fbox{Attn} \; \fbox{Conv1d}}
 };
 
 % ====== OUTPUT ======
-\node[block=green!8, minimum width=\columnwidth-1cm, minimum height=0.9cm] (output) at (0, -6.3) {
+\node[block=green!8, minimum width=\columnwidth-2cm, minimum height=0.9cm] (output) at (0, -6.3) {
     $\mathbf{Y} = \displaystyle\sum_{k=1}^{K} w_k \cdot \text{Expert}_k(\mathbf{H})$ \qquad {\small \textbf{17/18 wins, --56\% MSE}}
 };
 
@@ -152,15 +153,16 @@ Our contributions:
 \draw[arr] (experts) -- (output);
 
 % ====== LABELS on paths ======
-\node[font=\footnotesize\bfseries, text=blue!60] at (-3.1, -0.85) {Path A: Deep Semantics};
-\node[font=\footnotesize\bfseries, text=orange!60] at (3.1, -0.85) {Path B: Physical Routing};
+\node[font=\footnotesize\bfseries, text=blue!60] at (-2.8, -0.85) {Path A: Deep Semantics};
+\node[font=\footnotesize\bfseries, text=orange!60] at (2.8, -0.85) {Path B: Physical Routing};
 
 % ====== CROSS in the middle ======
 \node[font=\Large, text=red!70] at (0, -2.5) {\ding{55}};
 \node[font=\scriptsize, text=red!60, text width=2.8cm, align=center] at (0, -3.1) {Standard MoE\\routes on $\mathbf{H}$\\$\to$ \textbf{collapses} (1/18)};
 
-\end{tikzpicture}
-\caption{\textbf{Raw-Routed Mixture of Adapters (RR-MoA).} The raw input $\mathbf{X}$ splits into two information streams. \textit{Path~A}: the frozen TSFM produces deep hidden states $\mathbf{H}$, but LayerNorm homogenizes them across samples. \textit{Path~B}: a lightweight gating network reads the raw, unnormalized signal to compute per-sample routing weights $\mathbf{w}$. Standard MoE routing on $\mathbf{H}$ collapses the router to a single expert (1/18 wins, center \ding{55}). Raw routing preserves spectral diversity and achieves \textbf{17/18 wins with 56\% MSE improvement}.}
+\end{tikzpicture}%
+}% end resizebox
+\caption{\textbf{RR-MoA architecture.} The raw input splits into two streams. \textit{Path~A}: the frozen TSFM produces hidden states $\mathbf{H}$, homogenized by LayerNorm. \textit{Path~B}: a lightweight gating network reads the raw signal to compute routing weights $\mathbf{w}$. Standard MoE routes on $\mathbf{H}$ and collapses (1/18 wins, \ding{55}). Raw routing achieves \textbf{17/18 wins, --56\% MSE}.}
 \label{fig:framework}
 \end{figure}
 
@@ -194,7 +196,7 @@ We define three architecture spaces of increasing expressiveness and show they f
 \label{def:discrete}
 The \textbf{discrete space} $\mathcal{C}$ is the Cartesian product of standard adapter hyperparameters:
 \begin{equation}
-\mathcal{C} = \underbrace{\{\text{linear, lora, bottleneck}\}}_{\text{adapter type}} \times \underbrace{\{8, 16, 32, 64\}}_{\text{rank}} \times \underbrace{\{\text{mean, last, max, cls\_mean\_max}\}}_{\text{pooling}} \times \underbrace{\{\text{linear, mlp1, mlp2}\}}_{\text{head}} \times \cdots
+\mathcal{C} = \underbrace{\{\text{lin, lora, bn}\}}_{\text{type}} \times \underbrace{\{8,16,32,64\}}_{\text{rank}} \times \underbrace{\{\text{mean, last, max, cls}\}}_{\text{pool}} \times \underbrace{\{\text{lin, mlp1, mlp2}\}}_{\text{head}} \times \cdots
 \end{equation}
 After removing invalid combinations, $|\mathcal{C}| = 2{,}160$. Each $c \in \mathcal{C}$ determines a fixed computational graph via a deterministic mapping $c \mapsto g_c$.
 \end{definition}
