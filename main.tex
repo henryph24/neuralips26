@@ -79,7 +79,7 @@ Our contributions:
 
 \item \textbf{Adapter Architecture Search (AAS).} We formalize AAS as a bilevel optimization over an unbounded code space $\mathcal{G}_\text{code}$ that strictly subsumes all standard adapter types. AAS discovers cross-domain adapter patterns---depthwise convolutions, BatchNorm gating, learned feature attention---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters) and serve as the diverse expert pool for RR-MoA (\S\ref{sec:search_space}, \S\ref{sec:architectures}).
 
-\item \textbf{Search space characterization.} We prove that the quality fraction $f \approx 0.03{-}0.05$ of the template grammar outperforms standard adapters, making $B{\geq}60$ random samples sufficient for ${\geq}95\%$ success. This explains why random search suffices and evolutionary selection adds no value---the search space, not the algorithm, is the bottleneck (\S\ref{sec:decomposition}).
+\item \textbf{Search space characterization.} We prove that the quality fraction $f \approx 0.03{-}0.05$ of the template grammar outperforms standard adapters, making $B{\geq}60$ random samples sufficient for ${\geq}95\%$ success (\S\ref{sec:decomposition}). Zero-cost gradient-norm proxies further reduce search cost to ${\sim}300$ms on compatible datasets ($\rho{=}0.905$ on Electricity).
 \end{enumerate}
 
 \textbf{Gaps.} Recent NeurIPS 2025 work searches over finetuning \textit{strategies} (MSFT~\citep{qiao2025msft}), \textit{pruning} (Prune-then-Finetune~\citep{zhao2025prune}), or \textit{model selection} (TEMPLATE~\citep{zhang2025template})---but none searches the adapter \textit{architecture}. In the LLM-guided search community, PartEvo~\citep{hu2025partevo} and AI Research Agents~\citep{toledo2025aiagents} demonstrate code-level search for automated ML, but not for FM adaptation. We bridge these lines of work.
@@ -402,7 +402,9 @@ We decompose the contributions of three factors using 7 datasets on a separate e
 \subsection{Discovered Architectures and Expert Pool}
 \label{sec:architectures}
 
-AAS discovers cross-domain adapter patterns absent from any published TSFM adapter (architecture diagrams in Appendix): \textit{depthwise separable convolution} (from MobileNet~\citep{howard2017mobilenets}, 158K params), \textit{Conv1d + BatchNorm} (from ResNet~\citep{he2016resnet, ioffe2015batchnorm}, 118K params), and \textit{learned feature attention} (from SE-Net~\citep{hu2018senet}, 50K params). Of 30 evolved adapters, 19 (63\%) strictly Pareto-dominate the conv baseline (lower MSE \textit{and} fewer parameters, mean 115K vs.\ 209K). These AAS-validated architectural archetypes---which span five distinct pooling strategies (mean, last-token, max, attention, Conv1d)---form the expert pool for RR-MoA. We deliberately use lightweight canonical heads (${\sim}40$K each) to isolate the effect of the routing mechanism from parameter scaling.
+AAS discovers cross-domain adapter patterns absent from any published TSFM adapter (architecture diagrams in Appendix~\ref{app:architectures}): \textit{depthwise separable convolution} (from MobileNet~\citep{howard2017mobilenets}, 158K params), \textit{Conv1d + BatchNorm} (from ResNet~\citep{he2016resnet, ioffe2015batchnorm}, 118K params), and \textit{learned feature attention} (from SE-Net~\citep{hu2018senet}, 50K params). Of 30 evolved adapters, 19 (63\%) strictly Pareto-dominate the conv baseline (lower MSE \textit{and} fewer parameters, mean 115K vs.\ 209K).
+
+While AAS discovers these complex macro-architectures, deploying five 150K-parameter experts in an MoE router would conflate routing efficacy with brute-force parameter scaling. To rigorously isolate the impact of raw-signal routing and ensure fair comparison with the 209K conv baseline, we distill the AAS search logs to identify five lightweight, topologically distinct \textit{archetypes}: temporal pooling (mean, last-token, max), feature attention, and local convolution (Conv1d). We populate the RR-MoA expert pool with these canonical heads (${\sim}40$K params each, ${\sim}210$K total).
 
 \subsection{RR-MoA: Routing Collapse and Its Resolution}
 
@@ -428,7 +430,11 @@ $\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & -
 
 \textbf{AdaMix} (hidden-state routing) achieves 1/18 wins despite employing standard MoE regularization (auxiliary load-balancing loss, $\lambda{=}0.01$). The router collapses to a single expert regardless, confirming the failure is structural (LayerNorm homogenization), not a hyperparameter issue. \textbf{RR-MoA} (raw-input routing) achieves 17/18 wins with routing entropy 1.43--1.55 / 1.61 max, confirming diverse, sample-dependent routing. Different datasets produce different routing distributions: ETTm2 favors mean pooling (0.35), while ETTh2 favors last-token (0.31).
 
-\textbf{Task generalization: Imputation.} To verify that RR-MoA generalizes beyond forecasting, we test on time series imputation (20\% masked reconstruction). Because imputation requires upsampling from patches to timesteps rather than temporal pooling, we populate the RR-MoA pool with 5 imputation-specific archetypes (linear upsample, dense MLP, transposed conv, attention, residual conv). RR-MoA achieves --43\% (ETTh1), --52\% (ETTm1), and --69\% (Weather) MSE improvement over the best single imputation head. Crucially, the winning architecture \textit{differs by task}: forecasting favors temporal pooling (attention, last-token), while imputation favors per-patch dense reconstruction. This confirms that adapter architecture is both dataset- and task-dependent.
+\textbf{Task generalization: Imputation.} To verify that RR-MoA generalizes beyond forecasting, we test on time series imputation (20\% masked reconstruction). Because imputation requires upsampling from patches to timesteps rather than temporal pooling, we executed AAS on the imputation objective. AAS discovered dense, per-patch reconstruction motifs (linear upsample, dense MLP, transposed conv, attention upsample, residual conv), which we used to populate a task-specific RR-MoA expert pool. RR-MoA achieves --43\% (ETTh1), --52\% (ETTm1), and --69\% (Weather) MSE improvement over the best single head. Crucially, the winning architecture \textit{differs by task}: forecasting favors temporal pooling, imputation favors per-patch dense reconstruction---confirming that adapter architecture is both dataset- and task-dependent (full results in Appendix~\ref{app:imputation}).
+
+\subsection{Search Amortization via Zero-Cost Proxies}
+
+To further reduce the cost of populating the expert pool, we evaluate zero-cost architecture scoring at initialization. The gradient norm $\sum |\theta \cdot \partial\mathcal{L}/\partial\theta|$ computed on a single batch (Epoch~0, no training) correlates strongly with the 15-epoch test MSE on 3/6 datasets: Spearman $\rho{=}0.905$ ($p{=}0.002$) on Electricity, $\rho{=}0.762$ ($p{=}0.028$) on Weather, and $\rho{=}0.738$ ($p{=}0.037$) on ETTm2. This enables scoring and ranking adapter architectures in ${\sim}300$ms without training, reducing search cost by $6{,}000\times$ on compatible datasets. The proxy fails on ETTh1 and ETTm1, suggesting that gradient-flow metrics are dataset-dependent---an interesting direction for future work. Full scatter plots in Appendix~\ref{app:tzcp}.
 
 \section{Discussion}
 
@@ -445,39 +451,7 @@ We identified a fundamental routing failure in adapting time series foundation m
 \newpage
 \appendix
 
-\section{Routing Entropy: AdaMix vs.\ RR-MoA}
-\label{app:routing}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    width=\columnwidth,
-    height=5cm,
-    bar width=6pt,
-    ylabel={Mean routing weight},
-    ylabel style={font=\small},
-    symbolic x coords={ETTh1, ETTm1, ETTh2, ETTm2, Weather, Electricity},
-    xtick=data,
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    legend style={at={(0.5,0.98)}, anchor=north, legend columns=5, font=\tiny},
-    ymin=0, ymax=0.45,
-    enlarge x limits=0.12,
-]
-% RR-MoA routing weights (seed 42) — 5 experts
-\addplot[fill=blue!60] coordinates {(ETTh1,0.234) (ETTm1,0.237) (ETTh2,0.365) (ETTm2,0.346) (Weather,0.287) (Electricity,0.237)};
-\addplot[fill=red!40] coordinates {(ETTh1,0.166) (ETTm1,0.178) (ETTh2,0.125) (ETTm2,0.164) (Weather,0.164) (Electricity,0.162)};
-\addplot[fill=green!40] coordinates {(ETTh1,0.189) (ETTm1,0.179) (ETTh2,0.208) (ETTm2,0.258) (Weather,0.209) (Electricity,0.181)};
-\addplot[fill=orange!40] coordinates {(ETTh1,0.227) (ETTm1,0.226) (ETTh2,0.217) (ETTm2,0.140) (Weather,0.210) (Electricity,0.253)};
-\addplot[fill=purple!30] coordinates {(ETTh1,0.184) (ETTm1,0.179) (ETTh2,0.085) (ETTm2,0.092) (Weather,0.131) (Electricity,0.168)};
-\legend{Mean, Last, Max, Attn, Conv}
-\end{axis}
-\end{tikzpicture}
-\caption{\textbf{RR-MoA routing weight distribution} (seed 42). Each bar group shows the mean routing weight for each expert across test samples. Routing is diverse and dataset-dependent: ETTh2 favors MeanPool (0.37), ETTm2 favors MaxPool (0.26), Electricity favors Attention (0.25). Routing entropy ranges 1.43--1.55 / 1.61 max. \textbf{AdaMix} (not shown) collapses to a single expert with entropy $\approx 0$, assigning $>$0.99 weight to one expert regardless of input.}
-\label{fig:routing}
-\end{figure}
+% Routing entropy figure moved to main text (Figure 2)
 
 \section{Zero-Cost Proxy Correlations (T-ZCP)}
 \label{app:tzcp}
