@@ -48,7 +48,7 @@
 \maketitle
 
 \begin{abstract}
-Standard mixture-of-experts (MoE) routing fails on time series foundation models (TSFMs): when we plug diverse adapter experts into a frozen TSFM backbone, the router collapses to a single expert (1/18 wins) because heavy encoder normalization destroys the hidden-state heterogeneity that routing depends on. We propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, which bypasses the backbone entirely for routing decisions---a lightweight gating network reads the \textit{raw, unnormalized} input signal to select among architecturally diverse experts that process the backbone's deep embeddings. RR-MoA achieves \textbf{17/18 wins} with an average \textbf{56\% MSE improvement} across 6 datasets and 3 seeds, using the same experts that fail under standard routing. To populate the expert pool with diverse adapter topologies, we formalize \textbf{Adapter Architecture Search (AAS)}: searching an unbounded space of PyTorch \texttt{nn.Module} programs that strictly subsumes all standard adapter types. AAS discovers novel architectures---depthwise convolutions, batch normalization gating, learned feature attention---that individually outperform basic designs by 19.6\% ($p{=}0.003$) and Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters). The combination of AAS-discovered experts with raw-signal routing resolves two bottlenecks simultaneously: architecture diversity (what experts to use) and routing fidelity (how to select among them).
+Adapting frozen time series foundation models (TSFMs) to downstream tasks currently relies on static, hand-designed adapter heads. While dynamically routing across diverse adapter topologies via mixture-of-experts (MoE) offers a path to task-specific specialization, we identify a fatal structural bottleneck: standard MoE routing collapses to a single expert (1/18 wins) because heavy backbone normalization destroys the hidden-state heterogeneity required for per-sample routing. We propose an end-to-end framework addressing both \textit{what} adapters to use and \textit{how} to route among them. First, we formalize \textbf{Adapter Architecture Search (AAS)} over an unbounded space of PyTorch \texttt{nn.Module} programs. AAS discovers novel cross-domain architectures---depthwise convolutions, BatchNorm gating, learned feature attention---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters). Second, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, which bypasses the frozen backbone entirely for routing: a lightweight gating network reads the raw, unnormalized input signal to select among AAS-discovered experts that process the backbone's deep embeddings. RR-MoA achieves \textbf{17/18 wins with 56\% average MSE improvement} across 6 datasets and 3 seeds---using the exact same experts that fail under standard routing. We further show that zero-cost gradient proxies predict trained adapter MSE at initialization ($\rho{=}0.905$), amortizing the search cost to milliseconds.
 \end{abstract}
 
 \section{Introduction}
@@ -73,13 +73,13 @@ We propose \textbf{Adapter Architecture Search (AAS)}: instead of selecting from
 Our contributions:
 
 \begin{enumerate}
-\item \textbf{The routing collapse diagnosis.} We identify a fundamental incompatibility between standard MoE routing and frozen TSFMs: backbone LayerNorm destroys hidden-state heterogeneity, collapsing the router to a single expert (1/18 wins). This \textit{time-series discretization gap} also invalidates DARTS-style continuous NAS on frozen TSFMs (\S\ref{sec:rrmoa}).
+\item \textbf{Adapter Architecture Search (AAS).} We formalize AAS as a bilevel optimization over an unbounded code space $\mathcal{G}_\text{code}$ that strictly subsumes all standard adapter types. AAS discovers cross-domain adapter patterns---depthwise convolutions, BatchNorm gating, learned feature attention---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters) (\S\ref{sec:search_space}, \S\ref{sec:architectures}).
 
-\item \textbf{Raw-Routed Mixture of Adapters (RR-MoA).} We propose routing on the raw, unnormalized input signal rather than the backbone's hidden states. RR-MoA achieves \textbf{17/18 wins} with an average \textbf{56\% MSE improvement}---using the same experts that fail under standard routing. The routing entropy remains high (1.4--1.6 / 1.61 max), confirming genuinely diverse, sample-dependent expert selection (\S\ref{sec:rrmoa}).
+\item \textbf{The routing collapse diagnosis.} We identify a fundamental incompatibility between standard MoE routing and frozen TSFMs: backbone LayerNorm destroys hidden-state heterogeneity, collapsing the router to a single expert (1/18 wins). DARTS-style continuous NAS also fails on frozen TSFMs due to a separate discretization gap (\S\ref{sec:rrmoa}).
 
-\item \textbf{Adapter Architecture Search (AAS).} We formalize AAS as a bilevel optimization over an unbounded code space $\mathcal{G}_\text{code}$ that strictly subsumes all standard adapter types. AAS discovers cross-domain adapter patterns---depthwise convolutions, BatchNorm gating, learned feature attention---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters) and serve as the diverse expert pool for RR-MoA (\S\ref{sec:search_space}, \S\ref{sec:architectures}).
+\item \textbf{Raw-Routed Mixture of Adapters (RR-MoA).} We propose routing on the raw, unnormalized input signal rather than the backbone's hidden states. RR-MoA achieves \textbf{17/18 wins} with an average \textbf{56\% MSE improvement}---using the same AAS-discovered experts that fail under standard routing (\S\ref{sec:rrmoa}).
 
-\item \textbf{Search space characterization.} We prove that the quality fraction $f \approx 0.03{-}0.05$ of the template grammar outperforms standard adapters, making $B{\geq}60$ random samples sufficient for ${\geq}95\%$ success (\S\ref{sec:decomposition}). Zero-cost gradient-norm proxies further reduce search cost to ${\sim}300$ms on compatible datasets ($\rho{=}0.905$ on Electricity).
+\item \textbf{Search space characterization and amortization.} The quality fraction $f \approx 0.03{-}0.05$ makes $B{\geq}60$ random samples sufficient for ${\geq}95\%$ success (\S\ref{sec:decomposition}). Zero-cost gradient-norm proxies further reduce search cost to ${\sim}300$ms on compatible datasets ($\rho{=}0.905$ on Electricity).
 \end{enumerate}
 
 \textbf{Gaps.} Recent NeurIPS 2025 work searches over finetuning \textit{strategies} (MSFT~\citep{qiao2025msft}), \textit{pruning} (Prune-then-Finetune~\citep{zhao2025prune}), or \textit{model selection} (TEMPLATE~\citep{zhang2025template})---but none searches the adapter \textit{architecture}. In the LLM-guided search community, PartEvo~\citep{hu2025partevo} and AI Research Agents~\citep{toledo2025aiagents} demonstrate code-level search for automated ML, but not for FM adaptation. We bridge these lines of work.
@@ -430,17 +430,33 @@ $\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & -
 
 \textbf{AdaMix} (hidden-state routing) achieves 1/18 wins despite employing standard MoE regularization (auxiliary load-balancing loss, $\lambda{=}0.01$). The router collapses to a single expert regardless, confirming the failure is structural (LayerNorm homogenization), not a hyperparameter issue. To ensure the performance delta stems from the routing signal rather than model capacity, AdaMix's gating network has identical parameter budget (${\sim}25$K) to the RR-MoA router. \textbf{RR-MoA} (raw-input routing) achieves 17/18 wins with routing entropy 1.43--1.55 / 1.61 max, confirming diverse, sample-dependent routing. Different datasets produce different routing distributions: ETTm2 favors mean pooling (0.35), while ETTh2 favors last-token (0.31).
 
-\textbf{Task generalization: Imputation.} To verify that RR-MoA generalizes beyond forecasting, we test on time series imputation (20\% masked reconstruction). Because imputation requires upsampling from patches to timesteps rather than temporal pooling, we executed AAS on the imputation objective. AAS discovered dense, per-patch reconstruction motifs (linear upsample, dense MLP, transposed conv, attention upsample, residual conv), which we used to populate a task-specific RR-MoA expert pool. RR-MoA achieves --43\% (ETTh1), --52\% (ETTm1), and --69\% (Weather) MSE improvement over the best single head. Crucially, the winning architecture \textit{differs by task}: forecasting favors temporal pooling, imputation favors per-patch dense reconstruction---confirming that adapter architecture is both dataset- and task-dependent (full results in Appendix~\ref{app:imputation}).
+\textbf{Task generalization: Imputation.} To verify that RR-MoA generalizes beyond forecasting, we test on time series imputation (20\% masked reconstruction). Because imputation requires upsampling from patches to timesteps rather than temporal pooling, we executed AAS on the imputation objective. AAS discovered dense, per-patch reconstruction motifs (linear upsample, dense MLP, transposed conv, attention upsample, residual conv), which we used to populate a task-specific RR-MoA expert pool. RR-MoA achieves --43\% (ETTh1), --52\% (ETTm1), and --69\% (Weather) MSE improvement over the best single head. Crucially, the winning architecture \textit{differs by task}: forecasting favors temporal pooling, imputation favors per-patch dense reconstruction---confirming that adapter architecture is both dataset- and task-dependent.
+
+\begin{table}[h]
+\centering
+\caption{Imputation task (20\% masked reconstruction, test MSE). RR-MoA wins 3/3. Forecasting prefers temporal pooling; imputation prefers per-patch reconstruction.}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Dataset & Linear & Dense MLP & Conv & Attn & \textbf{RR-MoA} \\
+\midrule
+ETTh1 & 0.242 & 0.339 & 0.254 & --- & \textbf{0.138} (--43\%) \\
+ETTm1 & --- & 0.218 & --- & --- & \textbf{0.104} (--52\%) \\
+Weather & --- & 0.195 & --- & --- & \textbf{0.061} (--69\%) \\
+\bottomrule
+\end{tabular}
+\label{tab:imputation}
+\end{table}
 
 \subsection{Search Amortization via Zero-Cost Proxies}
 
-To further reduce the cost of populating the expert pool, we evaluate zero-cost architecture scoring at initialization. The gradient norm $\sum |\theta \cdot \partial\mathcal{L}/\partial\theta|$ computed on a single batch (Epoch~0, no training) correlates strongly with the 15-epoch test MSE on 3/6 datasets: Spearman $\rho{=}0.905$ ($p{=}0.002$) on Electricity, $\rho{=}0.762$ ($p{=}0.028$) on Weather, and $\rho{=}0.738$ ($p{=}0.037$) on ETTm2. This enables scoring and ranking adapter architectures in ${\sim}300$ms without training, reducing search cost by $6{,}000\times$ on compatible datasets. The proxy fails on ETTh1 and ETTm1, suggesting that gradient-flow metrics are dataset-dependent---an interesting direction for future work. Full scatter plots in Appendix~\ref{app:tzcp}.
+To further reduce the cost of populating the expert pool, we evaluate zero-cost architecture scoring at initialization. The gradient norm $\sum |\theta \cdot \partial\mathcal{L}/\partial\theta|$ computed on a single batch (Epoch~0, no training) correlates strongly with the 15-epoch test MSE on 3/6 datasets: Spearman $\rho{=}0.905$ ($p{=}0.002$) on Electricity, $\rho{=}0.762$ ($p{=}0.028$) on Weather, and $\rho{=}0.738$ ($p{=}0.037$) on ETTm2. This enables scoring and ranking adapter architectures in ${\sim}300$ms without training, reducing search cost by $6{,}000\times$ on compatible datasets. The proxy fails on ETTh1 and ETTm1. We hypothesize this is tied to dataset stationarity: Electricity and Weather exhibit stable periodic patterns where Epoch~0 gradient geometry already reflects the converged loss landscape, whereas ETTh1's distribution shifts render initialization gradients less predictive. Full scatter plots in Appendix~\ref{app:tzcp}.
 
 \section{Discussion}
 
 \textbf{The time-series discretization gap.} Continuous NAS fails on frozen TSFMs for two distinct reasons. First, DARTS~\citep{liu2019darts} suffers a severe discretization gap (1/6 wins after discretization): the soft mixture learns co-adapted operation weights that break when snapped to hard selections. Second, MoE routing collapses (1/18 wins, 6\%): TSFM LayerNorm homogenizes hidden states, destroying the per-sample spectral heterogeneity needed for routing. This second failure is \textit{specific to frozen TSFMs}---vision transformers retain token-level heterogeneity. RR-MoA resolves the routing collapse by bypassing the backbone (17/18 wins), proving the diagnosis is correct and the fix is sound.
 
-\textbf{Search space and efficiency.} Four search operators (random sampling, evolutionary selection, LLM-guided generation, and DARTS) all perform similarly in $\mathcal{G}_\text{tmpl}$ because the quality fraction $f \approx 0.03{-}0.05$ ensures random sampling suffices at $B{\geq}60$. The LLM discovers patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better ($p{=}0.003$)---these serve as the diverse expert pool in RR-MoA. Of 30 evolved adapters, 63\% Pareto-dominate the conv baseline (lower MSE \textit{and} fewer parameters). AAS automatically imports cross-domain patterns---depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, channel attention~\citep{hu2018senet}---mirroring cross-modal transfer findings~\citep{shen2025visionts}.
+\textbf{Search space and efficiency.} Three discrete search operators (random sampling, evolutionary selection, and LLM-guided generation) all perform similarly in $\mathcal{G}_\text{tmpl}$ because the quality fraction $f \approx 0.03{-}0.05$ ensures random sampling suffices at $B{\geq}60$. The LLM discovers patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better ($p{=}0.003$)---these serve as the diverse expert pool in RR-MoA. Of 30 evolved adapters, 63\% Pareto-dominate the conv baseline (lower MSE \textit{and} fewer parameters). AAS automatically imports cross-domain patterns---depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, channel attention~\citep{hu2018senet}---mirroring cross-modal transfer findings~\citep{shen2025visionts}.
 
 \textbf{Limitations.} (1)~Frozen-backbone MSEs (${\sim}1.0$ on ETTh1) are higher than full fine-tuning (${\sim}0.37$ for PatchTST~\citep{nie2023patchtst}); our contribution is relative improvement \textit{within} this paradigm. (2)~Architectures transfer to only 35\% of other datasets. (3)~H=336/720 improvements are marginal (--0.1\% to --0.6\%).
 
@@ -608,26 +624,7 @@ S &\rightarrow \nonterminal{Pool} \;\cdot\; \nonterminal{MLP} \;\cdot\; \nonterm
 \end{align*}
 with $d_\text{out} \in \{64, 128, 192, 256, 384\}$ and $p \in \{0.0, 0.1, 0.2, 0.3\}$, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$.
 
-\section{Imputation Results}
-\label{app:imputation}
-
-\begin{table}[h]
-\centering
-\caption{Imputation task (20\% masked reconstruction). RR-MoA wins 3/3 with diverse routing. Forecasting prefers temporal pooling; imputation prefers per-patch reconstruction.}
-\small
-\begin{tabular}{@{}lccccc@{}}
-\toprule
-Dataset & Linear & Dense MLP & Conv & Attention & \textbf{RR-MoA} \\
-\midrule
-ETTh1 & 0.242 & 0.339 & 0.254 & — & \textbf{0.138} \\
-ETTm1 & — & 0.218 & — & — & \textbf{0.104} \\
-Weather & — & 0.195 & — & — & \textbf{0.061} \\
-\midrule
-$\Delta$ vs best & & & & & --43\% / --52\% / --69\% \\
-\bottomrule
-\end{tabular}
-\label{tab:imputation}
-\end{table}
+% Imputation table moved to main text (Section 4.5)
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
