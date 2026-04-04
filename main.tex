@@ -428,7 +428,7 @@ $\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & -
 \end{tabular}
 \end{table}
 
-\textbf{AdaMix} (hidden-state routing) achieves 1/18 wins despite employing standard MoE regularization (auxiliary load-balancing loss, $\lambda{=}0.01$). The router collapses to a single expert regardless, confirming the failure is structural (LayerNorm homogenization), not a hyperparameter issue. \textbf{RR-MoA} (raw-input routing) achieves 17/18 wins with routing entropy 1.43--1.55 / 1.61 max, confirming diverse, sample-dependent routing. Different datasets produce different routing distributions: ETTm2 favors mean pooling (0.35), while ETTh2 favors last-token (0.31).
+\textbf{AdaMix} (hidden-state routing) achieves 1/18 wins despite employing standard MoE regularization (auxiliary load-balancing loss, $\lambda{=}0.01$). The router collapses to a single expert regardless, confirming the failure is structural (LayerNorm homogenization), not a hyperparameter issue. To ensure the performance delta stems from the routing signal rather than model capacity, AdaMix's gating network has identical parameter budget (${\sim}25$K) to the RR-MoA router. \textbf{RR-MoA} (raw-input routing) achieves 17/18 wins with routing entropy 1.43--1.55 / 1.61 max, confirming diverse, sample-dependent routing. Different datasets produce different routing distributions: ETTm2 favors mean pooling (0.35), while ETTh2 favors last-token (0.31).
 
 \textbf{Task generalization: Imputation.} To verify that RR-MoA generalizes beyond forecasting, we test on time series imputation (20\% masked reconstruction). Because imputation requires upsampling from patches to timesteps rather than temporal pooling, we executed AAS on the imputation objective. AAS discovered dense, per-patch reconstruction motifs (linear upsample, dense MLP, transposed conv, attention upsample, residual conv), which we used to populate a task-specific RR-MoA expert pool. RR-MoA achieves --43\% (ETTh1), --52\% (ETTm1), and --69\% (Weather) MSE improvement over the best single head. Crucially, the winning architecture \textit{differs by task}: forecasting favors temporal pooling, imputation favors per-patch dense reconstruction---confirming that adapter architecture is both dataset- and task-dependent (full results in Appendix~\ref{app:imputation}).
 
@@ -440,7 +440,7 @@ To further reduce the cost of populating the expert pool, we evaluate zero-cost 
 
 \textbf{The time-series discretization gap.} Continuous NAS fails on frozen TSFMs for two distinct reasons. First, DARTS~\citep{liu2019darts} suffers a severe discretization gap (1/6 wins after discretization): the soft mixture learns co-adapted operation weights that break when snapped to hard selections. Second, MoE routing collapses (1/18 wins, 6\%): TSFM LayerNorm homogenizes hidden states, destroying the per-sample spectral heterogeneity needed for routing. This second failure is \textit{specific to frozen TSFMs}---vision transformers retain token-level heterogeneity. RR-MoA resolves the routing collapse by bypassing the backbone (17/18 wins), proving the diagnosis is correct and the fix is sound.
 
-\textbf{Search space and efficiency.} Four search operators (random, evolutionary, crossover, LLM) all perform similarly in $\mathcal{G}_\text{tmpl}$ because the quality fraction $f \approx 0.03{-}0.05$ ensures random sampling suffices at $B{\geq}60$. The LLM discovers patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better ($p{=}0.003$)---these serve as the diverse expert pool in RR-MoA. Of 30 evolved adapters, 63\% Pareto-dominate the conv baseline (lower MSE \textit{and} fewer parameters). AAS automatically imports cross-domain patterns---depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, channel attention~\citep{hu2018senet}---mirroring cross-modal transfer findings~\citep{shen2025visionts}.
+\textbf{Search space and efficiency.} Four search operators (random sampling, evolutionary selection, LLM-guided generation, and DARTS) all perform similarly in $\mathcal{G}_\text{tmpl}$ because the quality fraction $f \approx 0.03{-}0.05$ ensures random sampling suffices at $B{\geq}60$. The LLM discovers patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better ($p{=}0.003$)---these serve as the diverse expert pool in RR-MoA. Of 30 evolved adapters, 63\% Pareto-dominate the conv baseline (lower MSE \textit{and} fewer parameters). AAS automatically imports cross-domain patterns---depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, channel attention~\citep{hu2018senet}---mirroring cross-modal transfer findings~\citep{shen2025visionts}.
 
 \textbf{Limitations.} (1)~Frozen-backbone MSEs (${\sim}1.0$ on ETTh1) are higher than full fine-tuning (${\sim}0.37$ for PatchTST~\citep{nie2023patchtst}); our contribution is relative improvement \textit{within} this paradigm. (2)~Architectures transfer to only 35\% of other datasets. (3)~H=336/720 improvements are marginal (--0.1\% to --0.6\%).
 
@@ -586,9 +586,7 @@ Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
 \section{Proposition Proofs}
 \label{app:proofs}
 
-\begin{proposition}[Strict Hierarchy --- Full Proof]
-$\mathcal{C} \subset \mathcal{G}_\emph{tmpl} \subset \mathcal{G}_\emph{code}$, and both inclusions are strict.
-\end{proposition}
+\textbf{Proof of Proposition~\ref{prop:hierarchy}} (Strict Hierarchy: $\mathcal{C} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$).
 
 \begin{proof}
 \emph{$\mathcal{C} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}$ maps to an adapter with a pooling strategy and MLP head, both expressible as template derivations. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ includes Conv1d-based pooling and SiLU activations absent from $\mathcal{C}$.
@@ -596,12 +594,7 @@ $\mathcal{C} \subset \mathcal{G}_\emph{tmpl} \subset \mathcal{G}_\emph{code}$, a
 \emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar (Table~\ref{tab:expressiveness}).
 \end{proof}
 
-\begin{proposition}[Search Budget Sufficiency]
-Let $f$ denote the fraction of architectures in $\mathcal{G}_\emph{tmpl}$ that achieve lower test MSE than the best adapter in $\mathcal{C}$. For $B$ independent random samples from $\mathcal{G}_\emph{tmpl}$, the probability that at least one outperforms $\mathcal{C}$ is:
-$P(\emph{AAS success}) = 1 - (1-f)^B$.
-\end{proposition}
-
-From our budget experiments (Figure~\ref{fig:budget}), we estimate $f \approx 0.03{-}0.05$, implying $B \geq 60$ suffices for ${\geq}95\%$ success. This explains: (i)~$B{=}20$ achieves ${\sim}64\%$ success; (ii)~$B{=}60$ achieves near-certain success; (iii)~evolutionary selection adds no value when $B \gg 1/f$.
+\textbf{Budget Sufficiency.} Let $f$ denote the fraction of architectures in $\mathcal{G}_\text{tmpl}$ that achieve lower test MSE than the best adapter in $\mathcal{C}$. For $B$ independent random samples, $P(\text{success}) = 1 - (1-f)^B$. From Figure~\ref{fig:budget}, $f \approx 0.03{-}0.05$, so $B \geq 60$ suffices for ${\geq}95\%$ success. This explains: (i)~$B{=}20$ achieves ${\sim}64\%$ success; (ii)~$B{=}60$ achieves near-certain success; (iii)~evolutionary selection adds no value when $B \gg 1/f$.
 
 \section{Template Grammar Production Rules}
 \label{app:grammar}
