@@ -98,50 +98,55 @@ Our contributions:
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    box/.style={rectangle, draw, rounded corners=4pt, minimum height=1.1cm, minimum width=2.8cm, font=\small, align=center, fill=#1, line width=0.6pt},
+    box/.style={rectangle, draw, rounded corners=4pt, minimum height=0.9cm, minimum width=2.4cm, font=\small, align=center, fill=#1, line width=0.6pt},
     box/.default=white,
     arr/.style={-{Stealth[length=3mm, width=2mm]}, thick},
-    darr/.style={-{Stealth[length=3mm, width=2mm]}, thick, dashed, draw=red!60},
     lbl/.style={font=\scriptsize, fill=white, inner sep=1.5pt},
 ]
 
-% Row 1: Main pipeline (left to right)
-\node[box=blue!12] (gen) at (0, 0) {Code\\Generator};
-\node[box=green!12] (code) at (3.8, 0) {Adapter Code\\\texttt{nn.Module}};
-\node[box=yellow!12] (val) at (7.6, 0) {CPU Validate\\shape, params};
-\node[box=orange!12] (gpu) at (11.4, 0) {GPU Train\\3-epoch MSE};
+% Input
+\node[box=gray!10, minimum width=3cm] (input) at (0, 0) {Raw Input\\$\mathbf{X} \in \mathbb{R}^{B \times L}$};
 
-% Row 2: Selection and feedback (right to left)
-\node[box=red!10] (sel) at (11.4, -2.8) {Rank \&\\Elitism (top 2)};
-\node[box=cyan!12] (final) at (7.6, -2.8) {Best Adapter\\15-ep test eval};
-\node[box=purple!10] (pop) at (3.8, -2.8) {Population\\(20 adapters)};
+% Split
+\node[font=\scriptsize, text=gray] at (0, -0.8) {\textit{split}};
 
-% Label under generator
-\node[font=\scriptsize, text=gray!70] at (0, -0.85) {Templates / LLM};
+% Path A: Backbone (left)
+\node[box=blue!15, minimum width=2.6cm] (backbone) at (-3.2, -1.8) {Frozen TSFM\\Backbone $f_\theta$};
+\node[box=blue!8, minimum width=2.6cm, font=\scriptsize] (ln) at (-3.2, -2.9) {LayerNorm $\times K$};
+\node[box=green!12, minimum width=2.6cm] (hidden) at (-3.2, -4.0) {Hidden States\\$\mathbf{H} \in \mathbb{R}^{B \times T \times d}$};
 
-% Row 1 arrows
-\draw[arr] (gen) -- (code);
-\draw[arr] (code) -- (val);
-\draw[arr] (val) -- node[lbl, above] {valid} (gpu);
+% Path B: Router (right)
+\node[box=orange!15, minimum width=2.6cm] (router) at (3.2, -1.8) {Raw-Signal\\Gating $G_\phi$};
+\node[box=orange!8, minimum width=2.6cm, font=\scriptsize] (conv) at (3.2, -2.9) {Conv1d + Pool + Linear};
+\node[box=yellow!15, minimum width=2.6cm] (weights) at (3.2, -4.0) {Routing Weights\\$\mathbf{w} \in \Delta^K$};
 
-% Row 1 to Row 2
-\draw[arr] (gpu) -- (sel);
+% Experts
+\node[box=purple!10, minimum width=8cm, minimum height=1.0cm] (experts) at (0, -5.5) {AAS-Discovered Expert Pool: Conv1d \textbar{} Attention \textbar{} MeanPool \textbar{} MaxPool \textbar{} LastToken};
 
-% Row 2 arrows (right to left)
-\draw[arr] (sel) -- node[lbl, above] {after gen 12} (final);
-\draw[arr] (sel.west) -- +(-0.6, 0) |- node[lbl, near start, above] {} (pop.east);
+% Output
+\node[box=red!10, minimum width=3cm] (output) at (0, -7.0) {Forecast $\mathbf{Y} = \sum_k w_k \cdot \text{Expert}_k(\mathbf{H})$};
 
-% Feedback: Population back to Generator (clean loop underneath)
-\draw[arr] (pop.west) -- +(-0.6, 0) |- node[lbl, near end, above] {next gen} (gen.south west);
+% Arrows
+\draw[arr] (input) -- +(-3.2, 0) |- (backbone);
+\draw[arr] (input) -- +(3.2, 0) |- (router);
+\draw[arr] (backbone) -- (ln);
+\draw[arr] (ln) -- (hidden);
+\draw[arr] (router) -- (conv);
+\draw[arr] (conv) -- (weights);
+\draw[arr] (hidden) -- (experts);
+\draw[arr, orange!70] (weights) -- (experts);
+\draw[arr] (experts) -- (output);
 
-% Invalid feedback: separate dashed path below validation
-\draw[darr] (val.south) -- +(0, -1.2) -| node[lbl, near start, right, text=red!70] {invalid} (gen.south);
+% Labels
+\node[font=\scriptsize, text=blue!70, rotate=90] at (-5.2, -2.9) {Deep semantics};
+\node[font=\scriptsize, text=orange!70, rotate=90] at (5.2, -2.9) {Physical routing};
 
-% Generation label
-\node[font=\scriptsize, text=gray!60] at (5.7, -4.3) {12 generations $\times$ 20 population $\approx$ 240 evaluations};
+% Cross mark on hidden→router path
+\node[font=\large, text=red] at (0, -2.9) {\ding{55}};
+\node[font=\tiny, text=red, text width=2cm, align=center] at (0, -3.5) {LayerNorm destroys routing signal};
 
 \end{tikzpicture}
-\caption{Adapter Architecture Search pipeline. A code generator (random templates or LLM) produces \texttt{nn.Module} adapter classes. Each is validated locally for shape and parameter correctness; invalid codes are fed back to the generator. Valid adapters are trained on GPU for 3 epochs. Evolutionary selection preserves the top 2 adapters; the remaining 18 slots are filled with new candidates. After 12 generations, the best adapter is evaluated on the held-out test set at 15 epochs.}
+\caption{\textbf{Raw-Routed Mixture of Adapters (RR-MoA).} The raw input splits into two paths: (left)~the frozen TSFM produces deep hidden states $\mathbf{H}$, but LayerNorm homogenizes them, destroying per-sample heterogeneity; (right)~a lightweight gating network reads the raw, unnormalized signal to compute routing weights $\mathbf{w}$. The $K$ expert adapters---discovered by AAS---process $\mathbf{H}$ and are combined via $\mathbf{w}$. Standard routing on $\mathbf{H}$ collapses (1/18 wins); raw routing achieves 17/18 wins.}
 \label{fig:framework}
 \end{figure}
 
@@ -187,29 +192,15 @@ The \textbf{code space} $\mathcal{G}_\text{code}$ is the set of all Python progr
 
 \begin{definition}[Template Space $\mathcal{G}_\text{tmpl}$]
 \label{def:template}
-The \textbf{template space} $\mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$ is generated by a context-free grammar $(\mathcal{V}, \Sigma, \mathcal{R}, S)$ with production rules:
-\begin{align*}
-S &\rightarrow \nonterminal{Pool} \;\cdot\; \nonterminal{MLP} \;\cdot\; \nonterminal{Output} \\
-\nonterminal{Pool} &\rightarrow \text{MeanPool} \mid \text{MaxPool} \mid \text{LastToken} \mid \text{AttnPool} \mid \text{Conv1dPool} \\
-\nonterminal{MLP} &\rightarrow \nonterminal{Layer} \mid \nonterminal{Layer} \;\cdot\; \nonterminal{MLP} \quad (\text{depth} \leq 3) \\
-\nonterminal{Layer} &\rightarrow \text{Linear}(d_\text{in}, d_\text{out}) \;\cdot\; \nonterminal{Act} \;\cdot\; \text{Dropout}(p) \\
-\nonterminal{Act} &\rightarrow \text{GELU} \mid \text{ReLU} \mid \text{SiLU} \mid \text{Tanh}
-\end{align*}
-with $d_\text{out} \in \{64, 128, 192, 256, 384\}$ and $p \in \{0.0, 0.1, 0.2, 0.3\}$. This yields $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$ architectures.
+The \textbf{template space} $\mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$ is generated by a context-free grammar over 5 pooling types, 4 activations, variable MLP depths and widths, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$ architectures (full production rules in Appendix).
 \end{definition}
 
 \begin{proposition}[Strict Hierarchy]
 \label{prop:hierarchy}
-$\mathcal{C} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$, and both inclusions are strict.
+$\mathcal{C} \subset \mathcal{G}_\emph{tmpl} \subset \mathcal{G}_\emph{code}$, and both inclusions are strict (proof in Appendix).
 \end{proposition}
 
-\begin{proof}[Proof sketch]
-\emph{$\mathcal{C} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}$ maps to an adapter with a pooling strategy and MLP head, both expressible as template derivations. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ includes Conv1d-based pooling and SiLU activations absent from $\mathcal{C}$.
-
-\emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains architectures with depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar. These are the architectures discovered by AAS (Table~\ref{tab:expressiveness}).
-\end{proof}
-
-The hierarchy is the key theoretical insight: the \textit{winning} architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$---they were discovered by LLM-guided search in the unbounded code space, but even searching the smaller $\mathcal{G}_\text{tmpl}$ already outperforms searching $\mathcal{C}$ ($p{=}0.031$).
+The winning architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$: depthwise convolutions, BatchNorm, and learned feature attention are discoverable by LLM-guided search but not expressible in the template grammar. Table~\ref{tab:expressiveness} formalizes this.
 
 \begin{table}[h]
 \centering
@@ -394,156 +385,14 @@ We decompose the contributions of three factors using 7 datasets on a separate e
 
 \textbf{LLM patterns are individually superior.} Within AAS runs, adapters containing LLM-discovered patterns (depthwise convolution, learned feature attention, BatchNorm gating) achieve 19.6\% lower MSE than basic architectures ($p{=}0.003$, Mann-Whitney $U$, $n{=}90$ across 3 seeds, Cohen's $d{=}0.67$). LLM adapters also use 38\% fewer parameters (mean 110K vs.\ 177K).
 
-\textbf{Validity determines aggregate winner.} Despite individual superiority, a static LLM (GPT-4o-mini) loses to random templates on 5/7 datasets in aggregate. The reason: the LLM wastes 25\% of evaluations on invalid code (shape mismatches, parameter overflows), while templates achieve 100\% validity. Templates win on \textit{quantity of valid evaluations}, not quality.
+\textbf{Validity determines aggregate winner.} The LLM wastes 25\% of evaluations on invalid code; templates achieve 100\% validity. Templates win on \textit{quantity of valid evaluations}, not quality. Fine-tuning Qwen-2.5-3B on 155 discoveries via QLoRA restores 100\% validity while retaining LLM-quality patterns.
 
-\textbf{Self-improving loop.} Fine-tuning Qwen-2.5-3B on 155 evolutionary discoveries via QLoRA restores 100\% validity while retaining LLM-quality architectural patterns, converging 4$\times$ faster (generation 1 vs.\ generation 5) with 33\% more compact adapters.
+\textbf{Search budget sufficiency.} We tested 14 budget configurations (20--480 evaluations) across ETTh1 and ETTm1. All beat the conv baseline, even at $B{=}20$ (3 minutes). No consistent advantage for evolutionary selection over random sampling. We estimate the quality fraction $f \approx 0.03{-}0.05$ of $\mathcal{G}_\text{tmpl}$, implying $P(\text{success}) = 1-(1-f)^B \geq 0.95$ for $B \geq 60$ (see Appendix). This explains why the search algorithm is irrelevant: random coverage saturates the good region of $\mathcal{G}_\text{tmpl}$.
 
-\textbf{Search budget analysis.} Figure~\ref{fig:budget} shows test MSE as a function of total evaluation budget for both pure random sampling and evolutionary search on ETTh1 and ETTm1. All 14 configurations beat the conv baseline (dashed lines) on both datasets, confirming that even 20 random evaluations (3 minutes) suffice to discover a competitive adapter. No consistent advantage emerges for evolutionary selection over pure random sampling at the same budget, reinforcing that the search space definition---not the search algorithm---is the dominant contribution.
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=\columnwidth,
-    height=4.5cm,
-    xlabel={Total evaluation budget},
-    ylabel={Test MSE},
-    xlabel style={font=\small},
-    ylabel style={font=\small},
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    xmin=0, xmax=520,
-    ymin=0.95, ymax=1.20,
-    legend style={at={(0.98,0.98)}, anchor=north east, font=\scriptsize, legend columns=2},
-    grid=major,
-    grid style={gray!20},
-]
-% ETTh1 Random (circles)
-\addplot[mark=o, blue, thick] coordinates {
-    (20, 1.147) (60, 1.047) (120, 1.144) (240, 1.089)
-};
-% ETTh1 Evo (squares)
-\addplot[mark=square, blue, thick, dashed] coordinates {
-    (60, 1.144) (120, 1.125) (480, 1.144)
-};
-% ETTm1 Random (circles)
-\addplot[mark=o, red, thick] coordinates {
-    (20, 1.025) (60, 1.121) (120, 1.051) (240, 1.076)
-};
-% ETTm1 Evo (squares)
-\addplot[mark=square, red, thick, dashed] coordinates {
-    (60, 1.008) (120, 1.082) (480, 1.098)
-};
-% Baselines
-\addplot[black, dotted, thick, forget plot] coordinates {(0, 1.146) (520, 1.146)};
-\addplot[black, dashdotted, thick, forget plot] coordinates {(0, 1.124) (520, 1.124)};
-\node[font=\tiny, anchor=west] at (axis cs:430,1.155) {conv (ETTh1)};
-\node[font=\tiny, anchor=west] at (axis cs:430,1.115) {conv (ETTm1)};
-\legend{ETTh1 random, ETTh1 evo, ETTm1 random, ETTm1 evo}
-\end{axis}
-\end{tikzpicture}
-\caption{Test MSE vs.\ search budget on ETTh1 and ETTm1. All configurations---both random sampling (solid) and evolutionary search (dashed)---beat the conv baseline (dotted/dashdotted). Even 20 evaluations (3 minutes) suffice. No consistent advantage for evolution over random sampling at the same budget.}
-\label{fig:budget}
-\end{figure}
-
-The budget scaling data permits a formal characterization of why random search suffices:
-
-\begin{proposition}[Search Budget Sufficiency]
-\label{prop:budget}
-Let $f$ denote the fraction of architectures in $\mathcal{G}_\emph{tmpl}$ that achieve lower test MSE than the best adapter in $\mathcal{C}$. For $B$ independent random samples from $\mathcal{G}_\emph{tmpl}$, the probability that at least one outperforms $\mathcal{C}$ is:
-\begin{equation}
-P(\emph{AAS success}) = 1 - (1-f)^B
-\end{equation}
-\end{proposition}
-
-From Figure~\ref{fig:budget}, we estimate $f \approx 0.03{-}0.05$: of the ${\sim}1{,}200$ architectures in $\mathcal{G}_\text{tmpl}$, approximately 40--60 outperform the best discrete adapter. This implies $B \geq 60$ suffices for ${\geq}95\%$ success probability. The proposition explains three observations: (i)~random sampling with $B{=}20$ already achieves ${\sim}64\%$ success; (ii)~$B{=}60$ achieves near-certain success; (iii)~evolutionary selection provides no advantage over random sampling when $B \gg 1/f$, because random coverage already saturates the good region of $\mathcal{G}_\text{tmpl}$. This characterization also clarifies the value of expanding the search space: moving from $\mathcal{C}$ to $\mathcal{G}_\text{tmpl}$ increases $f$ from $0$ (no architecture in $\mathcal{C}$ beats itself) to $0.03{-}0.05$, enabling the consistent improvements we observe.
-
-\subsection{Discovered Architectures}
+\subsection{Discovered Architectures and Expert Pool}
 \label{sec:architectures}
 
-AAS discovers adapter architectures that import cross-domain design patterns absent from any published TSFM adapter:
-
-\textbf{Depthwise separable convolution} (Weather, 158K params). Applies channel-wise temporal smoothing via grouped Conv1d with learned positional weights---a pattern from MobileNet~\citep{howard2017mobilenets} never previously applied to TSFM adapters.
-
-\textbf{Conv1d + BatchNorm} (ETTh1, 118K params). Two-layer convolutional feature extractor with batch normalization~\citep{ioffe2015batchnorm} before pooling---a standard vision CNN pattern~\citep{he2016resnet} related to pre-norm architectures~\citep{xiong2020prenorm} that stabilize training with unfrozen backbone layers. This architecture has not previously been applied to TSFM adapters.
-
-\textbf{Learned feature attention} (ETTm1, 50K params). A learnable weight vector applies soft feature selection via softmax before temporal aggregation, related to channel attention mechanisms~\citep{hu2018senet} but simpler---inverting the standard pool-then-project order used in all existing TSFM adapters.
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-    block/.style={rectangle, draw, rounded corners, minimum height=0.7cm, minimum width=1.8cm, font=\scriptsize, align=center, fill=#1},
-    block/.default=blue!10,
-    arrow/.style={-{Stealth[length=2mm]}, thick},
-    label/.style={font=\tiny, text=gray},
-]
-
-% --- Architecture A: Depthwise Conv (Weather) ---
-\node[font=\small\bfseries] at (0, 2.8) {(a) Depthwise Conv};
-\node[block=green!10] (a1) at (0, 2.0) {Hidden States\\$(B, 512, d)$};
-\node[block=orange!15] (a2) at (0, 1.0) {DepthConv1d\\groups=$d$};
-\node[block=yellow!15] (a3) at (0, 0.0) {Learned Weights\\$\odot$ positional};
-\node[block=purple!10] (a4) at (0, -1.0) {MeanPool\\$\to (B, d)$};
-\node[block=red!10] (a5) at (0, -2.0) {Linear\\$\to (B, H)$};
-\draw[arrow] (a1) -- (a2);
-\draw[arrow] (a2) -- (a3);
-\draw[arrow] (a3) -- (a4);
-\draw[arrow] (a4) -- (a5);
-\node[label] at (1.5, 0.5) {158K};
-
-% --- Architecture B: Conv+BN (ETTh1) ---
-\node[font=\small\bfseries] at (4.5, 2.8) {(b) Conv1d+BatchNorm};
-\node[block=green!10] (b1) at (4.5, 2.0) {Hidden States\\$(B, 512, d)$};
-\node[block=orange!15] (b2) at (4.5, 1.0) {Conv1d\\$d \to 128$};
-\node[block=cyan!15] (b3) at (4.5, 0.0) {BatchNorm1d\\+ ReLU};
-\node[block=purple!10] (b4) at (4.5, -1.0) {MeanPool\\$\to (B, 128)$};
-\node[block=red!10] (b5) at (4.5, -2.0) {Linear\\$\to (B, H)$};
-\draw[arrow] (b1) -- (b2);
-\draw[arrow] (b2) -- (b3);
-\draw[arrow] (b3) -- (b4);
-\draw[arrow] (b4) -- (b5);
-\node[label] at (6.0, 0.5) {118K};
-
-% --- Architecture C: Feature Attention (ETTm1) ---
-\node[font=\small\bfseries] at (9.0, 2.8) {(c) Feature Attention};
-\node[block=green!10] (c1) at (9.0, 2.0) {Hidden States\\$(B, 512, d)$};
-\node[block=yellow!15] (c2) at (9.0, 1.0) {Softmax Weights\\$w \in \mathbb{R}^d$};
-\node[block=purple!10] (c3) at (9.0, 0.0) {Weighted Sum\\$\sum w_i \cdot h_i$};
-\node[block=red!10] (c4) at (9.0, -1.0) {Linear\\$\to (B, H)$};
-\draw[arrow] (c1) -- (c2);
-\draw[arrow] (c2) -- (c3);
-\draw[arrow] (c3) -- (c4);
-\node[label] at (10.5, 0.5) {50K};
-
-\end{tikzpicture}
-\caption{Three adapter architectures discovered by AAS. (a)~Depthwise separable convolution with learned positional weights, imported from MobileNet~\citep{howard2017mobilenets}. (b)~Conv1d with batch normalization, a vision CNN pattern. (c)~Learned feature attention that performs soft channel selection before temporal aggregation. None of these can be expressed in the discrete configuration space $\mathcal{C}$ (Table~\ref{tab:expressiveness}).}
-\label{fig:architectures}
-\end{figure}
-
-\subsection{Design Principles}
-
-Analysis of 90 validated adapters across 3 seeds reveals that Conv1d layers (MSE 0.466 vs.\ 0.507 without), attention pooling (0.482 vs.\ 0.499), and BatchNorm (0.482 vs.\ 0.496) are beneficial, while deep MLPs (${\geq}3$ layers, 0.521 vs.\ 0.491) and last-token pooling (0.601 vs.\ 0.487) hurt. Compact adapters ($<$100K params) also outperform larger ones (0.490 vs.\ 0.508). Full breakdown in the Appendix.
-
-%\begin{table}[h]
-%\centering
-%\caption{Architectural features and their association with MSE (across 90 validated adapters).}
-%\label{tab:design}
-%\begin{tabular}{@{}lccl@{}}
-%\toprule
-%Feature & With & Without & Effect \\
-%\midrule
-%Conv1d & 0.466 & 0.507 & $\downarrow$ Better \\
-%Attention pooling & 0.482 & 0.499 & $\downarrow$ Better \\
-%BatchNorm & 0.482 & 0.496 & $\downarrow$ Better \\
-%Compact ($<$100K params) & 0.490 & 0.508 & $\downarrow$ Better \\
-%\midrule
-%Deep MLP ($\geq$3 layers) & 0.521 & 0.491 & $\uparrow$ Worse \\
-%Last-token pooling & 0.601 & 0.487 & $\uparrow$ Worse \\
-%\bottomrule
-%\end{tabular}
-%\end{table} % commented out with the table above
-
-AAS also exhibits 6--7$\times$ lower variance across seeds than discrete search ($\sigma{=}0.016$ vs.\ $\sigma{=}0.106$ on ETTh1). Of 30 evolved adapters, 19 (63\%) strictly Pareto-dominate the conv baseline---achieving both lower MSE and fewer parameters (mean 115K vs.\ 209K).
+AAS discovers cross-domain adapter patterns absent from any published TSFM adapter (architecture diagrams in Appendix): \textit{depthwise separable convolution} (from MobileNet~\citep{howard2017mobilenets}, 158K params), \textit{Conv1d + BatchNorm} (from ResNet~\citep{he2016resnet, ioffe2015batchnorm}, 118K params), and \textit{learned feature attention} (from SE-Net~\citep{hu2018senet}, 50K params). These serve as the topologically diverse expert pool for RR-MoA. Of 30 evolved adapters, 19 (63\%) strictly Pareto-dominate the conv baseline (lower MSE \textit{and} fewer parameters, mean 115K vs.\ 209K).
 
 \subsection{RR-MoA: Routing Collapse and Its Resolution}
 
@@ -567,7 +416,9 @@ $\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & -
 \end{tabular}
 \end{table}
 
-\textbf{AdaMix} (hidden-state routing) achieves 1/18 wins. The router collapses: routing entropy drops to near-zero as all weight concentrates on a single expert, regardless of the input. \textbf{RR-MoA} (raw-input routing) achieves 17/18 wins with routing entropy 1.43--1.55 out of a maximum 1.61, confirming diverse, sample-dependent routing. The only loss is Weather seed 42 (+4.9\%). Different datasets produce different routing distributions: ETTm2 favors mean pooling (0.35), while ETTh2 seed 43 favors last-token (0.31), reflecting genuine architectural preferences learned from the raw signal.
+\textbf{AdaMix} (hidden-state routing) achieves 1/18 wins---the router collapses to a single expert. \textbf{RR-MoA} (raw-input routing) achieves 17/18 wins with routing entropy 1.43--1.55 / 1.61 max, confirming diverse, sample-dependent routing. Different datasets produce different routing distributions: ETTm2 favors mean pooling (0.35), while ETTh2 favors last-token (0.31).
+
+\textbf{Task generalization: Imputation.} To verify that RR-MoA generalizes beyond forecasting, we test on time series imputation (20\% masked reconstruction). RR-MoA achieves --43\% (ETTh1), --52\% (ETTm1), and --69\% (Weather) MSE improvement over the best single imputation head. Crucially, the winning adapter architecture \textit{differs by task}: forecasting prefers temporal pooling (attention, last-token), while imputation prefers per-patch reconstruction (dense MLP). This confirms that adapter architecture is both dataset- and task-dependent, validating AAS + RR-MoA across the FM task spectrum.
 
 \section{Discussion}
 
@@ -575,7 +426,7 @@ $\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & -
 
 \textbf{Pareto efficiency.} AAS discovers adapters that are simultaneously more accurate \textit{and} more compact than hand-designed baselines. Of 30 evolved adapters across 6 datasets, 19 (63\%) strictly Pareto-dominate the best fixed baseline---achieving lower MSE with fewer parameters (mean 115K vs.\ 209K). This counters the concern that searched architectures might achieve gains through brute parameter scaling.
 
-\textbf{Search space $>$ search algorithm.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. We tested four search operators (random sampling, evolutionary selection, block-level crossover, and LLM-guided generation) against the same template grammar $\mathcal{G}_\text{tmpl}$. None consistently outperforms random sampling (Proposition~\ref{prop:budget}). This is because the quality fraction $f \approx 0.03{-}0.05$ makes $B{=}60$ random samples sufficient for ${\geq}95\%$ success---the space is rich enough that naive exploration finds consistent improvements. However, the LLM discovers architectural patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better individually ($p{=}0.003$). These LLM-discovered patterns serve as the diverse expert pool in RR-MoA.
+\textbf{Search space $>$ search algorithm.} Our decomposition reveals that the search space representation matters more than the search operator's intelligence---a finding relevant to the broader FunSearch/PartEvo/SOAR community. We tested four search operators (random sampling, evolutionary selection, block-level crossover, and LLM-guided generation) against the same template grammar $\mathcal{G}_\text{tmpl}$. None consistently outperforms random sampling (see Appendix). This is because the quality fraction $f \approx 0.03{-}0.05$ makes $B{=}60$ random samples sufficient for ${\geq}95\%$ success---the space is rich enough that naive exploration finds consistent improvements. However, the LLM discovers architectural patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that are 19.6\% better individually ($p{=}0.003$). These LLM-discovered patterns serve as the diverse expert pool in RR-MoA.
 
 \textbf{Cross-domain architectural transfer.} AAS automatically discovers patterns from other domains---depthwise convolutions from mobile vision~\citep{howard2017mobilenets}, BatchNorm from CNNs~\citep{he2016resnet, ioffe2015batchnorm}, channel attention from SE-Net~\citep{hu2018senet}---mirroring recent findings on cross-modal transfer~\citep{shen2025visionts}. A cross-dataset transfer matrix shows only 35\% off-diagonal transfer, confirming adapters are task-dependent. RR-MoA sidesteps this limitation by learning per-sample routing among diverse experts.
 
