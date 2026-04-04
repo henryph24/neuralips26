@@ -505,3 +505,7 @@ let's handle it to make it 9 page strictly
 ---
 
 I find the main visualisation/ Figure 1 is quite underwhelming [Image #1]. Can we make it look more professional
+
+---
+
+analyse the paper in-depth ultrathink and identify charting/ plotting/ diagramming opportutinies to put in the appendix
