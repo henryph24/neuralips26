@@ -77,7 +77,7 @@ Our contributions:
 
 \item \textbf{The routing collapse diagnosis.} We identify a fundamental incompatibility between standard MoE routing and pretrained TSFMs: backbone LayerNorm destroys hidden-state heterogeneity, collapsing the router to a single expert (1/18 wins). DARTS-style continuous NAS also fails due to a separate discretization gap (\S5).
 
-\item \textbf{Raw-Routed Mixture of Adapters (RR-MoA).} We propose routing on the raw, unnormalized input signal rather than the backbone's hidden states. RR-MoA achieves \textbf{20/21 wins} across forecasting and imputation with an average \textbf{56\% MSE improvement}---using the same AAS-discovered experts that fail under standard routing (\S\ref{sec:rrmoa}, \S4.5).
+\item \textbf{Raw-Routed Mixture of Adapters (RR-MoA).} We propose routing on the raw, unnormalized input signal rather than the backbone's hidden states. RR-MoA achieves 17/18 wins on forecasting using the exact same experts that fail under standard routing, plus 3/3 wins on imputation with task-specific experts---\textbf{20/21 overall with 56\% average MSE improvement} (\S\ref{sec:rrmoa}, \S4.5).
 
 \item \textbf{Search space characterization and amortization.} The quality fraction $f \approx 0.03{-}0.05$ makes $B{\geq}60$ random samples sufficient for ${\geq}95\%$ success (\S\ref{sec:decomposition}). Zero-cost gradient-norm proxies further reduce search cost to ${\sim}300$ms on compatible datasets ($\rho{=}0.905$ on Electricity, \S4.6).
 \end{enumerate}
@@ -114,7 +114,7 @@ Our contributions:
 % ====== TWO PATHS (side by side) ======
 % Left path: Backbone
 \node[block=blue!12, minimum width=4.2cm, minimum height=1.1cm] (backbone) at (-2.8, -1.8) {
-    \textbf{Frozen TSFM Backbone} $f_\theta$\\[-2pt]
+    \textbf{Pretrained TSFM Backbone} $f_\theta$\\[-2pt]
     {\scriptsize LayerNorm $\times K$ layers}
 };
 \node[block=blue!6, minimum width=4.2cm] (hidden) at (-2.8, -3.2) {
@@ -185,7 +185,7 @@ g^* = \arg\min_{g \in \mathcal{G}} \; \mathcal{L}\!\left(g_{\hat{\phi}(g)}, \; \
 The inner loop trains adapter weights $\phi$ on $\mathcal{D}_\text{train}$; the outer loop selects architecture $g$ via $\mathcal{D}_\text{val}$. Final evaluation uses $\mathcal{D}_\text{test}$.
 \end{definition}
 
-This formulation separates two decisions conflated in current TSFM practice: (1)~\textit{what computational graph} the adapter should implement (outer loop over $\mathcal{G}$), and (2)~\textit{what weights} that graph should have (inner loop over $\Phi_g$). Existing work addresses only~(2). The backbone is partially unfrozen (last 4 of $K$ encoder blocks) during the inner loop, so $\hat{\phi}$ includes both adapter and unfrozen backbone parameters.
+This formulation separates two decisions conflated in current TSFM practice: (1)~\textit{what computational graph} the adapter should implement (outer loop over $\mathcal{G}$), and (2)~\textit{what weights} that graph should have (inner loop over $\Phi_g$). Existing work addresses only~(2). In practice, the top 4 of $K$ encoder blocks are unfrozen during the inner loop, so the empirical optimization jointly updates both adapter weights $\phi$ and active backbone weights $\theta_\text{active}$, while the architecture $g$ is selected via the validation set.
 
 \subsection{Search Space Hierarchy}
 \label{sec:search_space}
@@ -198,7 +198,7 @@ The \textbf{discrete space} $\mathcal{C}$ is the Cartesian product of standard a
 \begin{equation}
 \mathcal{C} = \underbrace{\{\text{lin, lora, bn}\}}_{\text{type}} \times \underbrace{\{8,16,32,64\}}_{\text{rank}} \times \underbrace{\{\text{mean, last, max, cls}\}}_{\text{pool}} \times \underbrace{\{\text{lin, mlp1, mlp2}\}}_{\text{head}} \times \cdots
 \end{equation}
-After removing invalid combinations, $|\mathcal{C}| = 2{,}160$. Each $c \in \mathcal{C}$ determines a fixed computational graph via a deterministic mapping $c \mapsto g_c$.
+The full Cartesian product yields ${\sim}2{,}160$ configurations including backbone-level choices (LoRA rank, layer placement, unfreeze strategy), of which ${\sim}144$ define distinct adapter \textit{computational graphs}. Each graph $c \mapsto g_c$ is a fixed pooling + projection pipeline.
 \end{definition}
 
 \begin{definition}[Code-Level Space $\mathcal{G}_\text{code}$]
@@ -253,11 +253,11 @@ Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
 \subsection{Raw-Routed Mixture of Adapters (RR-MoA)}
 \label{sec:rrmoa}
 
-AAS discovers topologically diverse adapters (Conv1d, attention, depthwise, etc.), but deploying them individually requires per-dataset search. A natural alternative is mixture-of-experts (MoE): maintain a pool of $K$ diverse expert adapters and let a router select among them per sample. However, standard MoE routing \textit{fails catastrophically} on frozen TSFMs.
+AAS discovers topologically diverse adapters (Conv1d, attention, depthwise, etc.), but deploying them individually requires per-dataset search. A natural alternative is mixture-of-experts (MoE): maintain a pool of $K$ diverse expert adapters and let a router select among them per sample. However, standard MoE routing \textit{fails catastrophically} on pretrained TSFMs.
 
 \textbf{The routing collapse problem.} In standard MoE, the router computes gating weights from the backbone's hidden states $\mathbf{H} = f_\theta(\mathbf{X})$. We tested this (AdaMix) and observed 1/18 wins with routing entropy collapsing to near-zero---the router assigns all weight to a single expert. The root cause: TSFM encoders apply LayerNorm at every transformer block, progressively homogenizing the hidden-state distribution across samples. With no per-sample heterogeneity in $\mathbf{H}$, the router receives identical inputs regardless of the time series content, making conditional routing impossible.
 
-\textbf{The fix: route on raw input.} We propose \textbf{RR-MoA}, which splits the information stream: the frozen TSFM processes the deep semantic representation $\mathbf{H}$, while a lightweight gating network reads the \textit{raw, unnormalized} input $\mathbf{X}$ to compute routing probabilities:
+\textbf{The fix: route on raw input.} We propose \textbf{RR-MoA}, which splits the information stream: the pretrained TSFM processes the deep semantic representation $\mathbf{H}$, while a lightweight gating network reads the \textit{raw, unnormalized} input $\mathbf{X}$ to compute routing probabilities:
 \begin{equation}
 \mathbf{Y} = \sum_{k=1}^K \underbrace{\text{Softmax}\!\left(G_\phi(\mathbf{X}_\text{raw})\right)_k}_{\text{raw-signal routing}} \cdot \underbrace{\text{Expert}_k(\mathbf{H}_\text{FM})}_{\text{deep embeddings}}
 \label{eq:rrmoa}
@@ -268,7 +268,7 @@ where $G_\phi$ is a small Conv1d + pooling + linear network (${\sim}25$K params)
 \caption{RR-MoA: Raw-Routed Mixture of Adapters}
 \label{alg:rrmoa}
 \begin{algorithmic}[1]
-\REQUIRE Frozen TSFM $f_\theta$, raw input $\mathbf{X} \in \mathbb{R}^{B \times L}$, $K$ expert adapters
+\REQUIRE Pretrained TSFM $f_\theta$, raw input $\mathbf{X} \in \mathbb{R}^{B \times L}$, $K$ expert adapters
 \STATE $\mathbf{H} \leftarrow f_\theta(\mathbf{X})$ \hfill \COMMENT{Deep embeddings (normalized)}
 \STATE $\mathbf{w} \leftarrow \text{Softmax}(G_\phi(\mathbf{X}))$ \hfill \COMMENT{Raw-signal routing weights}
 \FOR{$k = 1$ to $K$}
@@ -421,11 +421,11 @@ Table~\ref{tab:rrmoa} presents the central experimental result. Using the \texti
 \toprule
 Method & ETTh1 & ETTm1 & ETTh2 & ETTm2 & Weather & Electricity \\
 \midrule
-Best fixed adapter & 1.10 & 0.85 & 2.74 & 2.95 & 0.47 & 0.47 \\
+Best single expert & 1.10 & 0.85 & 2.74 & 2.95 & 0.47 & 0.47 \\
 AdaMix (hidden routing) & 1.15 & 1.14 & 2.89 & 3.30 & 0.71 & 1.15 \\
 \textbf{RR-MoA (raw routing)} & \textbf{0.55} & \textbf{0.43} & \textbf{0.72} & \textbf{0.37} & \textbf{0.31} & \textbf{0.25} \\
 \midrule
-$\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & --47\% \\
+$\Delta$ (RR-MoA vs best expert) & --50\% & --49\% & --74\% & --87\% & --34\% & --47\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -452,7 +452,7 @@ Weather & --- & 0.195 & --- & --- & \textbf{0.061} (--69\%) \\
 
 \subsection{Search Amortization via Zero-Cost Proxies}
 
-To further reduce the cost of populating the expert pool, we evaluate zero-cost architecture scoring at initialization. The gradient L2-norm $\|\nabla_\theta \mathcal{L}\|_2$ computed on a single batch (Epoch~0, no training) correlates strongly with the 15-epoch test MSE on 3/6 datasets: Spearman $\rho{=}0.905$ ($p{=}0.002$) on Electricity, $\rho{=}0.762$ ($p{=}0.028$) on Weather, and $\rho{=}0.738$ ($p{=}0.037$) on ETTm2. This enables scoring and ranking adapter architectures in ${\sim}300$ms without training, reducing search cost by $6{,}000\times$ on compatible datasets. The proxy fails on ETTh1 and ETTm1. We hypothesize this is tied to dataset stationarity: Electricity and Weather exhibit stable periodic patterns where Epoch~0 gradient geometry already reflects the converged loss landscape, whereas ETTh1's distribution shifts render initialization gradients less predictive. Full scatter plots in Appendix~\ref{app:tzcp}.
+To further reduce the cost of populating the expert pool, we evaluate zero-cost architecture scoring at initialization. The gradient L2-norm $\|\nabla_\phi \mathcal{L}\|_2$ computed on a single batch (Epoch~0, no training) correlates strongly with the 15-epoch test MSE on 3/6 datasets: Spearman $\rho{=}0.905$ ($p{=}0.002$) on Electricity, $\rho{=}0.762$ ($p{=}0.028$) on Weather, and $\rho{=}0.738$ ($p{=}0.037$) on ETTm2. This enables scoring and ranking adapter architectures in ${\sim}300$ms without training, reducing search cost by $6{,}000\times$ on compatible datasets. The proxy fails on ETTh1 and ETTm1. We hypothesize this is tied to dataset stationarity: Electricity and Weather exhibit stable periodic patterns where Epoch~0 gradient geometry already reflects the converged loss landscape, whereas ETTh1's distribution shifts render initialization gradients less predictive. Full scatter plots in Appendix~\ref{app:tzcp}.
 
 \section{Discussion}
 
@@ -464,7 +464,7 @@ To further reduce the cost of populating the expert pool, we evaluate zero-cost 
 
 \section{Conclusion}
 
-We identified a fundamental routing failure in adapting time series foundation models: backbone normalization destroys the hidden-state heterogeneity that mixture-of-experts routing depends on (1/18 wins). Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, bypasses the backbone for routing decisions by reading the raw input signal, achieving \textbf{20/21 wins across forecasting and imputation with 56\% average MSE improvement}---using the exact same experts that fail under standard routing. To populate the expert pool with diverse topologies, we formalized \textbf{Adapter Architecture Search (AAS)}: a code-level search space that strictly subsumes all standard adapters and discovers novel cross-domain patterns (depthwise convolutions, BatchNorm gating, learned feature attention) that Pareto-dominate hand-designed baselines. The combination resolves two bottlenecks: AAS provides \textit{what} experts to use, and raw routing provides \textit{how} to select among them. We hope this work demonstrates that unlocking TSFM adaptation requires rethinking both the adapter architecture and the information flow used to control it.
+We identified a fundamental routing failure in adapting time series foundation models: backbone normalization destroys the hidden-state heterogeneity that mixture-of-experts routing depends on (1/18 wins). Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, bypasses the backbone for routing decisions by reading the raw input signal, achieving \textbf{20/21 wins across forecasting and imputation with 56\% average MSE improvement}. To populate the expert pool with diverse topologies, we formalized \textbf{Adapter Architecture Search (AAS)}: a code-level search space that strictly subsumes all standard adapters and discovers novel cross-domain patterns (depthwise convolutions, BatchNorm gating, learned feature attention) that Pareto-dominate hand-designed baselines. The combination resolves two bottlenecks: AAS provides \textit{what} experts to use, and raw routing provides \textit{how} to select among them. We hope this work demonstrates that unlocking TSFM adaptation requires rethinking both the adapter architecture and the information flow used to control it.
 
 
 \bibliographystyle{plainnat}
