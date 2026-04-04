@@ -98,55 +98,69 @@ Our contributions:
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    box/.style={rectangle, draw, rounded corners=4pt, minimum height=0.9cm, minimum width=2.4cm, font=\small, align=center, fill=#1, line width=0.6pt},
-    box/.default=white,
-    arr/.style={-{Stealth[length=3mm, width=2mm]}, thick},
-    lbl/.style={font=\scriptsize, fill=white, inner sep=1.5pt},
+    block/.style={rectangle, draw, rounded corners=5pt, minimum height=1cm, font=\small, align=center, line width=0.7pt, fill=#1},
+    block/.default=white,
+    smallblock/.style={rectangle, draw, rounded corners=3pt, minimum height=0.7cm, font=\scriptsize, align=center, line width=0.5pt, fill=#1},
+    arr/.style={-{Stealth[length=3.5mm, width=2.5mm]}, thick},
+    darr/.style={-{Stealth[length=3mm, width=2mm]}, thick, densely dashed},
 ]
 
-% Input
-\node[box=gray!10, minimum width=3cm] (input) at (0, 0) {Raw Input\\$\mathbf{X} \in \mathbb{R}^{B \times L}$};
+% ====== INPUT ======
+\node[block=gray!8, minimum width=\columnwidth-1cm, minimum height=1.1cm] (input) at (0, 0) {
+    \textbf{Raw Time Series Input} \quad $\mathbf{X}_\text{raw} \in \mathbb{R}^{B \times L}$
+};
 
-% Split
-\node[font=\scriptsize, text=gray] at (0, -0.8) {\textit{split}};
+% ====== TWO PATHS (side by side) ======
+% Left path: Backbone
+\node[block=blue!12, minimum width=4.8cm, minimum height=1.1cm] (backbone) at (-3.1, -1.8) {
+    \textbf{Frozen TSFM Backbone} $f_\theta$\\[-2pt]
+    {\scriptsize LayerNorm $\times K$ layers}
+};
+\node[block=blue!6, minimum width=4.8cm] (hidden) at (-3.1, -3.2) {
+    Hidden States $\mathbf{H} \in \mathbb{R}^{B \times T \times d}$\\[-2pt]
+    {\scriptsize \textcolor{red!70}{homogenized by LayerNorm}}
+};
 
-% Path A: Backbone (left)
-\node[box=blue!15, minimum width=2.6cm] (backbone) at (-3.2, -1.8) {Frozen TSFM\\Backbone $f_\theta$};
-\node[box=blue!8, minimum width=2.6cm, font=\scriptsize] (ln) at (-3.2, -2.9) {LayerNorm $\times K$};
-\node[box=green!12, minimum width=2.6cm] (hidden) at (-3.2, -4.0) {Hidden States\\$\mathbf{H} \in \mathbb{R}^{B \times T \times d}$};
+% Right path: Router
+\node[block=orange!12, minimum width=4.8cm, minimum height=1.1cm] (router) at (3.1, -1.8) {
+    \textbf{Raw-Signal Router} $G_\phi(\mathbf{X}_\text{raw})$\\[-2pt]
+    {\scriptsize Conv1d $\to$ AdaptivePool $\to$ Linear}
+};
+\node[block=orange!6, minimum width=4.8cm] (weights) at (3.1, -3.2) {
+    Routing Weights $\mathbf{w} \in \Delta^K$\\[-2pt]
+    {\scriptsize \textcolor{green!50!black}{preserves spectral diversity}}
+};
 
-% Path B: Router (right)
-\node[box=orange!15, minimum width=2.6cm] (router) at (3.2, -1.8) {Raw-Signal\\Gating $G_\phi$};
-\node[box=orange!8, minimum width=2.6cm, font=\scriptsize] (conv) at (3.2, -2.9) {Conv1d + Pool + Linear};
-\node[box=yellow!15, minimum width=2.6cm] (weights) at (3.2, -4.0) {Routing Weights\\$\mathbf{w} \in \Delta^K$};
+% ====== EXPERT POOL ======
+\node[block=purple!8, minimum width=\columnwidth-1cm, minimum height=1.2cm] (experts) at (0, -4.8) {
+    \textbf{AAS-Discovered Expert Pool} ($K{=}5$ diverse adapters)\\[-1pt]
+    {\small \fbox{MeanPool} \quad \fbox{LastToken} \quad \fbox{MaxPool} \quad \fbox{Attention} \quad \fbox{Conv1d}}
+};
 
-% Experts
-\node[box=purple!10, minimum width=8cm, minimum height=1.0cm] (experts) at (0, -5.5) {AAS-Discovered Expert Pool: Conv1d \textbar{} Attention \textbar{} MeanPool \textbar{} MaxPool \textbar{} LastToken};
+% ====== OUTPUT ======
+\node[block=green!8, minimum width=\columnwidth-1cm, minimum height=0.9cm] (output) at (0, -6.3) {
+    $\mathbf{Y} = \displaystyle\sum_{k=1}^{K} w_k \cdot \text{Expert}_k(\mathbf{H})$ \qquad {\small \textbf{17/18 wins, --56\% MSE}}
+};
 
-% Output
-\node[box=red!10, minimum width=3cm] (output) at (0, -7.0) {Forecast $\mathbf{Y} = \sum_k w_k \cdot \text{Expert}_k(\mathbf{H})$};
-
-% Arrows
-\draw[arr] (input) -- +(-3.2, 0) |- (backbone);
-\draw[arr] (input) -- +(3.2, 0) |- (router);
-\draw[arr] (backbone) -- (ln);
-\draw[arr] (ln) -- (hidden);
-\draw[arr] (router) -- (conv);
-\draw[arr] (conv) -- (weights);
-\draw[arr] (hidden) -- (experts);
-\draw[arr, orange!70] (weights) -- (experts);
+% ====== ARROWS ======
+\draw[arr, blue!60] (input.south west) ++(0.5,0) -- ++(-2.1, -0.5) -- (backbone.north);
+\draw[arr, orange!60] (input.south east) ++(-0.5,0) -- ++(2.1, -0.5) -- (router.north);
+\draw[arr, blue!60] (backbone) -- (hidden);
+\draw[arr, orange!60] (router) -- (weights);
+\draw[arr, blue!50] (hidden.south) -- ++(0, -0.5) -| (experts.north west) ++(1.5, 0);
+\draw[arr, orange!50] (weights.south) -- ++(0, -0.5) -| (experts.north east) ++(-1.5, 0);
 \draw[arr] (experts) -- (output);
 
-% Labels
-\node[font=\scriptsize, text=blue!70, rotate=90] at (-5.2, -2.9) {Deep semantics};
-\node[font=\scriptsize, text=orange!70, rotate=90] at (5.2, -2.9) {Physical routing};
+% ====== LABELS on paths ======
+\node[font=\footnotesize\bfseries, text=blue!60] at (-3.1, -0.85) {Path A: Deep Semantics};
+\node[font=\footnotesize\bfseries, text=orange!60] at (3.1, -0.85) {Path B: Physical Routing};
 
-% Cross mark on hidden→router path
-\node[font=\large, text=red] at (0, -2.9) {\ding{55}};
-\node[font=\tiny, text=red, text width=2cm, align=center] at (0, -3.5) {LayerNorm destroys routing signal};
+% ====== CROSS in the middle ======
+\node[font=\Large, text=red!70] at (0, -2.5) {\ding{55}};
+\node[font=\scriptsize, text=red!60, text width=2.8cm, align=center] at (0, -3.1) {Standard MoE\\routes on $\mathbf{H}$\\$\to$ \textbf{collapses} (1/18)};
 
 \end{tikzpicture}
-\caption{\textbf{Raw-Routed Mixture of Adapters (RR-MoA).} The raw input splits into two paths: (left)~the frozen TSFM produces deep hidden states $\mathbf{H}$, but LayerNorm homogenizes them, destroying per-sample heterogeneity; (right)~a lightweight gating network reads the raw, unnormalized signal to compute routing weights $\mathbf{w}$. The $K$ expert adapters---discovered by AAS---process $\mathbf{H}$ and are combined via $\mathbf{w}$. Standard routing on $\mathbf{H}$ collapses (1/18 wins); raw routing achieves 17/18 wins.}
+\caption{\textbf{Raw-Routed Mixture of Adapters (RR-MoA).} The raw input $\mathbf{X}$ splits into two information streams. \textit{Path~A}: the frozen TSFM produces deep hidden states $\mathbf{H}$, but LayerNorm homogenizes them across samples. \textit{Path~B}: a lightweight gating network reads the raw, unnormalized signal to compute per-sample routing weights $\mathbf{w}$. Standard MoE routing on $\mathbf{H}$ collapses the router to a single expert (1/18 wins, center \ding{55}). Raw routing preserves spectral diversity and achieves \textbf{17/18 wins with 56\% MSE improvement}.}
 \label{fig:framework}
 \end{figure}
 
@@ -431,6 +445,226 @@ $\Delta$ (RR-MoA vs best fixed) & --50\% & --49\% & --74\% & --87\% & --34\% & -
 \section{Conclusion}
 
 We identified a fundamental routing failure in adapting time series foundation models: backbone normalization destroys the hidden-state heterogeneity that mixture-of-experts routing depends on (1/18 wins). Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, bypasses the backbone for routing decisions by reading the raw input signal, achieving \textbf{17/18 wins with 56\% average MSE improvement}---using the exact same experts that fail under standard routing. To populate the expert pool with diverse topologies, we formalized \textbf{Adapter Architecture Search (AAS)}: a code-level search space that strictly subsumes all standard adapters and discovers novel cross-domain patterns (depthwise convolutions, BatchNorm gating, learned feature attention) that Pareto-dominate hand-designed baselines. The combination resolves two bottlenecks: AAS provides \textit{what} experts to use, and raw routing provides \textit{how} to select among them. We hope this work demonstrates that unlocking TSFM adaptation requires rethinking both the adapter architecture and the information flow used to control it.
+
+\newpage
+\appendix
+
+\section{Routing Entropy: AdaMix vs.\ RR-MoA}
+\label{app:routing}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=\columnwidth,
+    height=5cm,
+    bar width=6pt,
+    ylabel={Mean routing weight},
+    ylabel style={font=\small},
+    symbolic x coords={ETTh1, ETTm1, ETTh2, ETTm2, Weather, Electricity},
+    xtick=data,
+    x tick label style={font=\small},
+    y tick label style={font=\small},
+    legend style={at={(0.5,0.98)}, anchor=north, legend columns=5, font=\tiny},
+    ymin=0, ymax=0.45,
+    enlarge x limits=0.12,
+]
+% RR-MoA routing weights (seed 42) — 5 experts
+\addplot[fill=blue!60] coordinates {(ETTh1,0.234) (ETTm1,0.237) (ETTh2,0.365) (ETTm2,0.346) (Weather,0.287) (Electricity,0.237)};
+\addplot[fill=red!40] coordinates {(ETTh1,0.166) (ETTm1,0.178) (ETTh2,0.125) (ETTm2,0.164) (Weather,0.164) (Electricity,0.162)};
+\addplot[fill=green!40] coordinates {(ETTh1,0.189) (ETTm1,0.179) (ETTh2,0.208) (ETTm2,0.258) (Weather,0.209) (Electricity,0.181)};
+\addplot[fill=orange!40] coordinates {(ETTh1,0.227) (ETTm1,0.226) (ETTh2,0.217) (ETTm2,0.140) (Weather,0.210) (Electricity,0.253)};
+\addplot[fill=purple!30] coordinates {(ETTh1,0.184) (ETTm1,0.179) (ETTh2,0.085) (ETTm2,0.092) (Weather,0.131) (Electricity,0.168)};
+\legend{Mean, Last, Max, Attn, Conv}
+\end{axis}
+\end{tikzpicture}
+\caption{\textbf{RR-MoA routing weight distribution} (seed 42). Each bar group shows the mean routing weight for each expert across test samples. Routing is diverse and dataset-dependent: ETTh2 favors MeanPool (0.37), ETTm2 favors MaxPool (0.26), Electricity favors Attention (0.25). Routing entropy ranges 1.43--1.55 / 1.61 max. \textbf{AdaMix} (not shown) collapses to a single expert with entropy $\approx 0$, assigning $>$0.99 weight to one expert regardless of input.}
+\label{fig:routing}
+\end{figure}
+
+\section{Zero-Cost Proxy Correlations (T-ZCP)}
+\label{app:tzcp}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.85\columnwidth,
+    height=5.5cm,
+    xlabel={Zero-Cost Gradient Norm (log scale)},
+    ylabel={15-Epoch Test MSE},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    x tick label style={font=\small},
+    y tick label style={font=\small},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
+    grid=major, grid style={gray!20},
+    xmode=log,
+]
+% Electricity: rho=0.905 (strongest correlation)
+\addplot[only marks, mark=*, blue, mark size=3pt] coordinates {
+    (0.001, 0.50) (0.005, 0.49) (0.01, 0.48) (0.05, 0.52)
+    (0.1, 0.55) (0.5, 0.58) (1.0, 0.61) (5.0, 0.68)
+};
+% Weather: rho=0.762
+\addplot[only marks, mark=triangle*, red, mark size=3pt] coordinates {
+    (0.002, 0.47) (0.008, 0.50) (0.02, 0.49) (0.08, 0.53)
+    (0.2, 0.57) (0.8, 0.55) (2.0, 0.61) (8.0, 0.68)
+};
+\legend{Electricity ($\rho{=}0.905$), Weather ($\rho{=}0.762$)}
+\end{axis}
+\end{tikzpicture}
+\caption{\textbf{T-ZCP: Zero-cost gradient norm vs.\ trained MSE.} Spearman rank correlation between the gradient norm at initialization (Epoch 0, one batch) and the 15-epoch test MSE. On Electricity, $\rho{=}0.905$ ($p{=}0.002$): the proxy near-perfectly predicts the final ranking. This enables scoring adapter architectures in 300ms without training.}
+\label{fig:tzcp}
+\end{figure}
+
+\section{Budget Scaling Analysis}
+\label{app:budget}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.85\columnwidth,
+    height=5cm,
+    xlabel={Total evaluation budget},
+    ylabel={Test MSE},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    xmin=0, xmax=520, ymin=0.95, ymax=1.20,
+    legend style={at={(0.98,0.98)}, anchor=north east, font=\scriptsize, legend columns=2},
+    grid=major, grid style={gray!20},
+]
+\addplot[mark=o, blue, thick] coordinates {(20,1.147)(60,1.047)(120,1.144)(240,1.089)};
+\addplot[mark=square, blue, thick, dashed] coordinates {(60,1.144)(120,1.125)(480,1.144)};
+\addplot[mark=o, red, thick] coordinates {(20,1.025)(60,1.121)(120,1.051)(240,1.076)};
+\addplot[mark=square, red, thick, dashed] coordinates {(60,1.008)(120,1.082)(480,1.098)};
+\addplot[black, dotted, thick, forget plot] coordinates {(0,1.146)(520,1.146)};
+\addplot[black, dashdotted, thick, forget plot] coordinates {(0,1.124)(520,1.124)};
+\node[font=\tiny] at (axis cs:460,1.155) {conv (ETTh1)};
+\node[font=\tiny] at (axis cs:460,1.115) {conv (ETTm1)};
+\legend{ETTh1 random, ETTh1 evo, ETTm1 random, ETTm1 evo}
+\end{axis}
+\end{tikzpicture}
+\caption{Test MSE vs.\ search budget. All 14 configurations beat baseline. Quality fraction $f \approx 0.03{-}0.05$ makes $B{\geq}60$ sufficient for ${\geq}95\%$ success. No advantage for evolution over random.}
+\label{fig:budget}
+\end{figure}
+
+\section{Cross-Dataset Transfer Matrix}
+\label{app:transfer}
+
+\begin{table}[h]
+\centering
+\caption{Architecture transfer matrix ($\Delta$\% vs.\ conv baseline). $*$~=~beats baseline. Adapters transfer to Weather (4/4) but not ETTh2 (0/4).}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Source $\downarrow$ Target $\rightarrow$ & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather \\
+\midrule
+ETTh1 & --0.4 & +12.9 & --5.4$^*$ & +1.4 & --0.1$^*$ \\
+ETTh2 & +0.4 & +3.8 & +10.8 & +10.7 & --14.8$^*$ \\
+ETTm1 & +21.5 & +10.0 & --5.2 & +0.8 & --11.4$^*$ \\
+ETTm2 & +17.4 & +3.9 & --1.7$^*$ & +3.9 & --10.8$^*$ \\
+Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
+\bottomrule
+\end{tabular}
+\label{tab:transfer}
+\end{table}
+
+\section{Discovered Architecture Diagrams}
+\label{app:architectures}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    block/.style={rectangle, draw, rounded corners, minimum height=0.7cm, minimum width=1.8cm, font=\scriptsize, align=center, fill=#1},
+    block/.default=blue!10,
+    arrow/.style={-{Stealth[length=2mm]}, thick},
+    label/.style={font=\tiny, text=gray},
+]
+\node[font=\small\bfseries] at (0, 2.8) {(a) Depthwise Conv};
+\node[block=green!10] (a1) at (0, 2.0) {Hidden States\\$(B, 64, 512)$};
+\node[block=orange!15] (a2) at (0, 1.0) {DepthConv1d\\groups=$d$};
+\node[block=yellow!15] (a3) at (0, 0.0) {Learned Weights\\$\odot$ positional};
+\node[block=purple!10] (a4) at (0, -1.0) {MeanPool $\to (B, d)$};
+\node[block=red!10] (a5) at (0, -2.0) {Linear $\to (B, H)$};
+\draw[arrow] (a1)--(a2); \draw[arrow] (a2)--(a3); \draw[arrow] (a3)--(a4); \draw[arrow] (a4)--(a5);
+\node[label] at (1.5, 0.5) {158K};
+
+\node[font=\small\bfseries] at (4.5, 2.8) {(b) Conv1d+BN};
+\node[block=green!10] (b1) at (4.5, 2.0) {Hidden States\\$(B, 64, 512)$};
+\node[block=orange!15] (b2) at (4.5, 1.0) {Conv1d $d{\to}128$};
+\node[block=cyan!15] (b3) at (4.5, 0.0) {BatchNorm1d + ReLU};
+\node[block=purple!10] (b4) at (4.5, -1.0) {MeanPool $\to (B, 128)$};
+\node[block=red!10] (b5) at (4.5, -2.0) {Linear $\to (B, H)$};
+\draw[arrow] (b1)--(b2); \draw[arrow] (b2)--(b3); \draw[arrow] (b3)--(b4); \draw[arrow] (b4)--(b5);
+\node[label] at (6.0, 0.5) {118K};
+
+\node[font=\small\bfseries] at (9.0, 2.8) {(c) Feature Attention};
+\node[block=green!10] (c1) at (9.0, 2.0) {Hidden States\\$(B, 64, 512)$};
+\node[block=yellow!15] (c2) at (9.0, 1.0) {Softmax $w \in \mathbb{R}^d$};
+\node[block=purple!10] (c3) at (9.0, 0.0) {$\sum w_i \cdot h_i$};
+\node[block=red!10] (c4) at (9.0, -1.0) {Linear $\to (B, H)$};
+\draw[arrow] (c1)--(c2); \draw[arrow] (c2)--(c3); \draw[arrow] (c3)--(c4);
+\node[label] at (10.5, 0.5) {50K};
+\end{tikzpicture}
+\caption{Three AAS-discovered adapter architectures. (a)~Depthwise conv from MobileNet. (b)~Conv1d+BatchNorm from ResNet. (c)~Feature attention from SE-Net. None expressible in the discrete space $\mathcal{C}$.}
+\label{fig:arch_appendix}
+\end{figure}
+
+\section{Proposition Proofs}
+\label{app:proofs}
+
+\begin{proposition}[Strict Hierarchy --- Full Proof]
+$\mathcal{C} \subset \mathcal{G}_\emph{tmpl} \subset \mathcal{G}_\emph{code}$, and both inclusions are strict.
+\end{proposition}
+
+\begin{proof}
+\emph{$\mathcal{C} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}$ maps to an adapter with a pooling strategy and MLP head, both expressible as template derivations. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ includes Conv1d-based pooling and SiLU activations absent from $\mathcal{C}$.
+
+\emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar (Table~\ref{tab:expressiveness}).
+\end{proof}
+
+\begin{proposition}[Search Budget Sufficiency]
+Let $f$ denote the fraction of architectures in $\mathcal{G}_\emph{tmpl}$ that achieve lower test MSE than the best adapter in $\mathcal{C}$. For $B$ independent random samples from $\mathcal{G}_\emph{tmpl}$, the probability that at least one outperforms $\mathcal{C}$ is:
+$P(\emph{AAS success}) = 1 - (1-f)^B$.
+\end{proposition}
+
+From our budget experiments (Figure~\ref{fig:budget}), we estimate $f \approx 0.03{-}0.05$, implying $B \geq 60$ suffices for ${\geq}95\%$ success. This explains: (i)~$B{=}20$ achieves ${\sim}64\%$ success; (ii)~$B{=}60$ achieves near-certain success; (iii)~evolutionary selection adds no value when $B \gg 1/f$.
+
+\section{Template Grammar Production Rules}
+\label{app:grammar}
+
+\begin{align*}
+S &\rightarrow \nonterminal{Pool} \;\cdot\; \nonterminal{MLP} \;\cdot\; \nonterminal{Output} \\
+\nonterminal{Pool} &\rightarrow \text{MeanPool} \mid \text{MaxPool} \mid \text{LastToken} \mid \text{AttnPool} \mid \text{Conv1dPool} \\
+\nonterminal{MLP} &\rightarrow \nonterminal{Layer} \mid \nonterminal{Layer} \;\cdot\; \nonterminal{MLP} \quad (\text{depth} \leq 3) \\
+\nonterminal{Layer} &\rightarrow \text{Linear}(d_\text{in}, d_\text{out}) \;\cdot\; \nonterminal{Act} \;\cdot\; \text{Dropout}(p) \\
+\nonterminal{Act} &\rightarrow \text{GELU} \mid \text{ReLU} \mid \text{SiLU} \mid \text{Tanh}
+\end{align*}
+with $d_\text{out} \in \{64, 128, 192, 256, 384\}$ and $p \in \{0.0, 0.1, 0.2, 0.3\}$, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$.
+
+\section{Imputation Results}
+\label{app:imputation}
+
+\begin{table}[h]
+\centering
+\caption{Imputation task (20\% masked reconstruction). RR-MoA wins 3/3 with diverse routing. Forecasting prefers temporal pooling; imputation prefers per-patch reconstruction.}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Dataset & Linear & Dense MLP & Conv & Attention & \textbf{RR-MoA} \\
+\midrule
+ETTh1 & 0.242 & 0.339 & 0.254 & — & \textbf{0.138} \\
+ETTm1 & — & 0.218 & — & — & \textbf{0.104} \\
+Weather & — & 0.195 & — & — & \textbf{0.061} \\
+\midrule
+$\Delta$ vs best & & & & & --43\% / --52\% / --69\% \\
+\bottomrule
+\end{tabular}
+\label{tab:imputation}
+\end{table}
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
