@@ -48,7 +48,7 @@
 \maketitle
 
 \begin{abstract}
-Adapting frozen time series foundation models (TSFMs) to downstream tasks currently relies on static, hand-designed adapter heads. While dynamically routing across diverse adapter topologies via mixture-of-experts (MoE) offers a path to task-specific specialization, we identify a fatal structural bottleneck: standard MoE routing collapses to a single expert (1/18 wins) because heavy backbone normalization destroys the hidden-state heterogeneity required for per-sample routing. We propose an end-to-end framework addressing both \textit{what} adapters to use and \textit{how} to route among them. First, we formalize \textbf{Adapter Architecture Search (AAS)} over an unbounded space of PyTorch \texttt{nn.Module} programs. AAS discovers novel cross-domain architectures---depthwise convolutions, BatchNorm gating, learned feature attention---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters). Second, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, which bypasses the frozen backbone entirely for routing: a lightweight gating network reads the raw, unnormalized input signal to select among AAS-discovered experts that process the backbone's deep embeddings. RR-MoA achieves \textbf{17/18 wins with 56\% average MSE improvement} across 6 datasets and 3 seeds---using the exact same experts that fail under standard routing. We further show that zero-cost gradient proxies predict trained adapter MSE at initialization ($\rho{=}0.905$), amortizing the search cost to milliseconds.
+Adapting frozen time series foundation models (TSFMs) to downstream tasks currently relies on static, hand-designed adapter heads. While dynamically routing across diverse adapter topologies via mixture-of-experts (MoE) offers a path to task-specific specialization, we identify a fatal structural bottleneck: standard MoE routing collapses to a single expert (1/18 wins) because heavy backbone normalization destroys the hidden-state heterogeneity required for per-sample routing. We propose an end-to-end framework addressing both \textit{what} adapters to use and \textit{how} to route among them. First, we formalize \textbf{Adapter Architecture Search (AAS)} over an unbounded space of PyTorch \texttt{nn.Module} programs. AAS discovers novel cross-domain architectures---depthwise convolutions, BatchNorm gating, learned feature attention---that Pareto-dominate hand-designed baselines (63\% achieve both lower MSE and fewer parameters). Second, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, which bypasses the frozen backbone entirely for routing: a lightweight gating network reads the raw, unnormalized input signal to select among AAS-discovered experts that process the backbone's deep embeddings. RR-MoA achieves \textbf{20/21 wins} across forecasting and imputation tasks with an average \textbf{56\% MSE improvement}---using the exact same experts that fail under standard routing. We further show that zero-cost gradient proxies predict trained adapter MSE at initialization ($\rho{=}0.905$), amortizing the search cost to milliseconds.
 \end{abstract}
 
 \section{Introduction}
@@ -462,169 +462,8 @@ To further reduce the cost of populating the expert pool, we evaluate zero-cost 
 
 \section{Conclusion}
 
-We identified a fundamental routing failure in adapting time series foundation models: backbone normalization destroys the hidden-state heterogeneity that mixture-of-experts routing depends on (1/18 wins). Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, bypasses the backbone for routing decisions by reading the raw input signal, achieving \textbf{17/18 wins with 56\% average MSE improvement}---using the exact same experts that fail under standard routing. To populate the expert pool with diverse topologies, we formalized \textbf{Adapter Architecture Search (AAS)}: a code-level search space that strictly subsumes all standard adapters and discovers novel cross-domain patterns (depthwise convolutions, BatchNorm gating, learned feature attention) that Pareto-dominate hand-designed baselines. The combination resolves two bottlenecks: AAS provides \textit{what} experts to use, and raw routing provides \textit{how} to select among them. We hope this work demonstrates that unlocking TSFM adaptation requires rethinking both the adapter architecture and the information flow used to control it.
+We identified a fundamental routing failure in adapting time series foundation models: backbone normalization destroys the hidden-state heterogeneity that mixture-of-experts routing depends on (1/18 wins). Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, bypasses the backbone for routing decisions by reading the raw input signal, achieving \textbf{20/21 wins across forecasting and imputation with 56\% average MSE improvement}---using the exact same experts that fail under standard routing. To populate the expert pool with diverse topologies, we formalized \textbf{Adapter Architecture Search (AAS)}: a code-level search space that strictly subsumes all standard adapters and discovers novel cross-domain patterns (depthwise convolutions, BatchNorm gating, learned feature attention) that Pareto-dominate hand-designed baselines. The combination resolves two bottlenecks: AAS provides \textit{what} experts to use, and raw routing provides \textit{how} to select among them. We hope this work demonstrates that unlocking TSFM adaptation requires rethinking both the adapter architecture and the information flow used to control it.
 
-\newpage
-\appendix
-
-% Routing entropy figure moved to main text (Figure 2)
-
-\section{Zero-Cost Proxy Correlations (T-ZCP)}
-\label{app:tzcp}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.85\columnwidth,
-    height=5.5cm,
-    xlabel={Zero-Cost Gradient Norm (log scale)},
-    ylabel={15-Epoch Test MSE},
-    xlabel style={font=\small},
-    ylabel style={font=\small},
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
-    grid=major, grid style={gray!20},
-    xmode=log,
-]
-% Electricity: rho=0.905 (strongest correlation)
-\addplot[only marks, mark=*, blue, mark size=3pt] coordinates {
-    (0.001, 0.50) (0.005, 0.49) (0.01, 0.48) (0.05, 0.52)
-    (0.1, 0.55) (0.5, 0.58) (1.0, 0.61) (5.0, 0.68)
-};
-% Weather: rho=0.762
-\addplot[only marks, mark=triangle*, red, mark size=3pt] coordinates {
-    (0.002, 0.47) (0.008, 0.50) (0.02, 0.49) (0.08, 0.53)
-    (0.2, 0.57) (0.8, 0.55) (2.0, 0.61) (8.0, 0.68)
-};
-\legend{Electricity ($\rho{=}0.905$), Weather ($\rho{=}0.762$)}
-\end{axis}
-\end{tikzpicture}
-\caption{\textbf{T-ZCP: Zero-cost gradient norm vs.\ trained MSE.} Spearman rank correlation between the gradient norm at initialization (Epoch 0, one batch) and the 15-epoch test MSE. On Electricity, $\rho{=}0.905$ ($p{=}0.002$): the proxy near-perfectly predicts the final ranking. This enables scoring adapter architectures in 300ms without training.}
-\label{fig:tzcp}
-\end{figure}
-
-\section{Budget Scaling Analysis}
-\label{app:budget}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.85\columnwidth,
-    height=5cm,
-    xlabel={Total evaluation budget},
-    ylabel={Test MSE},
-    xlabel style={font=\small},
-    ylabel style={font=\small},
-    xmin=0, xmax=520, ymin=0.95, ymax=1.20,
-    legend style={at={(0.98,0.98)}, anchor=north east, font=\scriptsize, legend columns=2},
-    grid=major, grid style={gray!20},
-]
-\addplot[mark=o, blue, thick] coordinates {(20,1.147)(60,1.047)(120,1.144)(240,1.089)};
-\addplot[mark=square, blue, thick, dashed] coordinates {(60,1.144)(120,1.125)(480,1.144)};
-\addplot[mark=o, red, thick] coordinates {(20,1.025)(60,1.121)(120,1.051)(240,1.076)};
-\addplot[mark=square, red, thick, dashed] coordinates {(60,1.008)(120,1.082)(480,1.098)};
-\addplot[black, dotted, thick, forget plot] coordinates {(0,1.146)(520,1.146)};
-\addplot[black, dashdotted, thick, forget plot] coordinates {(0,1.124)(520,1.124)};
-\node[font=\tiny] at (axis cs:460,1.155) {conv (ETTh1)};
-\node[font=\tiny] at (axis cs:460,1.115) {conv (ETTm1)};
-\legend{ETTh1 random, ETTh1 evo, ETTm1 random, ETTm1 evo}
-\end{axis}
-\end{tikzpicture}
-\caption{Test MSE vs.\ search budget. All 14 configurations beat baseline. Quality fraction $f \approx 0.03{-}0.05$ makes $B{\geq}60$ sufficient for ${\geq}95\%$ success. No advantage for evolution over random.}
-\label{fig:budget}
-\end{figure}
-
-\section{Cross-Dataset Transfer Matrix}
-\label{app:transfer}
-
-\begin{table}[h]
-\centering
-\caption{Architecture transfer matrix ($\Delta$\% vs.\ conv baseline). $*$~=~beats baseline. Adapters transfer to Weather (4/4) but not ETTh2 (0/4).}
-\small
-\begin{tabular}{@{}lccccc@{}}
-\toprule
-Source $\downarrow$ Target $\rightarrow$ & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather \\
-\midrule
-ETTh1 & --0.4 & +12.9 & --5.4$^*$ & +1.4 & --0.1$^*$ \\
-ETTh2 & +0.4 & +3.8 & +10.8 & +10.7 & --14.8$^*$ \\
-ETTm1 & +21.5 & +10.0 & --5.2 & +0.8 & --11.4$^*$ \\
-ETTm2 & +17.4 & +3.9 & --1.7$^*$ & +3.9 & --10.8$^*$ \\
-Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
-\bottomrule
-\end{tabular}
-\label{tab:transfer}
-\end{table}
-
-\section{Discovered Architecture Diagrams}
-\label{app:architectures}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-    block/.style={rectangle, draw, rounded corners, minimum height=0.7cm, minimum width=1.8cm, font=\scriptsize, align=center, fill=#1},
-    block/.default=blue!10,
-    arrow/.style={-{Stealth[length=2mm]}, thick},
-    label/.style={font=\tiny, text=gray},
-]
-\node[font=\small\bfseries] at (0, 2.8) {(a) Depthwise Conv};
-\node[block=green!10] (a1) at (0, 2.0) {Hidden States\\$(B, 64, 512)$};
-\node[block=orange!15] (a2) at (0, 1.0) {DepthConv1d\\groups=$d$};
-\node[block=yellow!15] (a3) at (0, 0.0) {Learned Weights\\$\odot$ positional};
-\node[block=purple!10] (a4) at (0, -1.0) {MeanPool $\to (B, d)$};
-\node[block=red!10] (a5) at (0, -2.0) {Linear $\to (B, H)$};
-\draw[arrow] (a1)--(a2); \draw[arrow] (a2)--(a3); \draw[arrow] (a3)--(a4); \draw[arrow] (a4)--(a5);
-\node[label] at (1.5, 0.5) {158K};
-
-\node[font=\small\bfseries] at (4.5, 2.8) {(b) Conv1d+BN};
-\node[block=green!10] (b1) at (4.5, 2.0) {Hidden States\\$(B, 64, 512)$};
-\node[block=orange!15] (b2) at (4.5, 1.0) {Conv1d $d{\to}128$};
-\node[block=cyan!15] (b3) at (4.5, 0.0) {BatchNorm1d + ReLU};
-\node[block=purple!10] (b4) at (4.5, -1.0) {MeanPool $\to (B, 128)$};
-\node[block=red!10] (b5) at (4.5, -2.0) {Linear $\to (B, H)$};
-\draw[arrow] (b1)--(b2); \draw[arrow] (b2)--(b3); \draw[arrow] (b3)--(b4); \draw[arrow] (b4)--(b5);
-\node[label] at (6.0, 0.5) {118K};
-
-\node[font=\small\bfseries] at (9.0, 2.8) {(c) Feature Attention};
-\node[block=green!10] (c1) at (9.0, 2.0) {Hidden States\\$(B, 64, 512)$};
-\node[block=yellow!15] (c2) at (9.0, 1.0) {Softmax $w \in \mathbb{R}^d$};
-\node[block=purple!10] (c3) at (9.0, 0.0) {$\sum w_i \cdot h_i$};
-\node[block=red!10] (c4) at (9.0, -1.0) {Linear $\to (B, H)$};
-\draw[arrow] (c1)--(c2); \draw[arrow] (c2)--(c3); \draw[arrow] (c3)--(c4);
-\node[label] at (10.5, 0.5) {50K};
-\end{tikzpicture}
-\caption{Three AAS-discovered adapter architectures. (a)~Depthwise conv from MobileNet. (b)~Conv1d+BatchNorm from ResNet. (c)~Feature attention from SE-Net. None expressible in the discrete space $\mathcal{C}$.}
-\label{fig:arch_appendix}
-\end{figure}
-
-\section{Proposition Proofs}
-\label{app:proofs}
-
-\textbf{Proof of Proposition~\ref{prop:hierarchy}} (Strict Hierarchy: $\mathcal{C} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$).
-
-\begin{proof}
-\emph{$\mathcal{C} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}$ maps to an adapter with a pooling strategy and MLP head, both expressible as template derivations. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ includes Conv1d-based pooling and SiLU activations absent from $\mathcal{C}$.
-
-\emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar (Table~\ref{tab:expressiveness}).
-\end{proof}
-
-\textbf{Budget Sufficiency.} Let $f$ denote the fraction of architectures in $\mathcal{G}_\text{tmpl}$ that achieve lower test MSE than the best adapter in $\mathcal{C}$. For $B$ independent random samples, $P(\text{success}) = 1 - (1-f)^B$. From Figure~\ref{fig:budget}, $f \approx 0.03{-}0.05$, so $B \geq 60$ suffices for ${\geq}95\%$ success. This explains: (i)~$B{=}20$ achieves ${\sim}64\%$ success; (ii)~$B{=}60$ achieves near-certain success; (iii)~evolutionary selection adds no value when $B \gg 1/f$.
-
-\section{Template Grammar Production Rules}
-\label{app:grammar}
-
-\begin{align*}
-S &\rightarrow \nonterminal{Pool} \;\cdot\; \nonterminal{MLP} \;\cdot\; \nonterminal{Output} \\
-\nonterminal{Pool} &\rightarrow \text{MeanPool} \mid \text{MaxPool} \mid \text{LastToken} \mid \text{AttnPool} \mid \text{Conv1dPool} \\
-\nonterminal{MLP} &\rightarrow \nonterminal{Layer} \mid \nonterminal{Layer} \;\cdot\; \nonterminal{MLP} \quad (\text{depth} \leq 3) \\
-\nonterminal{Layer} &\rightarrow \text{Linear}(d_\text{in}, d_\text{out}) \;\cdot\; \nonterminal{Act} \;\cdot\; \text{Dropout}(p) \\
-\nonterminal{Act} &\rightarrow \text{GELU} \mid \text{ReLU} \mid \text{SiLU} \mid \text{Tanh}
-\end{align*}
-with $d_\text{out} \in \{64, 128, 192, 256, 384\}$ and $p \in \{0.0, 0.1, 0.2, 0.3\}$, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$.
-
-% Imputation table moved to main text (Section 4.5)
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
@@ -1012,5 +851,167 @@ Vijay Ekambaram, Arindam Jati, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kal
 \newblock \textit{arXiv preprint arXiv:2401.03955}, 2024.
 
 \end{thebibliography}
+
+\newpage
+\appendix
+
+% Routing entropy figure moved to main text (Figure 2)
+
+\section{Zero-Cost Proxy Correlations (T-ZCP)}
+\label{app:tzcp}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.85\columnwidth,
+    height=5.5cm,
+    xlabel={Zero-Cost Gradient Norm (log scale)},
+    ylabel={15-Epoch Test MSE},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    x tick label style={font=\small},
+    y tick label style={font=\small},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
+    grid=major, grid style={gray!20},
+    xmode=log,
+]
+% Electricity: rho=0.905 (strongest correlation)
+\addplot[only marks, mark=*, blue, mark size=3pt] coordinates {
+    (0.001, 0.50) (0.005, 0.49) (0.01, 0.48) (0.05, 0.52)
+    (0.1, 0.55) (0.5, 0.58) (1.0, 0.61) (5.0, 0.68)
+};
+% Weather: rho=0.762
+\addplot[only marks, mark=triangle*, red, mark size=3pt] coordinates {
+    (0.002, 0.47) (0.008, 0.50) (0.02, 0.49) (0.08, 0.53)
+    (0.2, 0.57) (0.8, 0.55) (2.0, 0.61) (8.0, 0.68)
+};
+\legend{Electricity ($\rho{=}0.905$), Weather ($\rho{=}0.762$)}
+\end{axis}
+\end{tikzpicture}
+\caption{\textbf{T-ZCP: Zero-cost gradient norm vs.\ trained MSE.} Spearman rank correlation between the gradient norm at initialization (Epoch 0, one batch) and the 15-epoch test MSE. On Electricity, $\rho{=}0.905$ ($p{=}0.002$): the proxy near-perfectly predicts the final ranking. This enables scoring adapter architectures in 300ms without training.}
+\label{fig:tzcp}
+\end{figure}
+
+\section{Budget Scaling Analysis}
+\label{app:budget}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.85\columnwidth,
+    height=5cm,
+    xlabel={Total evaluation budget},
+    ylabel={Test MSE},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    xmin=0, xmax=520, ymin=0.95, ymax=1.20,
+    legend style={at={(0.98,0.98)}, anchor=north east, font=\scriptsize, legend columns=2},
+    grid=major, grid style={gray!20},
+]
+\addplot[mark=o, blue, thick] coordinates {(20,1.147)(60,1.047)(120,1.144)(240,1.089)};
+\addplot[mark=square, blue, thick, dashed] coordinates {(60,1.144)(120,1.125)(480,1.144)};
+\addplot[mark=o, red, thick] coordinates {(20,1.025)(60,1.121)(120,1.051)(240,1.076)};
+\addplot[mark=square, red, thick, dashed] coordinates {(60,1.008)(120,1.082)(480,1.098)};
+\addplot[black, dotted, thick, forget plot] coordinates {(0,1.146)(520,1.146)};
+\addplot[black, dashdotted, thick, forget plot] coordinates {(0,1.124)(520,1.124)};
+\node[font=\tiny] at (axis cs:460,1.155) {conv (ETTh1)};
+\node[font=\tiny] at (axis cs:460,1.115) {conv (ETTm1)};
+\legend{ETTh1 random, ETTh1 evo, ETTm1 random, ETTm1 evo}
+\end{axis}
+\end{tikzpicture}
+\caption{Test MSE vs.\ search budget. All 14 configurations beat baseline. Quality fraction $f \approx 0.03{-}0.05$ makes $B{\geq}60$ sufficient for ${\geq}95\%$ success. No advantage for evolution over random.}
+\label{fig:budget}
+\end{figure}
+
+\section{Cross-Dataset Transfer Matrix}
+\label{app:transfer}
+
+\begin{table}[h]
+\centering
+\caption{Architecture transfer matrix ($\Delta$\% vs.\ conv baseline). $*$~=~beats baseline. Adapters transfer to Weather (4/4) but not ETTh2 (0/4).}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Source $\downarrow$ Target $\rightarrow$ & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather \\
+\midrule
+ETTh1 & --0.4 & +12.9 & --5.4$^*$ & +1.4 & --0.1$^*$ \\
+ETTh2 & +0.4 & +3.8 & +10.8 & +10.7 & --14.8$^*$ \\
+ETTm1 & +21.5 & +10.0 & --5.2 & +0.8 & --11.4$^*$ \\
+ETTm2 & +17.4 & +3.9 & --1.7$^*$ & +3.9 & --10.8$^*$ \\
+Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
+\bottomrule
+\end{tabular}
+\label{tab:transfer}
+\end{table}
+
+\section{Discovered Architecture Diagrams}
+\label{app:architectures}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    block/.style={rectangle, draw, rounded corners, minimum height=0.7cm, minimum width=1.8cm, font=\scriptsize, align=center, fill=#1},
+    block/.default=blue!10,
+    arrow/.style={-{Stealth[length=2mm]}, thick},
+    label/.style={font=\tiny, text=gray},
+]
+\node[font=\small\bfseries] at (0, 2.8) {(a) Depthwise Conv};
+\node[block=green!10] (a1) at (0, 2.0) {Hidden States\\$(B, 64, 512)$};
+\node[block=orange!15] (a2) at (0, 1.0) {DepthConv1d\\groups=$d$};
+\node[block=yellow!15] (a3) at (0, 0.0) {Learned Weights\\$\odot$ positional};
+\node[block=purple!10] (a4) at (0, -1.0) {MeanPool $\to (B, d)$};
+\node[block=red!10] (a5) at (0, -2.0) {Linear $\to (B, H)$};
+\draw[arrow] (a1)--(a2); \draw[arrow] (a2)--(a3); \draw[arrow] (a3)--(a4); \draw[arrow] (a4)--(a5);
+\node[label] at (1.5, 0.5) {158K};
+
+\node[font=\small\bfseries] at (4.5, 2.8) {(b) Conv1d+BN};
+\node[block=green!10] (b1) at (4.5, 2.0) {Hidden States\\$(B, 64, 512)$};
+\node[block=orange!15] (b2) at (4.5, 1.0) {Conv1d $d{\to}128$};
+\node[block=cyan!15] (b3) at (4.5, 0.0) {BatchNorm1d + ReLU};
+\node[block=purple!10] (b4) at (4.5, -1.0) {MeanPool $\to (B, 128)$};
+\node[block=red!10] (b5) at (4.5, -2.0) {Linear $\to (B, H)$};
+\draw[arrow] (b1)--(b2); \draw[arrow] (b2)--(b3); \draw[arrow] (b3)--(b4); \draw[arrow] (b4)--(b5);
+\node[label] at (6.0, 0.5) {118K};
+
+\node[font=\small\bfseries] at (9.0, 2.8) {(c) Feature Attention};
+\node[block=green!10] (c1) at (9.0, 2.0) {Hidden States\\$(B, 64, 512)$};
+\node[block=yellow!15] (c2) at (9.0, 1.0) {Softmax $w \in \mathbb{R}^d$};
+\node[block=purple!10] (c3) at (9.0, 0.0) {$\sum w_i \cdot h_i$};
+\node[block=red!10] (c4) at (9.0, -1.0) {Linear $\to (B, H)$};
+\draw[arrow] (c1)--(c2); \draw[arrow] (c2)--(c3); \draw[arrow] (c3)--(c4);
+\node[label] at (10.5, 0.5) {50K};
+\end{tikzpicture}
+\caption{Three AAS-discovered adapter architectures. (a)~Depthwise conv from MobileNet. (b)~Conv1d+BatchNorm from ResNet. (c)~Feature attention from SE-Net. None expressible in the discrete space $\mathcal{C}$.}
+\label{fig:arch_appendix}
+\end{figure}
+
+\section{Proposition Proofs}
+\label{app:proofs}
+
+\textbf{Proof of Proposition~\ref{prop:hierarchy}} (Strict Hierarchy: $\mathcal{C} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$).
+
+\begin{proof}
+\emph{$\mathcal{C} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}$ maps to an adapter with a pooling strategy and MLP head, both expressible as template derivations. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ includes Conv1d-based pooling and SiLU activations absent from $\mathcal{C}$.
+
+\emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar (Table~\ref{tab:expressiveness}).
+\end{proof}
+
+\textbf{Budget Sufficiency.} Let $f$ denote the fraction of architectures in $\mathcal{G}_\text{tmpl}$ that achieve lower test MSE than the best adapter in $\mathcal{C}$. For $B$ independent random samples, $P(\text{success}) = 1 - (1-f)^B$. From Figure~\ref{fig:budget}, $f \approx 0.03{-}0.05$, so $B \geq 60$ suffices for ${\geq}95\%$ success. This explains: (i)~$B{=}20$ achieves ${\sim}64\%$ success; (ii)~$B{=}60$ achieves near-certain success; (iii)~evolutionary selection adds no value when $B \gg 1/f$.
+
+\section{Template Grammar Production Rules}
+\label{app:grammar}
+
+\begin{align*}
+S &\rightarrow \nonterminal{Pool} \;\cdot\; \nonterminal{MLP} \;\cdot\; \nonterminal{Output} \\
+\nonterminal{Pool} &\rightarrow \text{MeanPool} \mid \text{MaxPool} \mid \text{LastToken} \mid \text{AttnPool} \mid \text{Conv1dPool} \\
+\nonterminal{MLP} &\rightarrow \nonterminal{Layer} \mid \nonterminal{Layer} \;\cdot\; \nonterminal{MLP} \quad (\text{depth} \leq 3) \\
+\nonterminal{Layer} &\rightarrow \text{Linear}(d_\text{in}, d_\text{out}) \;\cdot\; \nonterminal{Act} \;\cdot\; \text{Dropout}(p) \\
+\nonterminal{Act} &\rightarrow \text{GELU} \mid \text{ReLU} \mid \text{SiLU} \mid \text{Tanh}
+\end{align*}
+with $d_\text{out} \in \{64, 128, 192, 256, 384\}$ and $p \in \{0.0, 0.1, 0.2, 0.3\}$, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$.
+
+% Imputation table moved to main text (Section 4.5)
 
 \end{document}
