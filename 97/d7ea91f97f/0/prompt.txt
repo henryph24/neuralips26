@@ -63,3 +63,22 @@ To elevate this paper to a solid **Accept** for NeurIPS 2026, you should make th
 ---
 
 let's plan out comprehensive action items
+
+---
+
+/commit-push
+
+---
+
+What do you think of this another reviewer feedback: "Must-fix items: Resolve the Table 2 vs. Table 8 diagonal inconsistency — that's the one legitimate issue that could genuinely erode reviewer trust. Clean up Proposition 1 so the set containment actually holds. And add the normalized-raw-input routing ablation, since it's a cheap experiment that preemptively kills the strongest fair criticism.
+High-value additions: Even one comparison against a lightweight supervised baseline (DLinear, PatchTST) would contextualize the absolute MSE numbers and defuse the ">1.0 MSE" concern. You don't need to beat them — just frame clearly what the frozen-backbone adapter paradigm offers (efficiency, modularity) versus full fine-tuning."
+
+Ultrathink
+
+---
+
+plan them out carefully
+
+---
+
+execute them, make sure new experiments run on RACE VM
