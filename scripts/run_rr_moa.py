@@ -1,15 +1,16 @@
 """Raw-Routed Mixture of Adapters (RR-MoA).
 
-Fixes the AdaMix/MoE failure: standard routers collapse because TSFM
-LayerNorm destroys hidden-state heterogeneity. RR-MoA routes on the RAW
-unnormalized input instead, preserving the spectral and statistical
-diversity needed for per-sample adapter selection.
+Fixes the AdaMix/MoE failure: standard routers collapse because the TSFM
+normalization cascade (RevIN + LayerNorm) destroys hidden-state heterogeneity.
+RR-MoA routes on the RAW input instead, preserving the spectral and
+statistical diversity needed for per-sample adapter selection.
 
 Key insight: the backbone processes deep semantics, while a lightweight
 router reads the raw signal to select the adapter topology per-sample.
 
 Usage:
     python scripts/run_rr_moa.py --dataset ETTh1
+    python scripts/run_rr_moa.py --dataset ETTh1 --top-k 2 --unfreeze frozen
 """
 
 import argparse
@@ -85,13 +86,18 @@ HEAD_NAMES = ["mean", "last", "max", "attention", "conv1d"]
 class RawRoutedMoA(nn.Module):
     """Raw-Routed Mixture of Adapters.
 
-    Routes on RAW input (not hidden states) to avoid LayerNorm collapse.
-    The router sees the original time series signal; the adapters see
-    the backbone's hidden states.
+    Routes on RAW input (not hidden states) to avoid normalization cascade
+    collapse (RevIN + LayerNorm). The router sees the original time series
+    signal; the adapters see the backbone's hidden states.
+
+    Supports Top-K sparse routing: only the top_k experts with highest
+    routing probability execute per sample (top_k=K gives dense mode).
     """
-    def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64):
+    def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None):
         super().__init__()
         self.K = K
+        self.top_k = top_k if top_k is not None else K  # default: dense
+        self.output_dim = output_dim
 
         # K expert adapter heads (operate on hidden states)
         self.adapters = nn.ModuleList([
@@ -110,34 +116,48 @@ class RawRoutedMoA(nn.Module):
 
         self.load_balance_coeff = 0.01
 
-    def forward(self, hidden_states, raw_input):
-        """
-        hidden_states: (B, T, d_model) from frozen backbone
-        raw_input: (B, input_len) raw unnormalized time series
-        """
-        # Route based on RAW input (not hidden states!)
+    def _compute_logits(self, raw_input):
         x_raw = raw_input.unsqueeze(1)  # (B, 1, input_len)
         router_feat = self.router(x_raw).flatten(1)  # (B, 64)
-        logits = self.router_head(router_feat)  # (B, K)
-        weights = F.softmax(logits, dim=-1)  # (B, K)
+        return self.router_head(router_feat)  # (B, K)
 
-        # Compute expert outputs from hidden states
-        outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)  # (B, K, output_dim)
+    def forward(self, hidden_states, raw_input):
+        """
+        hidden_states: (B, T, d_model) from backbone
+        raw_input: (B, input_len) raw time series
+        """
+        logits = self._compute_logits(raw_input)  # (B, K)
 
-        # Weighted combination
-        return (weights.unsqueeze(-1) * outputs).sum(dim=1)  # (B, output_dim)
+        if self.top_k >= self.K:
+            # Dense mode: all experts
+            weights = F.softmax(logits, dim=-1)  # (B, K)
+            outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)
+            return (weights.unsqueeze(-1) * outputs).sum(dim=1)
+
+        # Sparse Top-K routing
+        B = hidden_states.shape[0]
+        topk_vals, topk_idx = logits.topk(self.top_k, dim=-1)  # (B, top_k)
+        weights = F.softmax(topk_vals, dim=-1)  # (B, top_k) normalized over selected
+
+        result = torch.zeros(B, self.output_dim, device=hidden_states.device, dtype=hidden_states.dtype)
+        for i in range(self.top_k):
+            expert_ids = topk_idx[:, i]  # (B,)
+            w = weights[:, i].unsqueeze(-1)  # (B, 1)
+            for k in range(self.K):
+                mask = (expert_ids == k)
+                if mask.any():
+                    result[mask] += w[mask] * self.adapters[k](hidden_states[mask])
+
+        return result
 
     def get_routing_stats(self, raw_input):
+        """Full softmax routing weights for analysis (always dense)."""
         with torch.no_grad():
-            x_raw = raw_input.unsqueeze(1)
-            router_feat = self.router(x_raw).flatten(1)
-            logits = self.router_head(router_feat)
+            logits = self._compute_logits(raw_input)
             return F.softmax(logits, dim=-1)
 
     def load_balance_loss(self, raw_input):
-        x_raw = raw_input.unsqueeze(1)
-        router_feat = self.router(x_raw).flatten(1)
-        logits = self.router_head(router_feat)
+        logits = self._compute_logits(raw_input)
         weights = F.softmax(logits, dim=-1)
         f_i = weights.mean(dim=0)
         p_i = F.softmax(logits, dim=-1).mean(dim=0)
@@ -149,10 +169,10 @@ class RawRoutedMoA(nn.Module):
 
 def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
-                 backbone_type="moment", K=5, hidden=64):
+                 backbone_type="moment", K=5, hidden=64, top_k=None):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
-    adapter = RawRoutedMoA(hdim, forecast_horizon, input_len=512, K=K, hidden=hidden).to(device)
+    adapter = RawRoutedMoA(hdim, forecast_horizon, input_len=512, K=K, hidden=hidden, top_k=top_k).to(device)
 
     trainable = list(adapter.parameters())
     pids = {id(p) for p in trainable}
@@ -216,10 +236,29 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
 
     return {
         "mse": mse, "mae": mae, "param_count": adapter.param_count(),
+        "top_k": adapter.top_k,
         "routing": {HEAD_NAMES[i]: round(w, 3) for i, w in enumerate(mean_routing[:len(HEAD_NAMES)])},
         "routing_entropy": routing_entropy,
         "routing_max_weight": routing_max,
     }
+
+
+def _apply_unfreeze(blocks, unfreeze):
+    """Selectively unfreeze encoder blocks."""
+    n = len(blocks)
+    if unfreeze == "frozen":
+        return  # all frozen
+    elif unfreeze == "last2":
+        start = max(0, n - 2)
+    elif unfreeze == "last4":
+        start = max(0, n - 4)
+    elif unfreeze == "all":
+        start = 0
+    else:
+        raise ValueError("Unknown unfreeze: %s" % unfreeze)
+    for i in range(start, n):
+        for p in blocks[i].parameters():
+            p.requires_grad = True
 
 
 def main():
@@ -227,9 +266,16 @@ def main():
     parser.add_argument("--dataset", default="ETTh1")
     parser.add_argument("--horizon", type=int, default=96)
     parser.add_argument("--K", type=int, default=5)
+    parser.add_argument("--top-k", type=int, default=None,
+                        help="Top-K sparse routing (default: dense, all K experts)")
+    parser.add_argument("--unfreeze", default="last4", choices=["frozen", "last2", "last4", "all"],
+                        help="Backbone unfreezing strategy")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--no-baselines", action="store_true",
+                        help="Skip baseline evaluation (faster for ablation sweeps)")
     args = parser.parse_args()
 
     os.makedirs("results/rr_moa", exist_ok=True)
@@ -244,9 +290,11 @@ def main():
 
     for p in model.parameters():
         p.requires_grad = False
-    for i in range(max(0, len(blocks)-4), len(blocks)):
-        for p in blocks[i].parameters():
-            p.requires_grad = True
+    _apply_unfreeze(blocks, args.unfreeze)
+
+    n_unfrozen = sum(1 for b in blocks for p in b.parameters() if p.requires_grad) > 0
+    backbone_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("Unfreeze=%s, backbone trainable params=%d" % (args.unfreeze, backbone_trainable))
 
     splits, _ = load_standard_data(args.dataset, args.horizon)
     X_train, Y_train = splits["train"]
@@ -254,11 +302,14 @@ def main():
     print("%s H=%d: train=%d, test=%d" % (args.dataset, args.horizon, len(X_train), len(X_test)))
 
     # === RR-MoA ===
-    print("\nRR-MoA: %s K=%d seed=%d" % (args.dataset, args.K, args.seed))
+    top_k_label = "top%d" % args.top_k if args.top_k else "dense"
+    print("\nRR-MoA: %s K=%d %s unfreeze=%s seed=%d" % (
+        args.dataset, args.K, top_k_label, args.unfreeze, args.seed))
     start = time.time()
     result = train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                           device=args.device, forecast_horizon=args.horizon,
-                          backbone_type=bb_type, K=args.K)
+                          backbone_type=bb_type, K=args.K, top_k=args.top_k,
+                          n_epochs=args.epochs)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -267,43 +318,48 @@ def main():
     print("Routing max weight: %.3f (1.0 = collapsed)" % result["routing_max_weight"])
 
     # === Baselines ===
-    print("\nBaselines (15 epochs):")
-    model2 = load_backbone(args.backbone, args.device)
-    _disable_gradient_checkpointing(model2)
-    blocks2 = _get_encoder_blocks(model2)
-    for p in model2.parameters():
-        p.requires_grad = False
-    for i in range(max(0, len(blocks2)-4), len(blocks2)):
-        for p in blocks2[i].parameters():
-            p.requires_grad = True
-
-    baselines = {"linear": SEED_ADAPTERS[0], "attention": SEED_ADAPTERS[3], "conv": SEED_ADAPTERS[4]}
     baseline_results = {}
-    for name, code in baselines.items():
-        try:
-            tr = train_adapter(code, model2, blocks2, X_train, Y_train, X_test, Y_test,
-                               device=args.device, n_epochs=15, forecast_horizon=args.horizon,
-                               backbone_type=bb_type)
-            baseline_results[name] = tr
-            print("  %-15s MSE=%.4f" % (name, tr["mse"]))
-        except Exception as e:
-            print("  %-15s ERROR: %s" % (name, e))
+    if not args.no_baselines:
+        print("\nBaselines (%d epochs, unfreeze=%s):" % (args.epochs, args.unfreeze))
+        model2 = load_backbone(args.backbone, args.device)
+        _disable_gradient_checkpointing(model2)
+        blocks2 = _get_encoder_blocks(model2)
+        for p in model2.parameters():
+            p.requires_grad = False
+        _apply_unfreeze(blocks2, args.unfreeze)
 
-    best_bl = min(baseline_results.values(), key=lambda x: x["mse"])["mse"]
-    best_bl_name = min(baseline_results, key=lambda k: baseline_results[k]["mse"])
-    delta = (result["mse"] - best_bl) / best_bl * 100
-    winner = "RR-MoA" if result["mse"] < best_bl else "BASELINE"
+        baselines = {"linear": SEED_ADAPTERS[0], "attention": SEED_ADAPTERS[3], "conv": SEED_ADAPTERS[4]}
+        for name, code in baselines.items():
+            try:
+                tr = train_adapter(code, model2, blocks2, X_train, Y_train, X_test, Y_test,
+                                   device=args.device, n_epochs=args.epochs, forecast_horizon=args.horizon,
+                                   backbone_type=bb_type)
+                baseline_results[name] = tr
+                print("  %-15s MSE=%.4f" % (name, tr["mse"]))
+            except Exception as e:
+                print("  %-15s ERROR: %s" % (name, e))
 
-    print("\n>>> %s wins: RR-MoA=%.4f vs %s=%.4f  delta=%+.1f%%" % (
-        winner, result["mse"], best_bl_name, best_bl, delta))
+    if baseline_results:
+        best_bl = min(baseline_results.values(), key=lambda x: x["mse"])["mse"]
+        best_bl_name = min(baseline_results, key=lambda k: baseline_results[k]["mse"])
+        delta = (result["mse"] - best_bl) / best_bl * 100
+        winner = "RR-MoA" if result["mse"] < best_bl else "BASELINE"
+        print("\n>>> %s wins: RR-MoA=%.4f vs %s=%.4f  delta=%+.1f%%" % (
+            winner, result["mse"], best_bl_name, best_bl, delta))
+    else:
+        winner = "N/A"
+        delta = 0.0
 
     save_data = {
-        "dataset": args.dataset, "horizon": args.horizon, "seed": args.seed, "K": args.K,
+        "dataset": args.dataset, "horizon": args.horizon, "seed": args.seed,
+        "K": args.K, "top_k": args.top_k or args.K, "unfreeze": args.unfreeze,
+        "backbone_trainable_params": backbone_trainable,
         "rr_moa": result, "elapsed": elapsed,
         "baselines": {k: v for k, v in baseline_results.items()},
         "winner": winner, "delta_pct": delta,
     }
-    path = "results/rr_moa/%s_H%d_K%d_%d.json" % (args.dataset, args.horizon, args.K, args.seed)
+    path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d.json" % (
+        args.dataset, args.horizon, args.K, top_k_label, args.unfreeze, args.seed)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
