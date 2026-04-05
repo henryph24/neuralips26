@@ -53,12 +53,13 @@ To break this collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-Mo
 \end{abstract}
 
 \section{Introduction}
+\label{sec:intro}
 
 The transformer architecture~\citep{vaswani2017attention} has enabled foundation models~\citep{bommasani2021foundation} across language~\citep{devlin2019bert, brown2020gpt3} and vision~\citep{dosovitskiy2021vit}. Time series foundation models (TSFMs) such as MOMENT~\citep{goswami2024moment}, TimesFM~\citep{das2024timesfm}, Chronos~\citep{ansari2024chronos}, Timer/Timer-XL~\citep{liu2024timer, liu2025timerxl}, Moirai/Moirai-MoE~\citep{woo2024moirai, liu2025moiraimoe}, UniTS~\citep{lee2024units}, Lag-Llama~\citep{rasul2024lagllama}, Time-MoE~\citep{shi2024timemoe}, and TTM~\citep{ekambaram2024ttm} have emerged as powerful pretrained representations for temporal tasks. Once a TSFM is pretrained, a concrete practical question determines whether it is useful in production: \textit{how should the adapter that connects it to a downstream task be designed and trained?}
 
 \textbf{The one-size-fits-all adapter status quo.} Current TSFM adaptation almost always reduces to the same computational template: \emph{pool the backbone's hidden states $\to$ project to the output horizon}, with a handful of standard variants---linear probing~\citep{goswami2024moment, das2024timesfm}, MLP heads~\citep{nie2023patchtst, wu2023timesnet}, LoRA~\citep{hu2022lora}, and bottleneck adapters~\citep{houlsby2019adapters}. Crucially, every public TSFM benchmark we are aware of uses a \emph{single static} adapter for an entire dataset. Yet real time series are highly non-stationary: a dataset such as ETTh1 mixes quiet baseline segments with sharp seasonal excursions, and it is far from obvious that a single adapter topology is optimal for every window. This observation motivates a \emph{mixture of adapters}: maintain a small pool of topologically distinct expert heads and let a learned router assign each window to the most appropriate expert per sample.
 
-\textbf{Why frozen at all?} For a single dataset at a single horizon, full-fine-tuned specialists such as PatchTST~\citep{nie2023patchtst} and even a linear-from-scratch DLinear~\citep{zeng2023dlinear} obtain lower absolute MSE than any frozen-backbone adapter. Our contribution is \emph{not} to replace these in the single-dataset setting. The frozen-backbone paradigm we target is motivated by three deployment regimes in which full fine-tuning is infeasible and in which re-training a DLinear per use-case is operationally expensive: (i)~\textbf{multi-tenant cloud serving}, where a single TSFM sits in GPU VRAM and serves thousands of tenants via lightweight, hot-swappable per-tenant adapters in host RAM---retraining a separate DLinear per tenant does not amortize the backbone cost and forfeits any zero-shot transfer the TSFM provides; (ii)~\textbf{on-device and edge deployment}, where one backbone is shipped once with the device image and per-site adapters are updated over low-bandwidth links---DLinear per site requires collecting each site's training data at a central location, which is often impossible for privacy or latency reasons; and (iii)~\textbf{cross-task reuse}, where the same frozen backbone drives forecasting, imputation, and (in principle) classification via different expert pools---we demonstrate the first two of these explicitly in \S\ref{sec:rrmoa} and \S4.5. Within this paradigm, the question is \emph{not} whether the frozen TSFM beats a specialist trained from scratch on the same dataset (it often will not), but which adapter / routing strategy minimises the downstream error for the fixed backbone that practitioners are committed to. That is the question we answer.
+\textbf{Why frozen at all?} For a single dataset at a single horizon, lightweight supervised baselines like DLinear~\citep{zeng2023dlinear} obtain materially lower absolute MSE than any frozen-backbone adapter. We measure this directly on our exact normalized evaluation scale: a $49$K-parameter DLinear trained from scratch for 15 epochs reaches $0.417{\pm}0.002$ on ETTh1, $0.322{\pm}0.004$ on ETTm1, and $0.208{\pm}0.003$ on Weather (3 seeds)---roughly $40$--$80\%$ lower than our best frozen-backbone RR-MoA numbers in Table~\ref{tab:rrmoa}. Full fine-tuned specialists such as PatchTST~\citep{nie2023patchtst} would further widen this gap. \textit{Our contribution is emphatically not to replace DLinear or PatchTST in the single-dataset setting.} The frozen-backbone paradigm we target is instead motivated by three deployment regimes in which full fine-tuning is infeasible and in which re-training a DLinear per use-case is operationally expensive: (i)~\textbf{multi-tenant cloud serving}, where a single TSFM sits in GPU VRAM and serves thousands of tenants via lightweight, hot-swappable per-tenant adapters in host RAM---retraining a separate DLinear per tenant does not amortize the backbone cost and forfeits any zero-shot transfer the TSFM provides; (ii)~\textbf{on-device and edge deployment}, where one backbone is shipped once with the device image and per-site adapters are updated over low-bandwidth links---DLinear per site requires collecting each site's training data at a central location, which is often impossible for privacy or latency reasons; and (iii)~\textbf{cross-task reuse}, where the same frozen backbone drives forecasting, imputation, and (in principle) classification via different expert pools---we demonstrate the first two of these explicitly in \S\ref{sec:rrmoa} and \S4.5. Within this paradigm, the question is \emph{not} whether the frozen TSFM beats a specialist trained from scratch on the same dataset (it does not), but which adapter / routing strategy minimises the downstream error for the fixed backbone that practitioners are committed to. That is the question we answer.
 
 \textbf{The natural idea that silently fails: MoE on TSFMs.} The standard recipe for instance-level mixtures is by now well understood in NLP and vision~\citep{wang2022adamix, fedus2022switch}: train $K$ experts jointly with a gate that reads the backbone's hidden states, add a load-balancing loss, and trust the optimizer to distribute the load. When we apply this recipe to a TSFM with exactly the same five small expert heads we use throughout this paper, it does not merely perform worse than a single adapter---it \emph{collapses catastrophically}. Across 3 seeds, 3 datasets, and every setting where at least one encoder block is unfrozen, the routing distribution becomes a one-hot vector and the Shannon entropy over the 5 experts is exactly $0.000\pm0.000$ (Table~\ref{tab:adamix}): all weight is permanently concentrated on a single expert, regardless of the input.
 
@@ -200,7 +201,12 @@ The \textbf{discrete space} $\mathcal{C}$ is the Cartesian product of standard a
 \begin{equation}
 \mathcal{C} = \underbrace{\{\text{lin, lora, bn}\}}_{\text{type}} \times \underbrace{\{8,16,32,64\}}_{\text{rank}} \times \underbrace{\{\text{mean, last, max, cls}\}}_{\text{pool}} \times \underbrace{\{\text{lin, mlp1, mlp2}\}}_{\text{head}} \times \cdots
 \end{equation}
-The full Cartesian product yields ${\sim}2{,}160$ configurations including backbone-level choices (LoRA rank, layer placement, unfreeze strategy), of which ${\sim}144$ define distinct adapter \textit{computational graphs}. Each graph $c \mapsto g_c$ is a fixed pooling + projection pipeline.
+The full Cartesian product yields ${\sim}2{,}160$ configurations, of which ${\sim}144$ define distinct adapter \textit{computational graphs} when restricted to the head-only subspace below. Each head-only graph $c \mapsto g_c$ is a fixed pooling + projection pipeline. LoRA and bottleneck configurations in $\mathcal{C}$ modify backbone weights and are treated as a separate adaptation axis (\S\ref{sec:freeze_ablation}, Table~\ref{tab:lora}).
+\end{definition}
+
+\begin{definition}[Head-Only Subspace $\mathcal{C}_\text{head}$]
+\label{def:discrete_head}
+The \textbf{head-only subspace} $\mathcal{C}_\text{head} \subset \mathcal{C}$ is the restriction of $\mathcal{C}$ to linear-probe configurations of the form (pooling strategy) $\to$ (MLP head), with LoRA rank $=0$ and no bottleneck insertion. LoRA and bottleneck entries of $\mathcal{C}$ modify backbone weights rather than the head and are \emph{not} members of $\mathcal{C}_\text{head}$.
 \end{definition}
 
 \begin{definition}[Code-Level Space $\mathcal{G}_\text{code}$]
@@ -213,9 +219,9 @@ The \textbf{code space} $\mathcal{G}_\text{code}$ is the set of all Python progr
 The \textbf{template space} $\mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$ is generated by a context-free grammar over 5 pooling types, 4 activations, variable MLP depths and widths, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$ architectures (full production rules in Appendix).
 \end{definition}
 
-\begin{proposition}[Strict Hierarchy]
+\begin{proposition}[Strict Head-Level Hierarchy]
 \label{prop:hierarchy}
-$\mathcal{C} \subset \mathcal{G}_\emph{tmpl} \subset \mathcal{G}_\emph{code}$, and both inclusions are strict (proof in Appendix).
+$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$, and both inclusions are strict (proof in Appendix~\ref{app:proofs}). LoRA and bottleneck configurations from $\mathcal{C}\setminus\mathcal{C}_\text{head}$ modify backbone weights and are orthogonal to this head-level hierarchy; they are not members of $\mathcal{G}_\text{tmpl}$ nor of $\mathcal{G}_\text{code}$ as defined, and are treated as a separate baseline axis (Table~\ref{tab:lora}).
 \end{proposition}
 
 The winning architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$: depthwise convolutions, BatchNorm, and learned feature attention are discoverable by LLM-guided search but not expressible in the template grammar. Table~\ref{tab:expressiveness} formalizes this.
@@ -231,8 +237,11 @@ Architecture & Discrete $\mathcal{C}$ & Template $\mathcal{G}_\text{tmpl}$ & Cod
 \midrule
 Linear probe (mean pool + linear) & \cmark & \cmark & \cmark & Standard \\
 MLP head (1--2 layer, GELU) & \cmark & \cmark & \cmark & Standard \\
-LoRA ($r$, $\alpha$, targets) + head & \cmark & \cmark & \cmark & Standard \\
 Conv1d pool + MLP & \xmark & \cmark & \cmark & Template \\
+\midrule
+\multicolumn{5}{l}{\textit{Head-level hierarchy: }$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$} \\
+LoRA ($r$, $\alpha$, targets) on backbone & \multicolumn{3}{c}{\emph{orthogonal axis; see Table~\ref{tab:lora}}} & Backbone PEFT \\
+Bottleneck adapter between blocks & \multicolumn{3}{c}{\emph{orthogonal axis}} & Backbone PEFT \\
 \midrule
 Conv1d + BatchNorm + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
 Depthwise conv + positional weights & \xmark & \xmark & \cmark & \textbf{Discovered} \\
@@ -503,6 +512,27 @@ Weather & $0.522 \pm 0.003$ & $0.611 \pm 0.021$ & $\mathbf{0.289 \pm 0.008}$ & $
 
 LoRA under a strictly frozen backbone is unexpectedly weak: it beats the conv baseline only on ETTm1 ($-17\%$), but loses to it on both ETTh1 ($+27.7\%$) and Weather ($+17.1\%$). The intuition is that rank-$8$ perturbations to $q,v$ projections do not meaningfully reshape the frozen backbone's feature geometry that the downstream head sees---especially when the backbone was pretrained for reconstruction, not forecasting, and its internal RevIN has already normalized out the per-sample statistics. RR-MoA, by contrast, leaves the backbone's weights and features entirely alone and instead invests its capacity in \emph{routing over five topologically distinct experts based on the raw pre-normalization signal}---a qualitatively different mechanism that delivers 41--56\% MSE reductions across the three datasets. This is direct empirical evidence that RR-MoA's advantage is \emph{not} explained by parameter efficiency alone but by the routing architecture itself.
 
+\textbf{Rawness vs.\ bypass: does the router need the pre-normalization signal?}
+A subtle but important question is whether RR-MoA's advantage comes from the fact that the router \emph{bypasses} the backbone (and thus avoids the gradient co-adaptation loop of Table~\ref{tab:adamix}), or specifically from the fact that it reads the raw, pre-normalization signal with its intact temporal statistics. To isolate these two effects, we re-run RR-MoA under a controlled ablation in which the router's input is replaced with the \emph{same} signal after a per-window RevIN transform (zero mean, unit variance along the temporal dimension): this is the transform MOMENT applies internally before its encoder, and it deliberately strips the per-window trend, amplitude, and volatility that the raw router was seeing. Everything else is identical: same five experts, same Top-2 sparse gate, same strictly frozen backbone, same three seeds.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Rawness vs.\ bypass ablation} (strictly frozen backbone, Top-2 sparse routing, 3 seeds, test MSE mean$\pm$std). The raw router reads the channel-standardized input signal; the RevIN router reads the same signal after an additional per-window zero-mean unit-variance transform that strips temporal statistics. Stripping the rawness degrades MSE by 60--88\% across all three datasets, confirming that routing on the backbone's post-normalization representation is insufficient: the per-window trend/amplitude/volatility that the normalization cascade removes are precisely the statistics the router relies on.}
+\label{tab:router_input}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Dataset & Raw router (main) & RevIN router & $\Delta$ (RevIN vs Raw) \\
+\midrule
+ETTh1   & $\mathbf{0.690 \pm 0.021}$ & $1.101 \pm 0.008$ & $\mathbf{+59.6\%}$ \\
+ETTm1   & $\mathbf{0.572 \pm 0.073}$ & $1.077 \pm 0.020$ & $\mathbf{+88.3\%}$ \\
+Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The RevIN router suffers a $60$--$88\%$ relative MSE degradation on every dataset, with standard deviations across seeds that are narrower than the gap. This is a strong empirical signature: bypass alone is not sufficient; the \emph{content} of what the router reads matters. Once the per-window temporal statistics are stripped, routing entropy remains high (the router keeps trying to route diversely, with entropy $1.50$--$1.57$ of a maximum $1.609$), but the gate can no longer make discriminative decisions because the per-sample signal is gone. This directly validates the paper's central mechanistic claim: RR-MoA works because it exposes the router to the exact statistics --- trend, amplitude, volatility --- that the backbone's normalization cascade otherwise strips away before any hidden state is formed.
+
 \subsection{Top-\texorpdfstring{$k$}{k} Sparse Routing Ablation}
 \label{sec:topk}
 
@@ -557,7 +587,7 @@ As a preliminary observation for populating the expert pool, we note that the ra
 
 \textbf{Search space and efficiency.} Two discrete search operators (random sampling and evolutionary selection) perform similarly in $\mathcal{G}_\text{tmpl}$, so $\mathcal{G}_\text{tmpl}$ alone does not justify LLM guidance. The LLM, searching the unbounded $\mathcal{G}_\text{code}$, recovers patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that perform better in our experiments---these are the motifs we distill into the RR-MoA expert pool. AAS thus acts as a search-space widener that imports cross-domain patterns (depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, channel attention~\citep{hu2018senet}), mirroring cross-modal transfer findings~\citep{shen2025visionts}. We stress that these are \emph{recovered} from established vision motifs rather than newly discovered algorithms.
 
-\textbf{Limitations.} (1)~Absolute MSE values in the normalized LTSF space are higher than specialist full-fine-tuning baselines (PatchTST~\citep{nie2023patchtst} reports $\sim$0.38 on unnormalized ETTh1); our contribution is relative improvement \emph{within} the frozen-backbone adapter paradigm, not a new SOTA in absolute terms. (2)~Multi-seed freeze/sparsity ablations cover ETTh1, ETTm1, and Weather; ETTh2, ETTm2, and Electricity are covered only for AAS (Table~\ref{tab:main}) and single-seed RR-MoA. (3)~Discrete-tokenized TSFM backbones such as Chronos are not addressed: grafting an MSE regression adapter onto a cross-entropy token model is not a well-posed comparison, and we leave a proper Chronos study (with its native tokenization and likelihood) to future work.
+\textbf{Limitations.} (1)~Absolute MSE values are materially higher than lightweight supervised baselines on the \emph{same} normalized evaluation scale: DLinear~\citep{zeng2023dlinear} trained from scratch achieves $0.417{\pm}0.002$ (ETTh1), $0.322{\pm}0.004$ (ETTm1), and $0.208{\pm}0.003$ (Weather), roughly $40$--$80\%$ below our best frozen-backbone RR-MoA. Full fine-tuned specialists such as PatchTST~\citep{nie2023patchtst} widen the gap further. Our contribution is the best routing strategy \emph{within} the frozen-backbone paradigm (justified by the deployment regimes outlined in \S\ref{sec:intro}); it is not a new SOTA in absolute single-dataset terms. (2)~Multi-seed freeze/sparsity ablations cover ETTh1, ETTm1, and Weather; ETTh2, ETTm2, and Electricity are covered only for AAS (Table~\ref{tab:main}) and single-seed RR-MoA. (3)~Discrete-tokenized TSFM backbones such as Chronos are not addressed: grafting an MSE regression adapter onto a cross-entropy token model is not a well-posed comparison, and we leave a proper Chronos study (with its native tokenization and likelihood) to future work.
 
 \section{Conclusion}
 
@@ -1044,7 +1074,7 @@ Vijay Ekambaram, Arindam Jati, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kal
 
 \begin{table}[h]
 \centering
-\caption{Architecture transfer matrix ($\Delta$\% vs.\ conv baseline). $*$~=~beats baseline. Adapters transfer to Weather (4/4) but not ETTh2 (0/4).}
+\caption{\textbf{Cross-dataset architecture transfer matrix} ($\Delta$\% vs.\ conv baseline). Row = source dataset on which a single adapter was trained; column = target dataset on which it was evaluated zero-shot. $*$~=~beats baseline. \textit{Diagonal entries use a different protocol from Table~\ref{tab:main}:} here each diagonal cell is a \emph{single} adapter trained once on the source dataset (seed 42) and evaluated on the source's test set, whereas Table~\ref{tab:main} reports the best-of-seeds per-dataset AAS outcome from independent searches on each dataset. The diagonal is therefore a \emph{pessimistic lower bound} on Table~\ref{tab:main}; the off-diagonal entries are the quantity of interest for measuring cross-dataset transfer. Adapters transfer well to Weather (4/4) but not ETTh2 (0/4).}
 \small
 \begin{tabular}{@{}lccccc@{}}
 \toprule
@@ -1103,12 +1133,14 @@ Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
 \section{Proposition Proofs}
 \label{app:proofs}
 
-\textbf{Proof of Proposition~\ref{prop:hierarchy}} (Strict Hierarchy: $\mathcal{C} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$).
+\textbf{Proof of Proposition~\ref{prop:hierarchy}} (Strict Head-Level Hierarchy: $\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$).
 
 \begin{proof}
-\emph{$\mathcal{C} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}$ maps to an adapter with a pooling strategy and MLP head, both expressible as template derivations. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ includes Conv1d-based pooling and SiLU activations absent from $\mathcal{C}$.
+\emph{$\mathcal{C}_\text{head} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}_\text{head}$ is, by Definition~\ref{def:discrete_head}, a pooling strategy followed by an MLP head. Both components are expressible as template derivations of the form $S \to \text{Pool}\cdot\text{MLP}\cdot\text{Output}$ (Appendix~\ref{app:grammar}), so $c$ lies in $\mathcal{G}_\text{tmpl}$. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ additionally admits Conv1d pooling and SiLU activations absent from $\mathcal{C}_\text{head}$.
 
 \emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar (Table~\ref{tab:expressiveness}).
+
+\emph{Orthogonality of LoRA and bottleneck configurations.} Configurations in $\mathcal{C}\setminus\mathcal{C}_\text{head}$ modify the backbone's attention projections (LoRA) or inject residual modules between encoder blocks (bottleneck). They are not head-level adapters and are therefore not members of $\mathcal{G}_\text{tmpl}$ nor of $\mathcal{G}_\text{code}$ as defined (the code space is restricted to adapter classes operating on extracted hidden states, per Definition~\ref{def:code}). We compare against the LoRA variant separately under the strictly frozen backbone protocol in Table~\ref{tab:lora}.
 \end{proof}
 
 \textbf{Budget Sufficiency (Empirical).} Figure~\ref{fig:budget} shows that all 14 tested search budgets $B\in[20,480]$ beat the conv baseline on both ETTh1 and ETTm1 and that the MSE as a function of $B$ saturates around $B\!\approx\!60$. Evolutionary selection did not outperform random sampling in the template space $\mathcal{G}_\text{tmpl}$, indicating that the returns to additional samples past the saturation point are negligible for this space. We report this purely as an empirical observation from the curve; no theoretical sample-complexity bound is claimed.
