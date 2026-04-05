@@ -307,6 +307,8 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 
 \textbf{Fixed adapter baselines.} Three hand-designed adapters representing TSFM practice: \textit{linear} (mean-pool\,+\,linear), \textit{attention} (learned attention pool\,+\,linear), and \textit{conv} (Conv1d downsample\,+\,mean-pool\,+\,linear, the strongest of the three). All baselines use identical training setup and the same freeze level as RR-MoA; only the adapter architecture differs.
 
+\textbf{Reproducibility.} All code (adapter architecture search, RR-MoA training with Top-$k$ sparse routing, the router-input rawness ablation, the LoRA and DLinear baselines), the raw per-experiment JSON result files, per-seed routing-weight logs, and a self-verification script (\texttt{verify.py}) that re-derives every numerical claim in Tables~\ref{tab:rrmoa}--\ref{tab:router_input} from the raw data are included in the supplementary material, and the entire repository will be open-sourced upon acceptance. Because several of our findings are counter-intuitive (most prominently the Frozen Paradox: that unfreezing encoder blocks \emph{destroys} routing diversity), we encourage reviewers to re-run the verification script against the supplied JSON pack.
+
 \subsection{Main Results}
 \label{sec:main_results}
 
@@ -1104,7 +1106,7 @@ Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
 \node[font=\small\bfseries] at (0, 2.8) {(a) Depthwise Conv};
 \node[block=green!10] (a1) at (0, 2.0) {$\mathbf{H}\in\mathbb{R}^{B\times T\times d}$};
 \node[block=gray!10] (a0) at (0, 1.2) {transpose $\to (B,d,T)$};
-\node[block=orange!15] (a2) at (0, 0.4) {DepthConv1d\\groups$=d$, $k{=}3$};
+\node[block=orange!15] (a2) at (0, 0.4) {DepthConv1d\\groups $=d_{\text{model}}$\\kernel\_size $=3$};
 \node[block=yellow!15] (a3) at (0, -0.4) {Learned positional\\weights $\odot$};
 \node[block=purple!10] (a4) at (0, -1.2) {MeanPool over $T$\\$\to (B,d)$};
 \node[block=red!10] (a5) at (0, -2.0) {Linear $\to (B,H)$};
