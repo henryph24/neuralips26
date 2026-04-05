@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "094d7fdb3b2a",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 12,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_adamix.py",
+    "scripts/run_freeze_ablation.py",
+    "scripts/run_rr_moa.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/09/4d7fdb3b2a/0/metadata.json",
+      "transcript": "/09/4d7fdb3b2a/0/full.jsonl",
+      "content_hash": "/09/4d7fdb3b2a/0/content_hash.txt",
+      "prompt": "/09/4d7fdb3b2a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 204,
+    "cache_creation_tokens": 396913,
+    "cache_read_tokens": 25272178,
+    "output_tokens": 106505,
+    "api_call_count": 157
+  }
+}
