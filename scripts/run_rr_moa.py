@@ -93,11 +93,14 @@ class RawRoutedMoA(nn.Module):
     Supports Top-K sparse routing: only the top_k experts with highest
     routing probability execute per sample (top_k=K gives dense mode).
     """
-    def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None):
+    def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None,
+                 router_input_mode="raw"):
         super().__init__()
         self.K = K
         self.top_k = top_k if top_k is not None else K  # default: dense
         self.output_dim = output_dim
+        assert router_input_mode in ("raw", "revin"), router_input_mode
+        self.router_input_mode = router_input_mode
 
         # K expert adapter heads (operate on hidden states)
         self.adapters = nn.ModuleList([
@@ -117,8 +120,20 @@ class RawRoutedMoA(nn.Module):
         self.load_balance_coeff = 0.01
 
     def _compute_logits(self, raw_input):
-        x_raw = raw_input.unsqueeze(1)  # (B, 1, input_len)
-        router_feat = self.router(x_raw).flatten(1)  # (B, 64)
+        if self.router_input_mode == "revin":
+            # Per-window RevIN-style normalization: zero mean, unit variance
+            # along the temporal dimension. This replicates what MOMENT's
+            # internal RevIN would do if the router saw post-normalization
+            # data, and strips per-window trend/amplitude/volatility. The
+            # ablation tests whether routing gains come from rawness of the
+            # signal or merely from bypassing the hidden states.
+            mu = raw_input.mean(dim=-1, keepdim=True)
+            sigma = raw_input.std(dim=-1, keepdim=True) + 1e-5
+            x = (raw_input - mu) / sigma
+        else:
+            x = raw_input
+        x = x.unsqueeze(1)  # (B, 1, input_len)
+        router_feat = self.router(x).flatten(1)  # (B, 64)
         return self.router_head(router_feat)  # (B, K)
 
     def forward(self, hidden_states, raw_input):
@@ -169,10 +184,14 @@ class RawRoutedMoA(nn.Module):
 
 def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
-                 backbone_type="moment", K=5, hidden=64, top_k=None):
+                 backbone_type="moment", K=5, hidden=64, top_k=None,
+                 router_input_mode="raw"):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
-    adapter = RawRoutedMoA(hdim, forecast_horizon, input_len=512, K=K, hidden=hidden, top_k=top_k).to(device)
+    adapter = RawRoutedMoA(
+        hdim, forecast_horizon, input_len=512, K=K, hidden=hidden, top_k=top_k,
+        router_input_mode=router_input_mode,
+    ).to(device)
 
     trainable = list(adapter.parameters())
     pids = {id(p) for p in trainable}
@@ -237,6 +256,7 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
     return {
         "mse": mse, "mae": mae, "param_count": adapter.param_count(),
         "top_k": adapter.top_k,
+        "router_input_mode": adapter.router_input_mode,
         "routing": {HEAD_NAMES[i]: round(w, 3) for i, w in enumerate(mean_routing[:len(HEAD_NAMES)])},
         "routing_entropy": routing_entropy,
         "routing_max_weight": routing_max,
@@ -268,6 +288,10 @@ def main():
     parser.add_argument("--K", type=int, default=5)
     parser.add_argument("--top-k", type=int, default=None,
                         help="Top-K sparse routing (default: dense, all K experts)")
+    parser.add_argument("--router-input-mode", default="raw", choices=["raw", "revin"],
+                        help="Signal the gate reads: raw (channel-standardized input, default) "
+                             "or revin (per-window zero-mean unit-variance). Ablation for "
+                             "rawness-vs-bypass analysis in the paper.")
     parser.add_argument("--unfreeze", default="last4", choices=["frozen", "last2", "last4", "all"],
                         help="Backbone unfreezing strategy")
     parser.add_argument("--seed", type=int, default=42)
@@ -303,13 +327,13 @@ def main():
 
     # === RR-MoA ===
     top_k_label = "top%d" % args.top_k if args.top_k else "dense"
-    print("\nRR-MoA: %s K=%d %s unfreeze=%s seed=%d" % (
-        args.dataset, args.K, top_k_label, args.unfreeze, args.seed))
+    print("\nRR-MoA: %s K=%d %s unfreeze=%s seed=%d router_input=%s" % (
+        args.dataset, args.K, top_k_label, args.unfreeze, args.seed, args.router_input_mode))
     start = time.time()
     result = train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                           device=args.device, forecast_horizon=args.horizon,
                           backbone_type=bb_type, K=args.K, top_k=args.top_k,
-                          n_epochs=args.epochs)
+                          n_epochs=args.epochs, router_input_mode=args.router_input_mode)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -353,13 +377,21 @@ def main():
     save_data = {
         "dataset": args.dataset, "horizon": args.horizon, "seed": args.seed,
         "K": args.K, "top_k": args.top_k or args.K, "unfreeze": args.unfreeze,
+        "router_input_mode": args.router_input_mode,
         "backbone_trainable_params": backbone_trainable,
         "rr_moa": result, "elapsed": elapsed,
         "baselines": {k: v for k, v in baseline_results.items()},
         "winner": winner, "delta_pct": delta,
     }
-    path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d.json" % (
-        args.dataset, args.horizon, args.K, top_k_label, args.unfreeze, args.seed)
+    # Append router mode suffix only for non-default modes so existing raw-mode
+    # JSONs keep their current filenames (and verify.py's paths keep working).
+    if args.router_input_mode == "raw":
+        path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d.json" % (
+            args.dataset, args.horizon, args.K, top_k_label, args.unfreeze, args.seed)
+    else:
+        path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d_router-%s.json" % (
+            args.dataset, args.horizon, args.K, top_k_label, args.unfreeze,
+            args.seed, args.router_input_mode)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
