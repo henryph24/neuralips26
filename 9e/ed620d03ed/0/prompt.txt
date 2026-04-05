@@ -1,0 +1,92 @@
+retrieve me the VM logs because a reviewer accused us of not running experiments but fabricating the results
+
+---
+
+option c please
+
+---
+
+/commit-push
+
+---
+
+in recent commits did we address this feedback by a completely new reviewer: Based on a rigorous review of the provided manuscript against the standards of top-tier machine learning conferences, this paper is currently a **Borderline / Weak Reject (Score: 4 to 5)** for NeurIPS 2026. 
+
+While the paper presents a highly intuitive, clever, and empirically effective engineering solution (Raw-Routed MoA), it suffers from a **critical theoretical flaw in its diagnosis of the problem**, a massive performance gap compared to trivial supervised baselines, and overclaimed minor contributions. 
+
+If evaluated in its current state, rigorous NeurIPS reviewers will likely reject it due to mathematical inaccuracies. However, **the underlying method is very strong**. If the authors correct their theoretical diagnosis and reframe their narrative, this could easily become a solid **Accept**.
+
+Here is a detailed breakdown from the perspective of a NeurIPS Area Chair or Reviewer:
+
+### 🌟 Strengths (What the paper does right)
+1. **Clever Engineering Solution (RR-MoA):** Bypassing the frozen backbone to route based on the raw, unnormalized time-series signal is a physically grounded and elegant architectural fix. Time-series regimes are heavily dictated by raw statistics (scale, variance, trend), so feeding this directly to the gating network is a smart choice.
+2. **Comprehensive Cross-Backbone Testing:** Proving that the method transfers seamlessly across vastly different foundation models (MOMENT-small, MOMENT-large, Chronos, Moirai) is an excellent empirical practice. It proves the framework is a universal adapter methodology, not a backbone-specific hack.
+3. **Task Generalization:** Validating the approach on both forecasting and masked imputation proves that the discovered adapters genuinely learn task-specific features.
+4. **Honesty and Transparency:** Explicitly admitting in Section 5 that frozen-backbone models still lag behind full fine-tuning demonstrates intellectual honesty that reviewers deeply appreciate.
+
+---
+
+### 🛑 Critical Weaknesses & Fatal Flaws (What reviewers will attack)
+
+**1. A Fundamental Misdiagnosis of the "Routing Collapse" (The LayerNorm Error)**
+The core theoretical claim of the paper is that standard MoE routing collapses because *"TSFM encoders apply LayerNorm at every transformer block, progressively homogenizing the hidden-state distribution across samples."* **This is mathematically incorrect.**
+* `LayerNorm` computes mean and variance along the *feature dimension* (`d_model`) for each token independently. It does **not** normalize across the batch (which would be `BatchNorm`), nor does it normalize across the sequence. Therefore, LayerNorm does not "homogenize representations across samples." Two distinct time-series windows will yield completely distinct token embeddings after LayerNorm.
+* **The True Culprit:** The real reason the backbone's hidden states lack "spectral and statistical diversity (autocorrelation, trend, kurtosis)" is because TSFMs explicitly remove this information **before** the transformer! MOMENT applies Reversible Instance Normalization (RevIN), and Chronos uses Mean Scaling as an input preprocessing step. These techniques explicitly normalize every input window to have zero mean and/or unit variance, deliberately destroying the physical scale and trend.
+* **Why this matters:** Your proposed solution (RR-MoA) works brilliantly precisely because it bypasses RevIN/Mean Scaling, allowing the router to see the raw trend and amplitude. However, blaming `LayerNorm` for the loss of per-sample heterogeneity represents a fundamental misunderstanding of the TSFM architecture. A NeurIPS reviewer will instantly spot this and reject the paper for theoretical inaccuracy.
+
+**2. The Absolute Performance Gap vs. Trivial Baselines**
+You acknowledge that your approach (~0.55 MSE on ETTh1) is worse than full fine-tuning (~0.37 MSE for PatchTST). However, the situation is actually more severe: trivial baselines like `DLinear` (a single linear layer trained from scratch) achieve ~0.38 MSE on ETTh1 with only ~10K parameters. 
+* *The Reviewer's Question:* "If a 210K parameter RR-MoA adapter mounted on top of a massive 341M parameter foundation model performs 45% worse than a simple linear layer trained from scratch in seconds, what is the practical utility of this framework?"
+* You must explicitly justify the *frozen TSFM paradigm* in the Introduction. Without a compelling, real-world use-case, reviewers will dismiss the method as practically irrelevant.
+
+**3. Overclaiming the Zero-Cost Proxy**
+The abstract prominently claims that zero-cost gradient proxies *"amortize the search cost to milliseconds."* However, Section 4.6 explicitly admits that the proxy **fails completely on ETTh1 and ETTm1** (33% to 50% of your tested datasets). Highlighting a feature in the abstract as a core contribution when it fails so frequently in practice is overselling.
+
+**4. Performance Collapse at Long Horizons**
+The results show that RR-MoA's improvements virtually disappear at longer horizons ($H=336$ and $H=720$, yielding only -0.1% to -0.6% gains). The paper leaves this entirely unaddressed. 
+
+**5. Missing Modern PEFT Baselines**
+The paper compares AAS against hand-designed baselines (Linear, MLP, Conv1d). However, it ignores recent Parameter-Efficient Fine-Tuning (PEFT) methods specifically designed for time series, such as MSFT (NeurIPS 2025) or TRACE (2025), which are mentioned in your Related Work but excluded from the experiments.
+
+---
+
+### 📝 Recommendations for the Authors (How to secure an Accept)
+
+To elevate this paper to a solid **Accept** for NeurIPS 2026, you should make the following revisions before the deadline:
+
+1. **Rewrite the Routing Collapse Hypothesis:** Remove the claims about LayerNorm. Instead, correctly attribute the homogenization of the hidden states to the **input normalization** (RevIN / Mean Scaling) used by TSFMs. Frame RR-MoA as a method that explicitly re-introduces the bypassed physical statistics (amplitude, trend) to the router. This changes a fatal flaw into a profound, highly accurate architectural insight.
+2. **Defend the Paradigm:** Dedicate a paragraph in the Introduction defending *why* practitioners should care about frozen-backbone PEFT despite the performance gap with full fine-tuning/DLinear. Emphasize use-cases like memory-constrained edge deployment or multi-tenant cloud serving (where one massive frozen backbone in GPU VRAM supports thousands of lightweight, hot-swappable client-specific adapters).
+3. **Temper the Proxy Claims:** Qualify the claim in the abstract: *"on highly stationary datasets, zero-cost gradient proxies amortize..."*
+4. **Explain Long-Horizon Decay:** Add a brief hypothesis for the diminishing returns at $H=720$. (e.g., "Raw local statistical heterogeneity, which the RR-MoA router relies on, is fundamentally less predictive of distant futures compared to the deep global semantics provided by the backbone.")
+5. **Include one SOTA Baseline:** Add at least one modern time-series adapter/PEFT baseline (like TRACE or LoRA) to Table 2 to prove RR-MoA beats the current state-of-the-art, not just standard structural heads.
+
+---
+
+let's plan out comprehensive action items
+
+---
+
+/commit-push
+
+---
+
+What do you think of this another reviewer feedback: "Must-fix items: Resolve the Table 2 vs. Table 8 diagonal inconsistency — that's the one legitimate issue that could genuinely erode reviewer trust. Clean up Proposition 1 so the set containment actually holds. And add the normalized-raw-input routing ablation, since it's a cheap experiment that preemptively kills the strongest fair criticism.
+High-value additions: Even one comparison against a lightweight supervised baseline (DLinear, PatchTST) would contextualize the absolute MSE numbers and defuse the ">1.0 MSE" concern. You don't need to beat them — just frame clearly what the frozen-backbone adapter paradigm offers (efficiency, modularity) versus full fine-tuning."
+
+Ultrathink
+
+---
+
+plan them out carefully
+
+---
+
+execute them, make sure new experiments run on RACE VM
+
+---
+
+did we fully incorporare these results back into the paper
+
+---
+
+continue where you left off
