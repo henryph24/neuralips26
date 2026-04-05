@@ -247,6 +247,24 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
     }
 
 
+def _apply_unfreeze(blocks, unfreeze):
+    """Selectively unfreeze encoder blocks."""
+    n = len(blocks)
+    if unfreeze == "frozen":
+        return
+    elif unfreeze == "last2":
+        start = max(0, n - 2)
+    elif unfreeze == "last4":
+        start = max(0, n - 4)
+    elif unfreeze == "all":
+        start = 0
+    else:
+        raise ValueError("Unknown unfreeze: %s" % unfreeze)
+    for i in range(start, n):
+        for p in blocks[i].parameters():
+            p.requires_grad = True
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="ETTh1")
@@ -254,6 +272,8 @@ def main():
     parser.add_argument("--K", type=int, default=5)
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=15)
+    parser.add_argument("--unfreeze", default="last4", choices=["frozen", "last2", "last4", "all"],
+                        help="Backbone unfreezing strategy")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
     parser.add_argument("--device", default="cuda")
@@ -273,10 +293,10 @@ def main():
 
     for p in model.parameters():
         p.requires_grad = False
-    for i in range(max(0, len(blocks)-4), len(blocks)):
-        for p in blocks[i].parameters():
-            p.requires_grad = True
-    print("d_model=%d, K=%d, hidden=%d" % (hdim, args.K, args.hidden))
+    _apply_unfreeze(blocks, args.unfreeze)
+    backbone_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("d_model=%d, K=%d, hidden=%d, unfreeze=%s, backbone_trainable=%d" % (
+        hdim, args.K, args.hidden, args.unfreeze, backbone_trainable))
 
     # Load data
     splits, _ = load_standard_data(args.dataset, args.horizon)
@@ -306,16 +326,14 @@ def main():
         result["routing_entropy"], np.log(args.K), args.K))
 
     # === Run fixed baselines ===
-    print("\nFixed baselines (15 epochs):")
+    print("\nFixed baselines (%d epochs, unfreeze=%s):" % (args.epochs, args.unfreeze))
     # Reload model for fair baseline comparison
     model2 = load_backbone(args.backbone, args.device)
     _disable_gradient_checkpointing(model2)
     blocks2 = _get_encoder_blocks(model2)
     for p in model2.parameters():
         p.requires_grad = False
-    for i in range(max(0, len(blocks2)-4), len(blocks2)):
-        for p in blocks2[i].parameters():
-            p.requires_grad = True
+    _apply_unfreeze(blocks2, args.unfreeze)
 
     baselines = {"linear": SEED_ADAPTERS[0], "attention": SEED_ADAPTERS[3], "conv": SEED_ADAPTERS[4]}
     baseline_results = {}
@@ -350,13 +368,15 @@ def main():
         "seed": args.seed,
         "K": args.K,
         "hidden": args.hidden,
+        "unfreeze": args.unfreeze,
+        "backbone_trainable_params": backbone_trainable,
         "adamix": result,
         "elapsed": elapsed,
         "baselines": {k: v for k, v in baseline_results.items()},
         "winner": winner,
         "delta_pct": delta,
     }
-    path = "results/adamix/%s_H%d_K%d_%d.json" % (args.dataset, args.horizon, args.K, args.seed)
+    path = "results/adamix/%s_H%d_K%d_%s_%d.json" % (args.dataset, args.horizon, args.K, args.unfreeze, args.seed)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
