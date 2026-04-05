@@ -1,0 +1,44 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 44,
+  "K": 5,
+  "top_k": 2,
+  "unfreeze": "last4",
+  "backbone_trainable_params": 9441280,
+  "rr_moa": {
+    "mse": 0.2494278997182846,
+    "mae": 0.3191986083984375,
+    "param_count": 426102,
+    "top_k": 2,
+    "routing": {
+      "mean": 0.25,
+      "last": 0.239,
+      "max": 0.137,
+      "attention": 0.113,
+      "conv1d": 0.261
+    },
+    "routing_entropy": 1.3638297319412231,
+    "routing_max_weight": 0.3893602788448334
+  },
+  "elapsed": 54.19574809074402,
+  "baselines": {
+    "linear": {
+      "mse": 0.9440127611160278,
+      "mae": 0.6195473074913025,
+      "param_count": 49248
+    },
+    "attention": {
+      "mse": 0.5396249294281006,
+      "mae": 0.5315602421760559,
+      "param_count": 49761
+    },
+    "conv": {
+      "mse": 0.6067635416984558,
+      "mae": 0.5878222584724426,
+      "param_count": 209248
+    }
+  },
+  "winner": "RR-MoA",
+  "delta_pct": -53.777543231253134
+}

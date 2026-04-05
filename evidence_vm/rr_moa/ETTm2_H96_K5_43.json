@@ -1,0 +1,40 @@
+{
+  "dataset": "ETTm2",
+  "horizon": 96,
+  "seed": 43,
+  "K": 5,
+  "rr_moa": {
+    "mse": 0.3256184756755829,
+    "mae": 0.4026843309402466,
+    "param_count": 426102,
+    "routing": {
+      "mean": 0.146,
+      "last": 0.274,
+      "max": 0.155,
+      "attention": 0.116,
+      "conv1d": 0.309
+    },
+    "routing_entropy": 1.4674409627914429,
+    "routing_max_weight": 0.327578604221344
+  },
+  "elapsed": 44.610169887542725,
+  "baselines": {
+    "linear": {
+      "mse": 2.833993673324585,
+      "mae": 1.265777826309204,
+      "param_count": 49248
+    },
+    "attention": {
+      "mse": 2.8380749225616455,
+      "mae": 1.2450484037399292,
+      "param_count": 49761
+    },
+    "conv": {
+      "mse": 3.0991106033325195,
+      "mae": 1.307769775390625,
+      "param_count": 209248
+    }
+  },
+  "winner": "RR-MoA",
+  "delta_pct": -88.51026102349773
+}

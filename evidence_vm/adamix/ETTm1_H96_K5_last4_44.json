@@ -1,0 +1,42 @@
+{
+  "dataset": "ETTm1",
+  "horizon": 96,
+  "seed": 44,
+  "K": 5,
+  "hidden": 64,
+  "unfreeze": "last4",
+  "backbone_trainable_params": 9441280,
+  "adamix": {
+    "mse": 1.1227443218231201,
+    "mae": 0.8041303753852844,
+    "param_count": 441830,
+    "mean_routing_weights": {
+      "mean": 0.0,
+      "last": 1.0,
+      "max": 0.0,
+      "attention": 0.0,
+      "conv1d": 0.0
+    },
+    "routing_entropy": 9.516944565746144e-09
+  },
+  "elapsed": 44.665483713150024,
+  "baselines": {
+    "linear": {
+      "mse": 0.8334857821464539,
+      "mae": 0.7114822864532471,
+      "param_count": 49248
+    },
+    "attention": {
+      "mse": 0.8994844555854797,
+      "mae": 0.7517966628074646,
+      "param_count": 49761
+    },
+    "conv": {
+      "mse": 1.0748071670532227,
+      "mae": 0.8247233033180237,
+      "param_count": 209248
+    }
+  },
+  "winner": "BASELINE",
+  "delta_pct": 34.70467593721232
+}
