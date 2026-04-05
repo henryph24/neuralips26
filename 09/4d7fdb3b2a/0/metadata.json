@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "094d7fdb3b2a",
+  "session_id": "73a5c0b0-23f7-4be3-8d21-7cf844164879",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-05T07:33:07.216951Z",
+  "branch": "main",
+  "checkpoints_count": 12,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_adamix.py",
+    "scripts/run_freeze_ablation.py",
+    "scripts/run_rr_moa.py"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-4-6[1m]",
+  "turn_id": "834a62305dfa",
+  "token_usage": {
+    "input_tokens": 204,
+    "cache_creation_tokens": 396913,
+    "cache_read_tokens": 25272178,
+    "output_tokens": 106505,
+    "api_call_count": 157
+  },
+  "session_metrics": {
+    "turn_count": 12
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-05T07:33:05.270058Z",
+    "agent_lines": 119,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 391,
+    "total_committed": 119,
+    "agent_percentage": 100
+  }
+}
