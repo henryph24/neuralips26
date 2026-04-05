@@ -270,8 +270,9 @@ AAS discovers topologically diverse adapters (Conv1d, attention, depthwise, etc.
 
 \textbf{The fix: route on the raw pre-normalization input.} We propose \textbf{RR-MoA}, which splits the information stream: the pretrained TSFM processes the deep semantic representation $\mathbf{H}$, while a lightweight gating network reads the \textit{raw, pre-normalization} input $\mathbf{X}_\text{raw}$ (before the backbone's internal RevIN~\citep{kim2021revin} and before any external standardization) to compute sparse Top-$k$ routing weights:
 \begin{equation}
-\mathbf{Y} = \sum_{k \in \mathcal{T}_k(\mathbf{X}_\text{raw})} \underbrace{\widetilde{w}_k}_{\text{sparse weight}} \cdot \underbrace{\text{Expert}_k(\mathbf{H}_\text{FM})}_{\text{deep embedding branch}},\quad
-\mathcal{T}_k = \mathrm{TopK}\!\left(G_\psi(\mathbf{X}_\text{raw})\right),\;\;\widetilde{w} = \mathrm{softmax}_{\mathcal{T}_k}\!\left(G_\psi(\mathbf{X}_\text{raw})\right)
+\mathbf{Y} = \sum_{j \in \mathcal{T}} \underbrace{\widetilde{w}_j}_{\text{sparse weight}} \cdot \underbrace{\text{Expert}_j(\mathbf{H}_\text{FM})}_{\text{deep embedding branch}},\quad
+\mathcal{T} = \mathrm{TopK}\!\left(G_\psi(\mathbf{X}_\text{raw}),\, k\right),\;\;
+\widetilde{w} = \mathrm{softmax}_{\mathcal{T}}\!\left(G_\psi(\mathbf{X}_\text{raw})\right)
 \label{eq:rrmoa}
 \end{equation}
 where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params) operating directly on the raw time series, and each $\text{Expert}_k$ is an AAS-distilled adapter head. Routing is restricted to the Top-$k$ experts with the highest gate logits, so only $k$ of $K$ experts execute per sample. With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense FLOPs while retaining $>\!94\%$ of the MSE gain (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
@@ -283,11 +284,11 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 \REQUIRE Strictly frozen TSFM $f_{\theta_\text{frozen}}$, raw input $\mathbf{X}_\text{raw}\in\mathbb{R}^{B\times L}$, $K$ expert adapters, sparsity $k\leq K$
 \STATE $\mathbf{H}\leftarrow f_{\theta_\text{frozen}}(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Deep embeddings; \textbf{no gradients} through $\theta$}
 \STATE $\mathbf{g}\leftarrow G_\psi(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Raw-signal gate logits, $\mathbf{g}\in\mathbb{R}^{B\times K}$}
-\STATE $\mathcal{T}\leftarrow \mathrm{TopK}(\mathbf{g},k)$ \hfill \COMMENT{Per-sample indices of the $k$ selected experts}
+\STATE $\mathcal{T}\leftarrow \mathrm{TopK}(\mathbf{g},\,k)$ \hfill \COMMENT{Per-sample indices of the $k$ selected experts}
 \STATE $\widetilde{\mathbf{w}}\leftarrow \mathrm{softmax}_{\mathcal{T}}(\mathbf{g})$ \hfill \COMMENT{Renormalized over selected experts only}
-\FOR{$j\in\mathcal{T}$}
-    \STATE $\mathbf{o}_j\leftarrow \text{Expert}_j(\mathbf{H})$ \hfill \COMMENT{Only the $k$ selected experts execute}
-\ENDFOR
+\STATE \textbf{for each}\ $j \in \mathcal{T}$\ \textbf{do}
+\STATE \quad $\mathbf{o}_j\leftarrow \text{Expert}_j(\mathbf{H})$ \hfill \COMMENT{Only the $k$ selected experts execute}
+\STATE \textbf{end for}
 \STATE $\mathbf{Y}\leftarrow \sum_{j\in\mathcal{T}}\widetilde{w}_j\cdot \mathbf{o}_j$
 \RETURN $\mathbf{Y}$
 \end{algorithmic}
@@ -405,7 +406,7 @@ Backbone & Dataset & AAS MSE & Best Fixed & $\Delta$ \\
 
 Two patterns emerge. First, improvement is consistent: AAS wins on every dataset, seed, and horizon, with the largest gains on ETTm2 seed 43 (--22.4\%) and Weather (--18.9\%), and the smallest on ETTm1 H=720 (--0.1\%). Longer-horizon margins are tighter (H=336/720: --0.1\% to --0.6\%). We hypothesise a specific mechanism for this decay: the raw-signal router and the discovered experts both condition on \emph{local} statistical heterogeneity---trend, amplitude, and volatility computed over the 512-step input window. These statistics are informative for short-horizon forecasts ($H{=}96$) because the near future typically preserves the local regime, but they become progressively less predictive as the horizon extends to 336 and 720 steps, where the target depends on global seasonality and structural drift rather than on the local regime the router observes. At very long horizons the optimal expert becomes nearly input-independent, and the mixture converges toward a single best adapter---which is exactly what the shrinking delta measures. Second, AAS frequently finds more \textit{efficient} architectures---the majority of winning adapters use fewer parameters than the conv baseline. Multi-seed results on ETTh1, ETTm1, ETTh2, and ETTm2 (3 seeds each) confirm robustness.
 
-\textbf{Cross-backbone generalization.} Table~\ref{tab:backbone} shows that AAS also wins on MOMENT-large (341M params, $d_\text{model}{=}1024$, 24 blocks) and Moirai-1.1-R-small. The adapter interface contract is identical across backbones---only $d_\text{model}$ changes---demonstrating that the AAS search procedure is backbone-agnostic within the family of continuous-embedding TSFMs.
+\textbf{Cross-backbone generalization.} Table~\ref{tab:backbone} shows that AAS also wins on MOMENT-large (341M params, $d_\text{model}{=}1024$, 24 blocks) and Moirai-1.1-R-small. The adapter interface contract is identical across backbones---only $d_\text{model}$ changes---demonstrating that the AAS search procedure is backbone-agnostic within the family of continuous-embedding TSFMs. We note that Moirai's internal normalization (per-patch instance scaling combined with any-variate attention) differs in mechanism from MOMENT's RevIN, but the same principle---any pre-encoder per-window normalization removes precisely the macro-statistics that RR-MoA's raw-signal router relies on---holds universally across TSFMs that standardize inputs before encoding, so the rawness argument of \S\ref{sec:rrmoa} is not MOMENT-specific.
 
 \subsection{Factorial Decomposition}
 \label{sec:decomposition}
@@ -519,12 +520,12 @@ A subtle but important question is whether RR-MoA's advantage comes from the fac
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Rawness vs.\ bypass ablation} (strictly frozen backbone, Top-2 sparse routing, 3 seeds, test MSE mean$\pm$std). The raw router reads the channel-standardized input signal; the RevIN router reads the same signal after an additional per-window zero-mean unit-variance transform that strips temporal statistics. Stripping the rawness degrades MSE by 60--88\% across all three datasets, confirming that routing on the backbone's post-normalization representation is insufficient: the per-window trend/amplitude/volatility that the normalization cascade removes are precisely the statistics the router relies on.}
+\caption{\textbf{Rawness vs.\ bypass ablation} (strictly frozen backbone, Top-2 sparse routing, 3 seeds, test MSE mean$\pm$std). The raw router reads the channel-standardized input signal; the RevIN router reads the same signal after an additional per-window zero-mean unit-variance transform that strips temporal statistics. The final column reports relative MSE \emph{degradation} of the RevIN router against the raw router --- \textbf{positive values mean the raw router is better}. Stripping the rawness degrades MSE by 60--88\% across all three datasets, confirming that routing on the backbone's post-normalization representation is insufficient: the per-window trend/amplitude/volatility that the normalization cascade removes are precisely the statistics the router relies on.}
 \label{tab:router_input}
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
-Dataset & Raw router (main) & RevIN router & $\Delta$ (RevIN vs Raw) \\
+Dataset & Raw router (main) & RevIN router & Degradation vs Raw ($\Delta\%$, $\uparrow$ worse) \\
 \midrule
 ETTh1   & $\mathbf{0.690 \pm 0.021}$ & $1.101 \pm 0.008$ & $\mathbf{+59.6\%}$ \\
 ETTm1   & $\mathbf{0.572 \pm 0.073}$ & $1.077 \pm 0.020$ & $\mathbf{+88.3\%}$ \\
