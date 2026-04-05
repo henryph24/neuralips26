@@ -130,3 +130,24 @@ between runs.
 
 _Evidence retrieved and audited on 2026-04-05 at the request of the author
 in response to a reviewer challenge alleging result fabrication._
+
+---
+
+## Addendum (2026-04-05): LoRA baseline
+
+In response to a second reviewer's request for a modern PEFT baseline, we ran
+9 LoRA experiments on the same RACE VM (A10G), strictly frozen backbone,
+rank $r{=}8$ on $q,v$ projections across all 8 T5 encoder blocks, linear
+forecast head, 15 epochs, seeds $\{42,43,44\}$, datasets $\{$ETTh1, ETTm1,
+Weather$\}$. ~10 minutes of wall-clock time total. Raw artifacts:
+`lora_baseline/*.json` (9 files). The updated `verify.py` now checks 44
+numeric claims (41 previous + 3 new LoRA means) against the JSON evidence
+and still exits 0.
+
+Measured LoRA numbers (mean $\pm$ std over 3 seeds, strictly frozen):
+- ETTh1:   $1.559 \pm 0.022$
+- ETTm1:   $0.970 \pm 0.026$
+- Weather: $0.611 \pm 0.021$
+
+These numbers appear in `main.tex` Table `tab:lora` (§4.5) and support the
+paper's claim of a 9/9 RR-MoA vs LoRA head-to-head win.

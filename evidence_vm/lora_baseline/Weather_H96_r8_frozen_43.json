@@ -1,0 +1,15 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 43,
+  "rank": 8,
+  "unfreeze": "frozen",
+  "backbone": "AutonLab/MOMENT-1-small",
+  "lora_mse": 0.5967711806297302,
+  "lora_mae": 0.5737515091896057,
+  "lora_params": 114688,
+  "head_params": 49248,
+  "total_trainable_params": 163936,
+  "elapsed": 58.4861524105072,
+  "config_id": "lora_r8_qv_all_frozen"
+}

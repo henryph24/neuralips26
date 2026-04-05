@@ -80,6 +80,13 @@ TAB5_TOPK = {
     "dense": (0.550, 0.029),
 }
 
+TAB_LORA = {
+    # (dataset) -> (mean, std) LoRA r=8 frozen test MSE, 3 seeds
+    "ETTh1":   (1.559, 0.022),
+    "ETTm1":   (0.970, 0.026),
+    "Weather": (0.611, 0.021),
+}
+
 
 def mean_std(xs):
     n = len(xs)
@@ -179,6 +186,21 @@ def main():
         got = mean_std(topk_groups[k])
         if not (close(got[0], expected[0], TOL) and close(got[1], expected[1], TOL)):
             errors.append(f"Table 5 Top-{k}: paper={expected}, json={got}")
+
+    # --- Table LoRA: modern PEFT baseline (strictly frozen, 3 seeds) ---
+    lora_groups = defaultdict(list)
+    for f in sorted(glob.glob(f"{EVID}/lora_baseline/*_r8_frozen_4?.json")):
+        d = json.load(open(f))
+        lora_groups[d["dataset"]].append(d["lora_mse"])
+
+    for key, expected in TAB_LORA.items():
+        checks += 1
+        if key not in lora_groups:
+            errors.append(f"Table LoRA {key}: NO DATA")
+            continue
+        got = mean_std(lora_groups[key])
+        if not (close(got[0], expected[0], TOL) and close(got[1], expected[1], TOL)):
+            errors.append(f"Table LoRA {key}: paper={expected}, json={got}")
 
     # --- 27/27 wins audit ---
     total = 0

@@ -1,0 +1,15 @@
+{
+  "dataset": "ETTm1",
+  "horizon": 96,
+  "seed": 43,
+  "rank": 8,
+  "unfreeze": "frozen",
+  "backbone": "AutonLab/MOMENT-1-small",
+  "lora_mse": 0.9362890124320984,
+  "lora_mae": 0.7489760518074036,
+  "lora_params": 114688,
+  "head_params": 49248,
+  "total_trainable_params": 163936,
+  "elapsed": 58.41907453536987,
+  "config_id": "lora_r8_qv_all_frozen"
+}
