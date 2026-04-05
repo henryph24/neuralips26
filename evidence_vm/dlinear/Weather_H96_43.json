@@ -1,0 +1,11 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 43,
+  "epochs": 15,
+  "input_len": 512,
+  "dlinear_mse": 0.21258066594600677,
+  "dlinear_mae": 0.2658531665802002,
+  "param_count": 49248,
+  "elapsed": 1.0523200035095215
+}

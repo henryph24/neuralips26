@@ -1,0 +1,30 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 43,
+  "K": 5,
+  "top_k": 2,
+  "unfreeze": "frozen",
+  "router_input_mode": "revin",
+  "backbone_trainable_params": 0,
+  "rr_moa": {
+    "mse": 0.5731651782989502,
+    "mae": 0.5489680767059326,
+    "param_count": 426102,
+    "top_k": 2,
+    "router_input_mode": "revin",
+    "routing": {
+      "mean": 0.143,
+      "last": 0.181,
+      "max": 0.177,
+      "attention": 0.183,
+      "conv1d": 0.316
+    },
+    "routing_entropy": 1.55416738986969,
+    "routing_max_weight": 0.3168568015098572
+  },
+  "elapsed": 33.75137186050415,
+  "baselines": {},
+  "winner": "N/A",
+  "delta_pct": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "dataset": "ETTm1",
+  "horizon": 96,
+  "seed": 42,
+  "epochs": 15,
+  "input_len": 512,
+  "dlinear_mse": 0.3215038478374481,
+  "dlinear_mae": 0.36618971824645996,
+  "param_count": 49248,
+  "elapsed": 1.0389244556427002
+}

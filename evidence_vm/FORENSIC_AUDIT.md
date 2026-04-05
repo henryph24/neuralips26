@@ -151,3 +151,49 @@ Measured LoRA numbers (mean $\pm$ std over 3 seeds, strictly frozen):
 
 These numbers appear in `main.tex` Table `tab:lora` (§4.5) and support the
 paper's claim of a 9/9 RR-MoA vs LoRA head-to-head win.
+
+---
+
+## Addendum (2026-04-05, later in day): rawness ablation + DLinear baseline
+
+In response to a third reviewer's request for a normalized-raw-input routing
+ablation and a lightweight supervised baseline, we ran two additional experiment
+sweeps on the same RACE VM A10G:
+
+### Rawness ablation (9 experiments, ~6 minutes)
+- 3 datasets (ETTh1, ETTm1, Weather) $\times$ 3 seeds $\{42,43,44\}$
+- Strictly frozen backbone, Top-2 sparse routing, 15 epochs
+- `--router-input-mode revin` applies per-window zero-mean unit-variance to
+  the router's input signal before the gate computes logits
+- Raw artifacts: `rr_moa/*_router-revin.json` (9 files)
+- Narrative-consistency check: before running the ablation, we re-ran the
+  existing raw-mode ETTh1 seed 42 frozen Top-2 experiment and confirmed the
+  new code path produces bit-identical MSE $(0.6671)$ to the stored JSON
+- Result: RevIN-router MSE degrades by 60-88% vs raw-router on all 3 datasets,
+  with tight error bars ($\pm$0.008 to $\pm$0.026). Empirically validates the
+  "rawness matters" claim at the heart of RR-MoA.
+
+### DLinear baseline (9 experiments, ~45 seconds)
+- Same 3 datasets $\times$ 3 seeds
+- `scripts/run_dlinear_baseline.py`: literally one `nn.Linear(512, 96)`,
+  $49{,}248$ parameters, trained from scratch on the same normalized
+  train/test splits used by `run_rr_moa.py`
+- Raw artifacts: `dlinear/*.json` (9 files)
+- Result: DLinear reaches $0.417\pm0.002$ (ETTh1), $0.322\pm0.004$ (ETTm1),
+  $0.208\pm0.003$ (Weather) -- 39-78% lower absolute MSE than frozen RR-MoA.
+  Used in the paper's "Why frozen at all?" paragraph and Limitations section
+  as the honest apples-to-apples baseline that contextualizes the frozen-
+  backbone paradigm.
+
+### verify.py updated to 50 checks
+Running `python3 evidence_vm/verify.py` on this branch now prints:
+
+```
+Ran 50 checks against 63 RR-MoA + 45 AdaMix JSON files.
+PASS: all 50 numeric claims in main.tex Tables 3-5 match the raw JSON
+      evidence within tolerance (MSE 0.005, entropy 0.01).
+RR-MoA wins: 27/27
+```
+
+The 6 new checks cover `tab:router_input` (3 RevIN means) and
+`tab:dlinear`-derived limitations text (3 DLinear means). All pass.

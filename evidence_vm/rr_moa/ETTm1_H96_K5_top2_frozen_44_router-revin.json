@@ -1,0 +1,30 @@
+{
+  "dataset": "ETTm1",
+  "horizon": 96,
+  "seed": 44,
+  "K": 5,
+  "top_k": 2,
+  "unfreeze": "frozen",
+  "router_input_mode": "revin",
+  "backbone_trainable_params": 0,
+  "rr_moa": {
+    "mse": 1.104801058769226,
+    "mae": 0.8287097811698914,
+    "param_count": 426102,
+    "top_k": 2,
+    "router_input_mode": "revin",
+    "routing": {
+      "mean": 0.157,
+      "last": 0.181,
+      "max": 0.168,
+      "attention": 0.161,
+      "conv1d": 0.334
+    },
+    "routing_entropy": 1.552178144454956,
+    "routing_max_weight": 0.3342984914779663
+  },
+  "elapsed": 32.090572357177734,
+  "baselines": {},
+  "winner": "N/A",
+  "delta_pct": 0.0
+}

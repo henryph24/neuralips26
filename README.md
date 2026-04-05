@@ -31,8 +31,8 @@ mean$\pm$std reported in the paper's Tables 3-5, and checks them against the
 raw data. It should print:
 
 ```
-Ran 44 checks against 54 RR-MoA + 45 AdaMix + 9 LoRA JSON files.
-PASS: all 44 numeric claims in main.tex Tables 3-5 (and LoRA comparison in tab:lora) match the raw JSON
+Ran 50 checks against 63 RR-MoA + 45 AdaMix + 9 LoRA + 9 DLinear JSON files.
+PASS: all 50 numeric claims in main.tex Tables 3-5 (plus LoRA, rawness ablation, and DLinear baseline) match the raw JSON
 evidence within tolerance (MSE 0.005, entropy 0.01).
 RR-MoA wins: 27/27
 ```

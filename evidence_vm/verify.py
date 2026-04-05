@@ -87,6 +87,20 @@ TAB_LORA = {
     "Weather": (0.611, 0.021),
 }
 
+TAB_ROUTER_INPUT = {
+    # (dataset) -> (mean, std) RevIN-router MSE, 3 seeds, strictly frozen, Top-2
+    "ETTh1":   (1.101, 0.008),
+    "ETTm1":   (1.077, 0.020),
+    "Weather": (0.542, 0.026),
+}
+
+TAB_DLINEAR = {
+    # (dataset) -> (mean, std) DLinear-from-scratch MSE, 3 seeds
+    "ETTh1":   (0.417, 0.002),
+    "ETTm1":   (0.322, 0.004),
+    "Weather": (0.208, 0.003),
+}
+
 
 def mean_std(xs):
     n = len(xs)
@@ -201,6 +215,36 @@ def main():
         got = mean_std(lora_groups[key])
         if not (close(got[0], expected[0], TOL) and close(got[1], expected[1], TOL)):
             errors.append(f"Table LoRA {key}: paper={expected}, json={got}")
+
+    # --- Table tab:router_input: rawness ablation (strictly frozen, Top-2) ---
+    rev_groups = defaultdict(list)
+    for f in sorted(glob.glob(f"{EVID}/rr_moa/*_top2_frozen_4?_router-revin.json")):
+        d = json.load(open(f))
+        rev_groups[d["dataset"]].append(d["rr_moa"]["mse"])
+
+    for key, expected in TAB_ROUTER_INPUT.items():
+        checks += 1
+        if key not in rev_groups:
+            errors.append(f"Table router_input {key}: NO DATA")
+            continue
+        got = mean_std(rev_groups[key])
+        if not (close(got[0], expected[0], TOL) and close(got[1], expected[1], TOL)):
+            errors.append(f"Table router_input {key}: paper={expected}, json={got}")
+
+    # --- Table DLinear: lightweight supervised baseline (3 seeds) ---
+    dl_groups = defaultdict(list)
+    for f in sorted(glob.glob(f"{EVID}/dlinear/*_H96_4?.json")):
+        d = json.load(open(f))
+        dl_groups[d["dataset"]].append(d["dlinear_mse"])
+
+    for key, expected in TAB_DLINEAR.items():
+        checks += 1
+        if key not in dl_groups:
+            errors.append(f"Table DLinear {key}: NO DATA")
+            continue
+        got = mean_std(dl_groups[key])
+        if not (close(got[0], expected[0], TOL) and close(got[1], expected[1], TOL)):
+            errors.append(f"Table DLinear {key}: paper={expected}, json={got}")
 
     # --- 27/27 wins audit ---
     total = 0
