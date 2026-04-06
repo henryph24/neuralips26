@@ -35,6 +35,7 @@ from feasibility.finetune import _extract_features_batch
 from feasibility.code_evolution import SEED_ADAPTERS, validate_adapter_code
 from scripts.run_standard_evolution import (
     load_standard_data, train_adapter, _detect_backbone_type,
+    compute_denorm_mse,
 )
 
 
@@ -173,8 +174,20 @@ class AdaMix(nn.Module):
 
 def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
-                 backbone_type="moment", K=5, hidden=64):
-    """Train AdaMix adapter."""
+                 backbone_type="moment", K=5, hidden=64, test_ch=None, scaler=None,
+                 trajectory_path=None, trajectory_max_steps=400):
+    """Train AdaMix adapter.
+
+    If ``trajectory_path`` is not None, writes a JSONL file with per-step
+    routing / gradient diagnostics for the first ``trajectory_max_steps``
+    optimizer steps. Used by T2.A to provide mechanistic evidence for the
+    gradient co-adaptation hypothesis (see review W5): under an unfrozen
+    backbone, we expect to see (a) the router entropy collapse toward 0 within
+    a few dozen steps, (b) one expert's gradient norm grow relative to the
+    others, and (c) the backbone encoder-block gradient norm remain active
+    (confirming joint updates to $theta_active$). Under the frozen control,
+    (a)--(c) should all be absent.
+    """
     hdim = _get_hidden_dim(model)
     adapter = AdaMix(hdim, forecast_horizon, K=K, hidden=hidden).to(device)
 
@@ -198,6 +211,15 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
         torch.from_numpy(X_val).float(), torch.from_numpy(Y_val).float(),
     ), batch_size=batch_size)
 
+    # T2.A trajectory logging: open file and take a snapshot of the
+    # unfrozen encoder-block parameters for grad-norm tracking.
+    trajectory_file = None
+    if trajectory_path is not None:
+        os.makedirs(os.path.dirname(trajectory_path) or ".", exist_ok=True)
+        trajectory_file = open(trajectory_path, "w")
+    unfrozen_block_params = [p for b in blocks for p in b.parameters() if p.requires_grad]
+    step_counter = [0]  # mutable closure
+
     for epoch in range(n_epochs):
         model.train(); adapter.train()
         for bx, by in train_loader:
@@ -209,7 +231,56 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
                 loss = mse_fn(pred, by) + adapter.load_balance_coeff * adapter.load_balance_loss(feat)
             optimizer.zero_grad()
             loss.backward()
+
+            # T2.A: snapshot gradient / routing state BEFORE optimizer.step().
+            if trajectory_file is not None and step_counter[0] < trajectory_max_steps:
+                with torch.no_grad():
+                    h_summary = feat.mean(dim=1)
+                    logits = adapter.router(h_summary)
+                    weights = torch.softmax(logits, dim=-1).float()
+                    mean_weights = weights.mean(dim=0)
+                    entropy = -(weights * torch.log(weights + 1e-10)).sum(dim=-1).mean().item()
+                    max_w = weights.max(dim=-1).values.mean().item()
+
+                    expert_grad_norms = []
+                    for e_idx, expert in enumerate(adapter.adapters):
+                        g_sq = 0.0
+                        for p in expert.parameters():
+                            if p.grad is not None:
+                                g_sq += float(p.grad.detach().float().pow(2).sum().item())
+                        expert_grad_norms.append(g_sq ** 0.5)
+
+                    router_grad_sq = 0.0
+                    for p in adapter.router.parameters():
+                        if p.grad is not None:
+                            router_grad_sq += float(p.grad.detach().float().pow(2).sum().item())
+                    router_grad_norm = router_grad_sq ** 0.5
+
+                    backbone_grad_sq = 0.0
+                    for p in unfrozen_block_params:
+                        if p.grad is not None:
+                            backbone_grad_sq += float(p.grad.detach().float().pow(2).sum().item())
+                    backbone_grad_norm = backbone_grad_sq ** 0.5
+
+                    trajectory_file.write(json.dumps({
+                        "step": step_counter[0],
+                        "epoch": epoch,
+                        "loss": float(loss.item()),
+                        "routing_entropy": float(entropy),
+                        "routing_max_weight": float(max_w),
+                        "mean_routing_weights": [float(w) for w in mean_weights.tolist()],
+                        "expert_grad_norms": expert_grad_norms,
+                        "router_grad_norm": router_grad_norm,
+                        "backbone_unfrozen_grad_norm": backbone_grad_norm,
+                    }) + "\n")
+                    trajectory_file.flush()
+                step_counter[0] += 1
+
             optimizer.step()
+
+    if trajectory_file is not None:
+        trajectory_file.close()
+        print("Trajectory saved: %s (%d steps)" % (trajectory_path, step_counter[0]))
 
     # Evaluate on test
     model.eval(); adapter.eval()
@@ -238,13 +309,18 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
     mean_routing = routing.mean(dim=0).tolist()
     routing_entropy = -(routing * torch.log(routing + 1e-10)).sum(dim=-1).mean().item()
 
-    return {
+    out = {
         "mse": mse,
         "mae": mae,
         "param_count": adapter.param_count(),
         "mean_routing_weights": {HEAD_NAMES[i]: round(w, 3) for i, w in enumerate(mean_routing[:len(HEAD_NAMES)])},
         "routing_entropy": routing_entropy,
     }
+    if test_ch is not None and scaler is not None:
+        mse_d, mae_d = compute_denorm_mse(preds, tgts, test_ch, scaler)
+        out["mse_denorm"] = mse_d
+        out["mae_denorm"] = mae_d
+    return out
 
 
 def _apply_unfreeze(blocks, unfreeze):
@@ -277,6 +353,11 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--trajectory", default=None,
+                        help="Path to write per-step routing/gradient trajectory JSONL "
+                             "(T2.A mechanistic verification). If omitted, no trajectory is "
+                             "recorded. Example: --trajectory results/adamix/trajectory_ETTh1_last4_42.jsonl")
+    parser.add_argument("--trajectory-max-steps", type=int, default=400)
     args = parser.parse_args()
 
     os.makedirs("results/adamix", exist_ok=True)
@@ -303,6 +384,8 @@ def main():
     X_train, Y_train = splits["train"]
     X_val, Y_val = splits["val"]
     X_test, Y_test = splits["test"]
+    test_ch = splits.get("test_ch")
+    scaler = splits.get("_scaler")
     print("%s H=%d: train=%d, val=%d, test=%d" % (
         args.dataset, args.horizon, len(X_train), len(X_val), len(X_test)))
 
@@ -316,11 +399,17 @@ def main():
         model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
         device=args.device, n_epochs=args.epochs, forecast_horizon=args.horizon,
         backbone_type=bb_type, K=args.K, hidden=args.hidden,
+        test_ch=test_ch, scaler=scaler,
+        trajectory_path=args.trajectory,
+        trajectory_max_steps=args.trajectory_max_steps,
     )
     elapsed = time.time() - start
 
     print("AdaMix: MSE=%.4f  MAE=%.4f  params=%d  time=%.0fs" % (
         result["mse"], result["mae"], result["param_count"], elapsed))
+    if "mse_denorm" in result:
+        print("AdaMix: MSE_denorm=%.4f  MAE_denorm=%.4f (original units)" % (
+            result["mse_denorm"], result["mae_denorm"]))
     print("Routing: %s" % result["mean_routing_weights"])
     print("Routing entropy: %.3f (max=%.3f for K=%d)" % (
         result["routing_entropy"], np.log(args.K), args.K))
@@ -341,9 +430,13 @@ def main():
         try:
             tr = train_adapter(code, model2, blocks2, X_train, Y_train, X_test, Y_test,
                                device=args.device, n_epochs=15, forecast_horizon=args.horizon,
-                               backbone_type=bb_type)
+                               backbone_type=bb_type, eval_ch=test_ch, scaler=scaler)
             baseline_results[name] = tr
-            print("  %-15s MSE=%.4f  params=%d" % (name, tr["mse"], tr["param_count"]))
+            if "mse_denorm" in tr:
+                print("  %-15s MSE=%.4f  MSE_denorm=%.4f  params=%d" % (
+                    name, tr["mse"], tr["mse_denorm"], tr["param_count"]))
+            else:
+                print("  %-15s MSE=%.4f  params=%d" % (name, tr["mse"], tr["param_count"]))
         except Exception as e:
             print("  %-15s ERROR: %s" % (name, e))
 
@@ -362,6 +455,13 @@ def main():
     print("Delta: %+.1f%% -> Winner: %s" % (delta, winner))
 
     # Save
+    scaler_info = None
+    if scaler is not None:
+        scaler_info = {
+            "scale_": [float(x) for x in scaler.scale_],
+            "mean_": [float(x) for x in scaler.mean_],
+            "mean_scale_sq": float(np.mean(scaler.scale_ ** 2)),
+        }
     save_data = {
         "dataset": args.dataset,
         "horizon": args.horizon,
@@ -375,6 +475,7 @@ def main():
         "baselines": {k: v for k, v in baseline_results.items()},
         "winner": winner,
         "delta_pct": delta,
+        "scaler": scaler_info,
     }
     path = "results/adamix/%s_H%d_K%d_%s_%d.json" % (args.dataset, args.horizon, args.K, args.unfreeze, args.seed)
     with open(path, "w") as f:

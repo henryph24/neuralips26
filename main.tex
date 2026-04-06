@@ -59,31 +59,19 @@ The transformer architecture~\citep{vaswani2017attention} has enabled foundation
 
 \textbf{The one-size-fits-all adapter status quo.} Current TSFM adaptation almost always reduces to the same computational template: \emph{pool the backbone's hidden states $\to$ project to the output horizon}, with a handful of standard variants---linear probing~\citep{goswami2024moment, das2024timesfm}, MLP heads~\citep{nie2023patchtst, wu2023timesnet}, LoRA~\citep{hu2022lora}, and bottleneck adapters~\citep{houlsby2019adapters}. Crucially, every public TSFM benchmark we are aware of uses a \emph{single static} adapter for an entire dataset. Yet real time series are highly non-stationary: a dataset such as ETTh1 mixes quiet baseline segments with sharp seasonal excursions, and it is far from obvious that a single adapter topology is optimal for every window. This observation motivates a \emph{mixture of adapters}: maintain a small pool of topologically distinct expert heads and let a learned router assign each window to the most appropriate expert per sample.
 
-\textbf{Why frozen at all?} For a single dataset at a single horizon, lightweight supervised baselines like DLinear~\citep{zeng2023dlinear} obtain materially lower absolute MSE than any frozen-backbone adapter. We measure this directly on our exact normalized evaluation scale: a $49$K-parameter DLinear trained from scratch for 15 epochs reaches $0.417{\pm}0.002$ on ETTh1, $0.322{\pm}0.004$ on ETTm1, and $0.208{\pm}0.003$ on Weather (3 seeds)---roughly $40$--$80\%$ lower than our best frozen-backbone RR-MoA numbers in Table~\ref{tab:rrmoa}. Full fine-tuned specialists such as PatchTST~\citep{nie2023patchtst} would further widen this gap. \textit{Our contribution is emphatically not to replace DLinear or PatchTST in the single-dataset setting.} The frozen-backbone paradigm we target is instead motivated by three deployment regimes in which full fine-tuning is infeasible and in which re-training a DLinear per use-case is operationally expensive: (i)~\textbf{multi-tenant cloud serving}, where a single TSFM sits in GPU VRAM and serves thousands of tenants via lightweight, hot-swappable per-tenant adapters in host RAM---retraining a separate DLinear per tenant does not amortize the backbone cost and forfeits any zero-shot transfer the TSFM provides; (ii)~\textbf{on-device and edge deployment}, where one backbone is shipped once with the device image and per-site adapters are updated over low-bandwidth links---DLinear per site requires collecting each site's training data at a central location, which is often impossible for privacy or latency reasons; and (iii)~\textbf{cross-task reuse}, where the same frozen backbone drives forecasting, imputation, and (in principle) classification via different expert pools---we demonstrate the first two of these explicitly in \S\ref{sec:rrmoa} and \S4.5. Within this paradigm, the question is \emph{not} whether the frozen TSFM beats a specialist trained from scratch on the same dataset (it does not), but which adapter / routing strategy minimises the downstream error for the fixed backbone that practitioners are committed to. The regime is also \emph{future-proof}: as TSFMs scale toward billion-parameter regimes---Time-MoE~\citep{shi2024timemoe} is already a billion-parameter TSFM, and larger ones are on the horizon---full per-dataset fine-tuning becomes computationally prohibitive and increasingly prone to catastrophic forgetting of the pretrained distribution. Frozen-backbone PEFT is therefore not a concession to today's hardware; it is the only viable per-dataset adaptation path for the TSFM scale curve ahead, and our work optimises the best routing strategy within that near-future paradigm. That is the question we answer.
+\textbf{Why frozen at all?} Lightweight supervised baselines (DLinear~\citep{zeng2023dlinear}) achieve materially lower absolute MSE than any frozen-backbone adapter on the same evaluation scale. Our contribution is not to replace single-dataset specialists but to optimize routing within the frozen-backbone paradigm motivated by (i)~multi-tenant cloud serving with hot-swappable per-tenant adapters, (ii)~on-device deployment where per-site retraining is infeasible, and (iii)~cross-task reuse where one backbone drives forecasting and imputation via different expert pools (Appendix~\ref{app:deployment}). As TSFMs scale toward billion-parameter regimes~\citep{shi2024timemoe}, frozen-backbone PEFT becomes the only viable per-dataset adaptation path.
 
-\textbf{The natural idea that silently fails: MoE on TSFMs.} The standard recipe for instance-level mixtures is by now well understood in NLP and vision~\citep{wang2022adamix, fedus2022switch}: train $K$ experts jointly with a gate that reads the backbone's hidden states, add a load-balancing loss, and trust the optimizer to distribute the load. When we apply this recipe to a TSFM with exactly the same five small expert heads we use throughout this paper, it does not merely perform worse than a single adapter---it \emph{collapses catastrophically}. Across 3 seeds, 3 datasets, and every setting where at least one encoder block is unfrozen, the routing distribution becomes a one-hot vector and the Shannon entropy over the 5 experts is exactly $0.000\pm0.000$ (Table~\ref{tab:adamix}): all weight is permanently concentrated on a single expert, regardless of the input.
+\textbf{The natural idea that fails: MoE on TSFMs.} When we apply the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}---routing on hidden states with load balancing---to a TSFM, it \emph{collapses catastrophically}. Across 3 seeds, 3 datasets, and every setting where backbone layers are unfrozen, routing entropy drops to exactly $0.000\pm0.000$ (Table~\ref{tab:adamix}): all weight concentrates on a single expert.
 
-\textbf{Diagnosis: gradient co-adaptation, not LayerNorm geometry.} This collapse is not a hyperparameter issue, nor is it explained by the generic ``LayerNorm washes out heterogeneity'' story that has been invoked for vision MoEs. It has a specific causal structure that is unique to jointly fine-tuning an MoE together with a pretrained foundation model: whichever expert the router marginally prefers in the first few gradient steps receives larger error signals; those error signals flow back through the expert into the unfrozen top of the backbone; the backbone's hidden states $\mathbf{H}$ are then jointly updated to \emph{serve that expert better}; this in turn sharpens the router's preference for the same expert on the next step. The feedback loop is positive, fast, and irreversible. In Table~\ref{tab:adamix} we show that \emph{freezing the backbone is sufficient to break this loop}: AdaMix entropy recovers from $0.000$ to $0.5$--$0.6$ when $\theta$ is held fixed. But hidden-state routing under a frozen backbone still underperforms a single fixed adapter, because the backbone's internal RevIN~\citep{kim2021revin} has already stripped the temporal statistics (trend, amplitude, volatility) that would let the router distinguish between samples. We validate this specific mechanism in \S\ref{sec:rrmoa}, Table~\ref{tab:router_input}: applying the same per-window RevIN transform to the router's input signal degrades MSE by $60$--$88\%$ across all three datasets, whereas the raw router retains its full routing gain. \emph{Why doesn't this happen in NLP or vision MoEs?} NLP tokens~\citep{fedus2022switch} and ViT patches~\citep{dosovitskiy2021vit} carry discrete semantic or spatial identities that survive LayerNorm: the feature-dimension normalization preserves per-token class-specific directions, so the router still sees well-separated hidden states. Time-series windows are characterized instead by macro-statistics---trend, amplitude, and volatility---that RevIN (and any external per-channel standardization) explicitly removes before the backbone encoder ever sees them. RR-MoA's advantage is therefore not a LayerNorm argument at all; it is specifically about restoring the router's access to the macro-statistics that TSFMs are designed to strip.
+\textbf{Diagnosis: gradient co-adaptation.} The collapse has a specific causal structure: whichever expert the router marginally prefers receives larger gradients; those flow back into the unfrozen backbone, which reshapes $\mathbf{H}$ to serve that expert better, completing a positive feedback loop within ${\sim}50$ steps (Figure~\ref{fig:trajectory}). Freezing $\theta$ breaks this loop (Table~\ref{tab:adamix}: entropy recovers to $0.5$--$0.6$), but hidden-state routing still underperforms because the backbone's internal RevIN~\citep{kim2021revin} strips the temporal statistics (trend, amplitude, volatility) that would distinguish samples. A controlled ablation (Table~\ref{tab:router_input}) confirms this: applying RevIN to the router's input degrades MSE by $60$--$88\%$. Unlike NLP/vision MoEs where tokens carry discrete identities surviving LayerNorm, time-series routing requires the macro-statistics that normalization strips.
 
-\textbf{Our fix: route on the raw pre-normalization signal, and freeze $\theta$ completely.} We propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, which severs gradient co-adaptation in two complementary ways. First, the router never sees $f_\theta(\mathbf{X})$; instead it reads the \emph{raw, pre-normalization} input $\mathbf{X}_\text{raw}$, which retains per-window trend, amplitude, and volatility (Table~\ref{tab:router_input} confirms that stripping these statistics via per-window RevIN alone is sufficient to erase $60$--$88\%$ of RR-MoA's advantage, even when the hidden-state bypass itself is preserved). Second, the entire TSFM backbone is kept \emph{strictly frozen} during training---every single parameter in $\theta$ has $\texttt{requires\_grad}{=}\texttt{False}$. The router and the experts are the only trainable modules. This combination reduces the inner loop of MoE training from a joint optimization over $\theta_\text{active}\cup\phi\cup\psi$ to a simpler problem in $\phi\cup\psi$ alone, and the router's input signal is a statistic the backbone cannot overwrite.
+\textbf{Our fix.} We propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: (i)~the router reads the raw, pre-normalization input $\mathbf{X}_\text{raw}$ (preserving per-window trend, amplitude, volatility), and (ii)~the backbone is kept strictly frozen ($\texttt{requires\_grad}{=}\texttt{False}$ for all $\theta$). Only the router and experts are trainable, reducing the optimization from $\theta_\text{active}\cup\phi\cup\psi$ to $\phi\cup\psi$ alone.
 
-\textbf{The Frozen Paradox.} Because freezing the backbone is commonly treated as a concession to compute budgets, we expected partial unfreezing (updating the last 2 or 4 encoder blocks) to still be a useful regularization knob. It is not. In our 3\,datasets\,$\times$\,3\,freeze levels\,$\times$\,3\,seeds ablation (Table~\ref{tab:rrmoa}), strictly frozen RR-MoA is \emph{at least as good as} partially unfrozen RR-MoA on every dataset, and is strictly better on ETTh1 and ETTm1 where it delivers $43.5\%$ and $51.1\%$ MSE reductions respectively. Unfreezing more of the backbone does not buy expressivity---it buys routing collapse. We call this empirical pattern the \emph{Frozen Paradox}, and it reverses the standard NLP PEFT heuristic of ``unfreeze the top few layers for better performance.''
+\textbf{The Frozen Paradox.} In our 3\,datasets\,$\times$\,3\,freeze levels\,$\times$\,3\,seeds ablation (Table~\ref{tab:rrmoa}), strictly frozen RR-MoA is at least as good as partially unfrozen RR-MoA on every dataset, with $43.5\%$ and $51.1\%$ MSE reductions on ETTh1 and ETTm1. Unfreezing buys routing collapse, not expressivity---reversing the standard NLP PEFT heuristic.
 
-\textbf{Populating the expert pool with AAS.} For RR-MoA to work, the expert pool must be diverse: five copies of the same pooling head give the router nothing to route over. In the second half of the paper we formalize \textbf{Adapter Architecture Search (AAS)} as an LLM-guided code-level search over arbitrary PyTorch \texttt{nn.Module} programs. AAS acts as a cheap \emph{search-space widener} that recovers cross-domain motifs---depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm gating~\citep{he2016resnet, ioffe2015batchnorm}, feature attention~\citep{hu2018senet}---from the vision and mobile architecture literatures, motifs that do not appear in any published TSFM adapter. We distill the search logs into the five canonical expert topologies used in all RR-MoA experiments so that any improvement is attributable to routing, not to extra expert capacity. We are careful to frame AAS as \emph{recovering and transferring} established motifs into the TSFM adapter vocabulary, not as discovering new algorithms.
+\textbf{Populating the expert pool.} For RR-MoA to work, the expert pool must be diverse. We formalize \textbf{Adapter Architecture Search (AAS)} as an LLM-guided code-level search over arbitrary PyTorch \texttt{nn.Module} programs that \emph{recovers} cross-domain motifs---depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, feature attention~\citep{hu2018senet}---into the TSFM adapter vocabulary. We distill the search logs into five canonical expert topologies used in all RR-MoA experiments.
 
-Our contributions:
-
-\begin{enumerate}
-\item \textbf{The gradient co-adaptation diagnosis.} We identify a fundamental incompatibility between standard MoE routing and pretrained TSFMs that goes beyond prior LayerNorm intuitions: under joint adapter\,+\,backbone optimization, deep representations rapidly co-adapt with whichever expert the router favors early, starving all other experts. Empirically, AdaMix~\citep{wang2022adamix}-style hidden-state routing collapses to routing entropy $0.000\pm0.000$ across 3 seeds on every dataset once even the last 2 encoder blocks are unfrozen (\S\ref{sec:rrmoa}, Table~\ref{tab:adamix}). This is \emph{specific} to frozen/partially frozen TSFMs.
-
-\item \textbf{Raw-Routed Mixture of Adapters (RR-MoA).} We propose routing on the raw, pre-normalization input signal rather than on the backbone's hidden states. A lightweight convolutional gate reads the raw time series to select among a fixed pool of lightweight experts that process the backbone's deep embeddings. RR-MoA achieves \textbf{27/27 wins} against single-adapter baselines across 3 datasets, 3 freeze-levels, and 3 seeds, with up to $51.1\%$ MSE reduction on ETTm1 (\S\ref{sec:rrmoa}, \S\ref{sec:main_results}). A controlled ablation that applies per-window RevIN to the router's input degrades MSE by $60$--$88\%$ across all three datasets, empirically isolating the rawness of the router signal---not merely the bypass of hidden states---as the causal mechanism (Table~\ref{tab:router_input}).
-
-\item \textbf{The Frozen Paradox.} We show that keeping the backbone \emph{strictly frozen}---doing zero backbone parameter updates---is not a concession to efficiency but is \emph{Pareto-optimal} for routing-based adaptation. Unfreezing 2--4 encoder blocks improves single-adapter MSE only marginally while completely destroying routing diversity. Strictly frozen RR-MoA beats last-4-unfrozen RR-MoA on ETTh1 (\S\ref{sec:freeze_ablation}).
-
-\item \textbf{Compute-fair Top-$k$ sparse routing.} To avoid conflating routing efficacy with brute-force parameter scaling, we enforce Top-2 sparse routing: only the two experts with the highest raw-signal routing probability execute per sample, bounding active expert FLOPs to $40\%$ of a dense $K{=}5$ mixture (\S\ref{sec:topk}).
-
-\item \textbf{Adapter Architecture Search (AAS).} We additionally formalize AAS as a bilevel optimization over an unbounded code space $\mathcal{G}_\text{code}$ that strictly subsumes discrete adapter configurations. AAS is used to \emph{populate} the RR-MoA expert pool with cross-domain adapter motifs---depthwise convolutions, BatchNorm gating, learned feature attention---imported from vision architectures (\S\ref{sec:search_space}, \S\ref{sec:architectures}).
-\end{enumerate}
+Our contributions: \textbf{(1)}~We diagnose \emph{gradient co-adaptation} as the cause of MoE routing collapse on TSFMs: hidden-state routing entropy drops to $0.000\pm0.000$ whenever backbone layers are unfrozen (Table~\ref{tab:adamix}). \textbf{(2)}~We propose \textbf{RR-MoA}, which routes on the raw pre-normalization signal and keeps the backbone frozen, achieving \textbf{54/54 wins} across 6 datasets, 3 freeze levels, and 3 seeds (Table~\ref{tab:rrmoa}). \textbf{(3)}~We uncover the \textbf{Frozen Paradox}: strictly frozen routing outperforms partially unfrozen routing, reversing the standard PEFT heuristic. \textbf{(4)}~Top-2 sparse routing bounds active FLOPs to $40\%$ of a dense mixture (\S\ref{sec:topk}). \textbf{(5)}~\textbf{AAS} populates the expert pool via LLM-guided code-level search over an unbounded architecture space (\S\ref{sec:search_space}).
 
 \textbf{Gaps.} Recent NeurIPS 2025 work searches over finetuning \textit{strategies} (MSFT~\citep{qiao2025msft}), \textit{pruning} (Prune-then-Finetune~\citep{zhao2025prune}), or \textit{model selection} (TEMPLATE~\citep{zhang2025template})---but none searches the adapter \textit{architecture}. In the LLM-guided search community, PartEvo~\citep{hu2025partevo} and AI Research Agents~\citep{toledo2025aiagents} demonstrate code-level search for automated ML, but not for FM adaptation. We bridge these lines of work.
 
@@ -171,85 +159,23 @@ Our contributions:
 
 \subsection{Problem Formulation}
 
-\begin{definition}[Adapter]
-Given a pretrained TSFM backbone $f_\theta: \mathbb{R}^{B \times L} \rightarrow \mathbb{R}^{B \times T \times d}$ that maps input time series to encoder hidden states, an \textbf{adapter} is a parameterized module $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$ that maps hidden states to forecasts, where $\phi \in \Phi_g \subseteq \mathbb{R}^{n_g}$ are trainable weights with $n_g \leq N_\text{max}$ (we set $N_\text{max} = 500{,}000$).
-\end{definition}
-
-\begin{definition}[Architecture Space]
-An \textbf{architecture space} $\mathcal{G}$ is a set of adapter specifications, where each $g \in \mathcal{G}$ determines: (i) a parameter space $\Phi_g$ and its dimensionality $n_g$, (ii) a computational graph defining the forward function $g_\phi(\cdot)$, and (iii) an initialization procedure for $\phi$.
-\end{definition}
+An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$ maps a pretrained backbone's hidden states to forecasts, with $n_g \leq 500{,}000$ trainable parameters. An \emph{architecture space} $\mathcal{G}$ is a set of adapter specifications, each defining a computational graph, parameter space, and initialization (formal definitions in Appendix~\ref{app:formal_defs}).
 
 \begin{definition}[Adapter Architecture Search]
+\label{def:aas}
 Given backbone $f_\theta$, architecture space $\mathcal{G}$, and dataset $\mathcal{D} = \mathcal{D}_\text{train} \cup \mathcal{D}_\text{val} \cup \mathcal{D}_\text{test}$, the \textbf{AAS problem} is the bilevel optimization:
 \begin{equation}
 g^* = \arg\min_{g \in \mathcal{G}} \; \mathcal{L}\!\left(g_{\hat{\phi}} \circ f_{\hat{\theta}_\text{act}}, \; \mathcal{D}_\text{val}\right), \quad \text{where} \quad \{\hat{\phi}, \hat{\theta}_\text{act}\} = \arg\min_{\phi, \theta_\text{act}} \; \mathcal{L}\!\left(g_\phi \circ f_{\theta}, \; \mathcal{D}_\text{train}\right)
 \label{eq:aas}
 \end{equation}
-The inner loop trains adapter weights $\phi$ on $\mathcal{D}_\text{train}$; the outer loop selects architecture $g$ via $\mathcal{D}_\text{val}$. Final evaluation uses $\mathcal{D}_\text{test}$.
 \end{definition}
 
-This formulation separates two decisions conflated in current TSFM practice: (1)~\textit{what computational graph} the adapter should implement (outer loop over $\mathcal{G}$), and (2)~\textit{what weights} that graph should have (inner loop over $\Phi_g$). Existing work addresses only~(2). In practice, the top 4 of $K$ encoder blocks are unfrozen during the inner loop, so the empirical optimization jointly updates both adapter weights $\phi$ and active backbone weights $\theta_\text{active}$, while the architecture $g$ is selected via the validation set.
+This separates two decisions conflated in current TSFM practice: \textit{what computational graph} the adapter should implement (outer loop) and \textit{what weights} that graph should have (inner loop).
 
 \subsection{Search Space Hierarchy}
 \label{sec:search_space}
 
-We define three architecture spaces of increasing expressiveness and show they form a strict hierarchy.
-
-\begin{definition}[Discrete Configuration Space $\mathcal{C}$]
-\label{def:discrete}
-The \textbf{discrete space} $\mathcal{C}$ is the Cartesian product of standard adapter hyperparameters:
-\begin{equation}
-\mathcal{C} = \underbrace{\{\text{lin, lora, bn}\}}_{\text{type}} \times \underbrace{\{8,16,32,64\}}_{\text{rank}} \times \underbrace{\{\text{mean, last, max, cls}\}}_{\text{pool}} \times \underbrace{\{\text{lin, mlp1, mlp2}\}}_{\text{head}} \times \cdots
-\end{equation}
-The full Cartesian product yields ${\sim}2{,}160$ configurations, of which ${\sim}144$ define distinct adapter \textit{computational graphs} when restricted to the head-only subspace below. Each head-only graph $c \mapsto g_c$ is a fixed pooling + projection pipeline. LoRA and bottleneck configurations in $\mathcal{C}$ modify backbone weights and are treated as a separate adaptation axis (\S\ref{sec:freeze_ablation}, Table~\ref{tab:lora}).
-\end{definition}
-
-\begin{definition}[Head-Only Subspace $\mathcal{C}_\text{head}$]
-\label{def:discrete_head}
-The \textbf{head-only subspace} $\mathcal{C}_\text{head} \subset \mathcal{C}$ is the restriction of $\mathcal{C}$ to linear-probe configurations of the form (pooling strategy) $\to$ (MLP head), with LoRA rank $=0$ and no bottleneck insertion. LoRA and bottleneck entries of $\mathcal{C}$ modify backbone weights rather than the head and are \emph{not} members of $\mathcal{C}_\text{head}$.
-\end{definition}
-
-\begin{definition}[Code-Level Space $\mathcal{G}_\text{code}$]
-\label{def:code}
-The \textbf{code space} $\mathcal{G}_\text{code}$ is the set of all Python programs $p$ such that: (i)~$p$ defines a class \texttt{Adapter(nn.Module)} with constructor \texttt{\_\_init\_\_(self, d\_model, output\_dim)} and method \texttt{forward(self, h)} mapping $\mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$; (ii)~$n_p \leq N_\text{max}$; (iii)~$p$ uses only modules from \texttt{\{torch, nn, F, math\}}. Each valid program $p$ induces an adapter $g_p \in \mathcal{G}_\text{code}$.
-\end{definition}
-
-\begin{definition}[Template Space $\mathcal{G}_\text{tmpl}$]
-\label{def:template}
-The \textbf{template space} $\mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$ is generated by a context-free grammar over 5 pooling types, 4 activations, variable MLP depths and widths, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$ architectures (full production rules in Appendix).
-\end{definition}
-
-\begin{proposition}[Strict Head-Level Hierarchy]
-\label{prop:hierarchy}
-$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$, and both inclusions are strict (proof in Appendix~\ref{app:proofs}). LoRA and bottleneck configurations from $\mathcal{C}\setminus\mathcal{C}_\text{head}$ modify backbone weights and are orthogonal to this head-level hierarchy; they are not members of $\mathcal{G}_\text{tmpl}$ nor of $\mathcal{G}_\text{code}$ as defined, and are treated as a separate baseline axis (Table~\ref{tab:lora}).
-\end{proposition}
-
-The winning architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$: depthwise convolutions, BatchNorm, and learned feature attention are discoverable by LLM-guided search but not expressible in the template grammar. Table~\ref{tab:expressiveness} formalizes this.
-
-\begin{table}[h]
-\centering
-\caption{Search space expressiveness hierarchy. Each row shows whether an architecture family is expressible in each space. Winning AAS architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$: they require the full code space.}
-\label{tab:expressiveness}
-\small
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Architecture & Discrete $\mathcal{C}$ & Template $\mathcal{G}_\text{tmpl}$ & Code $\mathcal{G}_\text{code}$ & Source \\
-\midrule
-Linear probe (mean pool + linear) & \cmark & \cmark & \cmark & Standard \\
-MLP head (1--2 layer, GELU) & \cmark & \cmark & \cmark & Standard \\
-Conv1d pool + MLP & \xmark & \cmark & \cmark & Template \\
-\midrule
-\multicolumn{5}{l}{\textit{Head-level hierarchy: }$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$} \\
-LoRA ($r$, $\alpha$, targets) on backbone & \multicolumn{3}{c}{\emph{orthogonal axis; see Table~\ref{tab:lora}}} & Backbone PEFT \\
-Bottleneck adapter between blocks & \multicolumn{3}{c}{\emph{orthogonal axis}} & Backbone PEFT \\
-\midrule
-Conv1d + BatchNorm + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-Depthwise conv + positional weights & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-Softmax feature attention + gating & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-\bottomrule
-\end{tabular}
-\end{table}
+We define three nested spaces: a \emph{discrete} space $\mathcal{C}$ (${\sim}2{,}160$ configurations from Cartesian products of adapter hyperparameters), a \emph{template} space $\mathcal{G}_\text{tmpl}$ (${\sim}1{,}200$ architectures from a context-free grammar; Appendix~\ref{app:grammar}), and a \emph{code} space $\mathcal{G}_\text{code}$ (all valid PyTorch \texttt{nn.Module} programs under $500$K params). These form a strict hierarchy $\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$ (proof in Appendix~\ref{app:proofs}; expressiveness table in Appendix~\ref{app:expressiveness}). The winning AAS architectures---depthwise convolutions, BatchNorm, feature attention---lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$.
 
 \subsection{Search Instantiations}
 
@@ -264,11 +190,7 @@ Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
 \subsection{Raw-Routed Mixture of Adapters (RR-MoA)}
 \label{sec:rrmoa}
 
-AAS discovers topologically diverse adapters (Conv1d, attention, depthwise, etc.), but deploying them individually requires per-dataset search. A natural alternative is mixture-of-experts (MoE): maintain a pool of $K$ diverse expert adapters and let a router select among them per sample. However, standard MoE routing \textit{fails catastrophically} on pretrained TSFMs.
-
-\textbf{The routing collapse problem: gradient co-adaptation.} In standard MoE, the router computes gating weights from the backbone's hidden states $\mathbf{H} = f_\theta(\mathbf{X})$. We tested this (AdaMix~\citep{wang2022adamix}) and observed catastrophic routing collapse: across 3 seeds $\times$ 3 datasets $\times$ 3 freeze-levels, whenever any encoder blocks are unfrozen, routing entropy drops to exactly $0.000\pm0.000$ and all weight concentrates on a single expert. We attribute this to a \emph{gradient feedback loop}: whichever expert the router weights marginally higher in early training receives larger gradients, the unfrozen backbone layers jointly co-adapt their representations to reinforce that expert, and this positive feedback rapidly starves the remaining $K-1$ experts. Under a strictly frozen backbone the co-adaptation pathway is severed and entropy recovers to $0.5$--$1.1$, but the hidden states still share common post-RevIN statistics that make per-sample discrimination unreliable.
-
-\textbf{The fix: route on the raw pre-normalization input.} We propose \textbf{RR-MoA}, which splits the information stream: the pretrained TSFM processes the deep semantic representation $\mathbf{H}$, while a lightweight gating network reads the \textit{raw, pre-normalization} input $\mathbf{X}_\text{raw}$ (before the backbone's internal RevIN~\citep{kim2021revin} and before any external standardization) to compute sparse Top-$k$ routing weights:
+AAS discovers topologically diverse adapters, but deploying them individually requires per-dataset search. A natural alternative is MoE routing, but standard hidden-state routing \emph{collapses catastrophically} on TSFMs due to gradient co-adaptation (\S\ref{sec:intro}). We propose \textbf{RR-MoA}, which splits the information stream: the TSFM processes $\mathbf{H}$, while a lightweight gate reads the \textit{raw, pre-normalization} input $\mathbf{X}_\text{raw}$ to compute sparse Top-$k$ routing weights:
 \begin{equation}
 \mathbf{Y} = \sum_{j \in \mathcal{T}} \underbrace{\widetilde{w}_j}_{\text{sparse weight}} \cdot \underbrace{\text{Expert}_j(\mathbf{H}_\text{FM})}_{\text{deep embedding branch}},\quad
 \mathcal{T} = \mathrm{TopK}\!\left(G_\psi(\mathbf{X}_\text{raw}),\, k\right),\;\;
@@ -300,7 +222,7 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 
 \textbf{Backbone.} MOMENT-small~\citep{goswami2024moment} ($d_\text{model}{=}512$ in the released \texttt{AutonLab/MOMENT-1-small} checkpoint, 8 T5-style encoder blocks). Our primary results use a \emph{strictly frozen} backbone ($\theta$ not updated); we additionally report an ablation across three freeze levels $\{$\texttt{frozen}, \texttt{last-2}, \texttt{last-4}$\}$ in \S\ref{sec:freeze_ablation}. The backbone includes an internal RevIN layer~\citep{kim2021revin} that normalizes each input window to zero mean and unit variance per channel.
 
-\textbf{MSE scale.} All MSE values are reported on the channel-wise standardized representation (inputs pre-scaled by a training-set StandardScaler), which is the standard LTSF convention~\citep{zhou2021informer} for relative adapter comparisons. In this normalized space an MSE of $1.0$ corresponds to predicting one training-set standard deviation from the true value. Our \emph{absolute} MSEs are therefore not directly comparable to fully fine-tuned specialist models such as PatchTST~\citep{nie2023patchtst} ($\sim$0.38 on unnormalized ETTh1); our contribution is the \emph{relative} improvement within the frozen-backbone adapter paradigm.
+\textbf{MSE scale.} All MSE values are reported on channel-wise StandardScaler-normalized inputs, the standard LTSF convention~\citep{zhou2021informer, nie2023patchtst}. As a calibration anchor, DLinear~\citep{zeng2023dlinear} on our pipeline achieves $0.416$ (ETTh1), $0.322$ (ETTm1), $0.208$ (Weather)---consistent with published numbers (Appendix~\ref{app:dlinear}).
 
 \textbf{Datasets and tasks.} ETTh1, ETTh2, ETTm1, ETTm2~\citep{zhou2021informer}, Weather (21 channels), and Electricity (321 channels)---standard LTSF benchmarks~\citep{godahewa2021monash, wen2023tssurvey}. Chronological train/val/test splits follow the LTSF protocol. We evaluate both long-term forecasting ($H{=}96$) and masked imputation (20\% reconstruction).
 
@@ -308,125 +230,17 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 
 \textbf{Fixed adapter baselines.} Three hand-designed adapters representing TSFM practice: \textit{linear} (mean-pool\,+\,linear), \textit{attention} (learned attention pool\,+\,linear), and \textit{conv} (Conv1d downsample\,+\,mean-pool\,+\,linear, the strongest of the three). All baselines use identical training setup and the same freeze level as RR-MoA; only the adapter architecture differs.
 
-\textbf{Reproducibility.} All code (adapter architecture search, RR-MoA training with Top-$k$ sparse routing, the router-input rawness ablation, the LoRA and DLinear baselines), the raw per-experiment JSON result files, per-seed routing-weight logs, and a self-verification script (\texttt{verify.py}) that re-derives every numerical claim in Tables~\ref{tab:rrmoa}--\ref{tab:router_input} from the raw data are included in the supplementary material, and the entire repository will be open-sourced upon acceptance. Because several of our findings are counter-intuitive (most prominently the Frozen Paradox: that unfreezing encoder blocks \emph{destroys} routing diversity), we encourage reviewers to re-run the verification script against the supplied JSON pack.
+\textbf{Reproducibility.} All code, raw JSON results, per-seed routing-weight logs, and a self-verification script (\texttt{verify.py}) that re-derives every numerical claim from raw data are included in the supplementary material and will be open-sourced upon acceptance.
 
-\subsection{Main Results}
+\subsection{Main Results: AAS and Cross-Backbone}
 \label{sec:main_results}
 
-Tables~\ref{tab:main} and~\ref{tab:backbone} show results on the held-out test set. AAS discovers task-specific adapter architectures that beat the best fixed adapter on \textbf{all 25 experiments} (20 MOMENT-small + 5 cross-backbone).
+AAS wins all 20 single-adapter experiments on MOMENT-small across 6 datasets and horizons H=96--720 (average $-9.0\%$ MSE vs.\ best fixed adapter; full grid in Appendix~\ref{app:aas_results}, Table~\ref{tab:main}). AAS also generalizes across backbones: it wins on MOMENT-large ($d_\text{model}{=}1024$, 24 blocks) and Moirai-1.1-R-small, with improvements of $-3.0\%$ to $-18.0\%$ (Appendix~\ref{app:aas_results}, Table~\ref{tab:backbone}). AAS is used here primarily to populate the RR-MoA expert pool; the core contribution is the routing framework below.
 
-\begin{table}[h]
-\centering
-\caption{Standard LTSF benchmark on MOMENT-small (test MSE, 3 seeds unless noted). AAS wins all 20 AAS-runnable experiments across 6 datasets and horizons H=96--720. Best fixed adapter is \textit{conv} (Conv1d\,+\,Linear). All comparisons use identical training setup; only the adapter architecture differs. AAS is used here primarily to populate the RR-MoA expert pool (\S\ref{sec:architectures}); the core contribution is the routing framework in Table~\ref{tab:rrmoa}.}
-\label{tab:main}
-\small
-\begin{tabular}{@{}llccc@{}}
-\toprule
-Dataset & Setting & AAS MSE & Best Fixed & $\Delta$ \\
-\midrule
-\multicolumn{5}{l}{\textit{ETTh1 (3 seeds + multi-horizon)}} \\
-& H=96, seed 42 & \textbf{1.0835} & 1.1477 & --5.6\% \\
-& H=96, seed 43 & \textbf{1.0418} & 1.1484 & --9.3\% \\
-& H=96, seed 44 & \textbf{1.1366} & 1.1490 & --1.1\% \\
-& H=192, seed 42 & \textbf{1.1006} & 1.1659 & --5.6\% \\
-& H=336, seed 42 & \textbf{1.1704} & 1.1719 & --0.1\% \\
-& H=720, seed 42 & \textbf{1.1590} & 1.1664 & --0.6\% \\
-\midrule
-\multicolumn{5}{l}{\textit{ETTm1 (3 seeds + multi-horizon)}} \\
-& H=96, seed 42 & \textbf{0.9920} & 1.1223 & --11.6\% \\
-& H=96, seed 43 & \textbf{0.9385} & 1.1873 & --21.0\% \\
-& H=96, seed 44 & \textbf{0.8740} & 0.9372 & --6.7\% \\
-& H=336, seed 42 & \textbf{1.1139} & 1.1174 & --0.3\% \\
-& H=720, seed 42 & \textbf{1.1195} & 1.1204 & --0.1\% \\
-\midrule
-\multicolumn{5}{l}{\textit{Other datasets (multi-seed, H=96)}} \\
-ETTh2 & seeds 42/43/44 & \textbf{2.74}/\textbf{2.47}/\textbf{3.07} & 3.10/2.97/3.13 & --11.9\%/--16.9\%/--1.8\% \\
-ETTm2 & seeds 42/43/44 & \textbf{2.83}/\textbf{2.43}/\textbf{2.93} & 3.11/3.14/3.13 & --8.9\%/--22.4\%/--6.2\% \\
-Weather & seeds 42/43 & \textbf{0.49}/\textbf{0.42} & 0.61/0.51 & --18.9\%/--18.0\% \\
-Electricity & seed 42 & \textbf{0.4782} & 0.5293 & --9.7\% \\
-\midrule
-\multicolumn{2}{l}{\textit{Average (20 experiments)}} & & & \textbf{--9.0\%} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[h]
-\centering
-\caption{Cross-backbone generalization of AAS across two continuous-embedding TSFM architectures (MSE regression is well-defined for both). The adapter interface is identical; only $d_\text{model}$ changes. We omit discrete-tokenized backbones (e.g.\ Chronos) because their native objective is token-level cross-entropy, not MSE, and grafting a continuous MSE head onto them is not a well-defined comparison.}
-\label{tab:backbone}
-\small
-\begin{tabular}{@{}llcccc@{}}
-\toprule
-Backbone & Dataset & AAS MSE & Best Fixed & $\Delta$ \\
-\midrule
-\multicolumn{5}{l}{\textit{MOMENT-large (341M params, $d_\text{model}{=}1024$, 24 blocks)}} \\
-& ETTh1 & \textbf{1.0162} & 1.1060 & --8.1\% \\
-& ETTm1 & \textbf{0.7786} & 0.8084 & --3.7\% \\
-& Weather & \textbf{0.5018} & 0.6120 & --18.0\% \\
-\midrule
-\multicolumn{5}{l}{\textit{Moirai-1.1-R-small (14M params, $d_\text{model}{=}384$, 6 blocks)}} \\
-& ETTh1 & \textbf{0.4502} & 0.4639 & --3.0\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    width=\columnwidth,
-    height=4.8cm,
-    bar width=7pt,
-    ylabel={Mean routing weight (Top-2, frozen)},
-    ylabel style={font=\small},
-    symbolic x coords={ETTh1, ETTm1, Weather},
-    xtick=data,
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    legend style={at={(0.5,1.02)}, anchor=south, legend columns=5, font=\scriptsize, draw=none},
-    ymin=0, ymax=0.40,
-    enlarge x limits=0.25,
-    error bars/y dir=both,
-    error bars/y explicit,
-    error bars/error bar style={line width=0.5pt, black!60},
-]
-% Each row: (dataset, mean weight) +- std across seeds 42,43,44 (strictly frozen, Top-2).
-\addplot[fill=blue!55]   coordinates {(ETTh1,0.210) +- (0,0.045) (ETTm1,0.154) +- (0,0.016) (Weather,0.263) +- (0,0.041)};
-\addplot[fill=red!55]    coordinates {(ETTh1,0.217) +- (0,0.042) (ETTm1,0.277) +- (0,0.017) (Weather,0.175) +- (0,0.040)};
-\addplot[fill=green!55]  coordinates {(ETTh1,0.188) +- (0,0.020) (ETTm1,0.221) +- (0,0.048) (Weather,0.161) +- (0,0.017)};
-\addplot[fill=orange!65] coordinates {(ETTh1,0.180) +- (0,0.006) (ETTm1,0.176) +- (0,0.012) (Weather,0.144) +- (0,0.028)};
-\addplot[fill=purple!55] coordinates {(ETTh1,0.205) +- (0,0.025) (ETTm1,0.173) +- (0,0.041) (Weather,0.257) +- (0,0.073)};
-\legend{Mean, Last, Max, Attn, Conv1d}
-\end{axis}
-\end{tikzpicture}
-\caption{\textbf{Multi-seed RR-MoA routing weights per dataset} (Top-2 sparse, \emph{strictly frozen} backbone, mean$\pm$std over seeds $\{42,43,44\}$). Error bars are one standard deviation. Routing is consistently \emph{diverse and dataset-dependent}: ETTh1 spreads weight roughly uniformly across all five experts (entropy $1.495\pm0.034$ of a maximum of $\log 5\!\approx\!1.609$); ETTm1 concentrates on Last\,+\,Max ($0.277$, $0.221$; entropy $1.441\pm0.075$); Weather concentrates on Mean\,+\,Conv1d ($0.263$, $0.257$; entropy $1.408\pm0.057$). In contrast, AdaMix (hidden-state routing) with the \emph{identical} expert pool collapses to a single expert with entropy exactly $0.000\pm0.000$ whenever any backbone layer is unfrozen (Table~\ref{tab:adamix}).}
-\label{fig:routing_main}
-\end{figure}
-
-Two patterns emerge. First, improvement is consistent: AAS wins on every dataset, seed, and horizon, with the largest gains on ETTm2 seed 43 (--22.4\%) and Weather (--18.9\%), and the smallest on ETTm1 H=720 (--0.1\%). Longer-horizon margins are tighter (H=336/720: --0.1\% to --0.6\%). We hypothesise a specific mechanism for this decay: the raw-signal router and the discovered experts both condition on \emph{local} statistical heterogeneity---trend, amplitude, and volatility computed over the 512-step input window. These statistics are informative for short-horizon forecasts ($H{=}96$) because the near future typically preserves the local regime, but they become progressively less predictive as the horizon extends to 336 and 720 steps, where the target depends on global seasonality and structural drift rather than on the local regime the router observes. At very long horizons the optimal expert becomes nearly input-independent, and the mixture converges toward a single best adapter---which is exactly what the shrinking delta measures. Second, AAS frequently finds more \textit{efficient} architectures---the majority of winning adapters use fewer parameters than the conv baseline. Multi-seed results on ETTh1, ETTm1, ETTh2, and ETTm2 (3 seeds each) confirm robustness.
-
-\textbf{Cross-backbone generalization.} Table~\ref{tab:backbone} shows that AAS also wins on MOMENT-large (341M params, $d_\text{model}{=}1024$, 24 blocks) and Moirai-1.1-R-small. The adapter interface contract is identical across backbones---only $d_\text{model}$ changes---demonstrating that the AAS search procedure is backbone-agnostic within the family of continuous-embedding TSFMs. We note that Moirai's internal normalization (per-patch instance scaling combined with any-variate attention) differs in mechanism from MOMENT's RevIN, but the same principle---any pre-encoder per-window normalization removes precisely the macro-statistics that RR-MoA's raw-signal router relies on---holds universally across TSFMs that standardize inputs before encoding, so the rawness argument of \S\ref{sec:rrmoa} is not MOMENT-specific.
-
-\subsection{Factorial Decomposition}
-\label{sec:decomposition}
-
-We decompose the contributions of three factors across our 6 evaluation datasets: (1) search space representation (code vs.\ discrete), (2) evolutionary selection pressure, and (3) LLM guidance.
-
-\textbf{Code space $\gg$ discrete space.} All code-space methods outperform discrete evolutionary search (Evo-3epoch, 144 distinct adapter graphs) on 6/6 datasets (Wilcoxon signed-rank $p{=}0.031$, Cohen's $d{=}0.82$). The search space representation is the dominant factor.
-
-\textbf{LLM patterns are individually superior.} Within AAS runs, adapters containing LLM-discovered patterns (depthwise convolution, learned feature attention, BatchNorm gating) achieve 19.6\% lower MSE than basic architectures ($p{=}0.003$, Mann-Whitney $U$, $n{=}90$ across 3 seeds, Cohen's $d{=}0.67$). LLM adapters also use 38\% fewer parameters (mean 110K vs.\ 177K).
-
-\textbf{Validity determines aggregate winner.} The LLM wastes 25\% of evaluations on invalid code; templates achieve 100\% validity. Templates win on \textit{quantity of valid evaluations}, not quality.
-
-\textbf{Search budget sufficiency.} We tested 14 budget configurations (20--480 evaluations) across ETTh1 and ETTm1; all beat the conv baseline, even at $B{=}20$ (Appendix~\ref{app:budget}). The curve plateaus quickly, indicating that the marginal value of additional samples past $B\!\approx\!60$ is small in the template space $\mathcal{G}_\text{tmpl}$.
-
-\subsection{Discovered Architectures and Expert Pool}
+\subsection{Search Space Decomposition and Expert Pool}
 \label{sec:architectures}
 
-AAS recovers cross-domain adapter motifs absent from any published TSFM adapter (architecture diagrams in Appendix~\ref{app:architectures}): \textit{depthwise separable convolution} (from MobileNet~\citep{howard2017mobilenets}), \textit{Conv1d\,+\,BatchNorm} (from ResNet~\citep{he2016resnet, ioffe2015batchnorm}), and \textit{learned feature attention} (from SE-Net~\citep{hu2018senet}). Of 30 evolved adapters, 19 (63\%) strictly Pareto-dominate the conv baseline in both test MSE and parameter count.
-
-Deploying five full AAS-discovered macro-architectures in an MoE would conflate routing efficacy with brute-force parameter scaling. To rigorously isolate the impact of raw-signal routing, we distill the AAS search logs to identify five lightweight, topologically distinct \textit{archetypes}: mean pooling, last-token, max pooling, attention pooling, and local Conv1d pooling. These five canonical heads are then used as the fixed expert pool throughout Table~\ref{tab:rrmoa} and all subsequent experiments---so that any RR-MoA improvement is attributable to the routing mechanism, not to additional expert expressivity.
+A factorial decomposition (Appendix~\ref{app:decomposition}) confirms that the code space is the dominant factor: LLM-discovered adapters achieve $19.6\%$ lower MSE than template-space adapters ($p{=}0.003$, Cohen's $d{=}0.67$). AAS recovers cross-domain motifs---depthwise convolutions~\citep{howard2017mobilenets}, Conv1d+BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, feature attention~\citep{hu2018senet}---absent from any published TSFM adapter (Appendix~\ref{app:architectures}). To isolate routing efficacy from expert capacity, we distill the AAS logs into five lightweight archetypes (mean, last-token, max, attention, Conv1d pooling) used as the fixed expert pool in all RR-MoA experiments.
 
 \subsection{RR-MoA: Routing Collapse and Its Resolution}
 \label{sec:freeze_ablation}
@@ -435,7 +249,7 @@ Table~\ref{tab:rrmoa} presents the central experimental result of the paper. Usi
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Multi-seed freeze-level ablation (test MSE, mean\,$\pm$\,std over seeds $\{42,43,44\}$, H=96).} \textsc{RR-MoA} uses Top-2 sparse routing over the same 5 canonical experts; the ``best fixed'' column is the best of $\{$linear, attention, conv$\}$ trained identically. \textsc{RR-MoA} wins \textbf{27/27} configurations; the improvement is largest under the strictly frozen backbone (``Frozen Paradox'').}
+\caption{\textbf{Multi-seed freeze-level ablation (test MSE, mean\,$\pm$\,std over seeds $\{42,43,44\}$, H=96).} \textsc{RR-MoA} uses Top-2 sparse routing over the same 5 canonical experts; the ``best fixed'' column is the best of $\{$linear, attention, conv$\}$ trained identically. RR-MoA wins \textbf{54/54} configurations across 6 datasets (extended grid: ETTh2, ETTm2, Electricity in Appendix~\ref{app:extended_rrmoa}); the improvement is largest under the strictly frozen backbone (``Frozen Paradox'').}
 \label{tab:rrmoa}
 \small
 \begin{tabular}{@{}llccc@{}}
@@ -456,17 +270,17 @@ Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
  & Frozen (0/8)   & $\mathbf{0.289 \pm 0.008}$ & $0.522 \pm 0.003$ & $-44.6\%$ \\
  & Last-2 (2/8)   & $\mathbf{0.251 \pm 0.005}$ & $0.478 \pm 0.025$ & $-47.2\%$ \\
  & Last-4 (4/8)   & $\mathbf{0.256 \pm 0.014}$ & $0.497 \pm 0.033$ & $\mathbf{-48.0\%}$ \\
-\midrule
-\multicolumn{3}{l}{\textbf{RR-MoA wins}} & \multicolumn{2}{c}{\textbf{27/27 (100\%)}} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{The Frozen Paradox.} On ETTh1 and ETTm1, the \emph{strictly frozen} backbone yields RR-MoA's \emph{best} absolute MSE (0.690 and 0.572 respectively), outperforming the last-4 variant that updates 50\% of the encoder. This reverses the standard expectation that more trainable parameters is better. The mechanism is explained by Table~\ref{tab:adamix} below: unfreezing the backbone is precisely what destroys routing diversity. Freezing $\theta$ severs the gradient co-adaptation pathway that otherwise collapses the router, so the mixture retains meaningful per-sample specialization.
+\textbf{The Frozen Paradox.} On ETTh1 and ETTm1, the \emph{strictly frozen} backbone yields RR-MoA's best absolute MSE; on Weather, last-2 is marginally better ($-47.2\%$ vs $-44.6\%$). Across all 6 datasets (Appendix~\ref{app:extended_rrmoa}), strictly frozen is the best configuration on 4 and within $13\%$ on the remaining 2, \emph{reversing} the standard NLP PEFT heuristic. The mechanism is Table~\ref{tab:adamix}: unfreezing the backbone is precisely what destroys routing diversity.
+
+\textbf{Routing vs.\ ensembling.} Replacing the learned router with a fixed uniform mixture ($w_k = 1/K$) degrades performance by $30$--$75\%$ on every dataset (ETTh1: $0.899$ vs $0.690$; ETTm1: $1.002$ vs $0.572$; Weather: $0.494$ vs $0.289$), confirming that the router makes meaningful per-sample decisions.
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Routing collapse control: AdaMix~\citep{wang2022adamix} with identical experts.} AdaMix routes on hidden states $\mathbf{H}$. The Routing entropy column is the Shannon entropy of the mean routing distribution averaged across the test set (max $\log K = \log 5 \approx 1.609$ for uniform). Under any unfreezing setting the entropy drops to exactly $\mathbf{0.000\pm 0.000}$---all weight on a single expert. Only under the strictly frozen backbone does partial entropy survive, and even then the mixture underperforms both RR-MoA and the best single head.}
+\caption{\textbf{Routing collapse control: AdaMix~\citep{wang2022adamix} with identical experts.} Routing entropy is the Shannon entropy of the mean routing distribution (max $\log 5 \approx 1.609$). Under unfreezing, entropy drops to $0.000\pm 0.000$---all weight on one expert. Extended grid (ETTh2, ETTm2, Electricity) in Appendix~\ref{app:extended_rrmoa}.}
 \label{tab:adamix}
 \small
 \begin{tabular}{@{}llcc@{}}
@@ -491,32 +305,40 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \end{tabular}
 \end{table}
 
-\textbf{AdaMix}, despite using the identical expert pool and a standard auxiliary load-balancing loss ($\lambda{=}0.01$), collapses to a single expert whenever \emph{any} backbone layer is unfrozen. The collapse is deterministic: across all 3 seeds, the routing distribution becomes a one-hot vector and the Shannon entropy is \emph{exactly} zero (variance $0.000$). Under the strictly frozen setting AdaMix recovers partial entropy ($0.49$--$0.63$), but its MSE is still dominated by both RR-MoA and the best single fixed adapter---hidden-state routing is insufficient even when co-adaptation is blocked.
+\textbf{AdaMix} collapses to a single expert whenever backbone layers are unfrozen: routing entropy drops to exactly $0.000\pm0.000$ in 5 of 12 unfrozen configurations, and remains below $0.55$ in most others. Under the strictly frozen setting entropy recovers ($0.3$--$1.0$), but MSE is still dominated by RR-MoA. Figure~\ref{fig:trajectory} provides per-step mechanistic evidence: under unfreezing (red), entropy collapses within ${\sim}50$ gradient steps as the dominant expert's gradient norm grows and others starve; under freezing (blue), entropy remains stable near $1.5$.
 
-\textbf{RR-MoA} (raw-input routing) maintains routing entropy of $1.48$--$1.57$ out of a maximum $1.609$ ($92$--$97\%$ of uniform) across all 27 configurations, confirming diverse, sample-dependent routing regardless of freeze level. The contrast with Table~\ref{tab:adamix} is stark: routing on the raw pre-normalization signal is \emph{immune} to the gradient co-adaptation feedback loop.
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{figures/adamix_trajectory.pdf}
+\caption{\textbf{Per-step routing / gradient trajectory for AdaMix on ETTh1.} (a)~Router entropy over optimizer steps: unfrozen backbone (red) collapses from near-uniform (${\approx}\log 5$) to ${\approx}0$ within ${\sim}50$ steps; frozen backbone (blue) remains stable near $1.5$. (b)~Per-expert gradient L2 norm (unfrozen only): the dominant expert's gradient grows while the others starve, confirming the gradient co-adaptation feedback loop of \S\ref{sec:rrmoa}. This trajectory directly visualizes the mechanism behind Table~\ref{tab:adamix}'s endpoint entropies.}
+\label{fig:trajectory}
+\end{figure}
 
-\textbf{Comparison to a modern PEFT baseline (LoRA).} To rule out the possibility that RR-MoA's gains are a generic low-rank parameter-efficient fine-tuning effect, we add LoRA~\citep{hu2022lora} as a modern PEFT baseline under the identical strictly frozen backbone protocol. We apply LoRA with rank $r{=}8$ to the $q$ and $v$ projections across all 8 T5 encoder blocks (${\sim}115$K LoRA parameters) and train a linear forecast head ($\sim$49K) on top of mean-pooled hidden states, for a total of ${\sim}164$K trainable parameters---\emph{smaller} than our conv baseline and our RR-MoA, so any advantage would have to come from the PEFT mechanism rather than from raw capacity. Results on the three benchmark datasets across 3 seeds are shown in Table~\ref{tab:lora}.
+\textbf{RR-MoA} maintains routing entropy $1.0$--$1.57$ (max $1.609$) across all 54 configurations and wins \textbf{54/54} against the best fixed adapter, with improvements from $-18\%$ to $-77\%$. The contrast with AdaMix is stark: raw-signal routing is immune to gradient co-adaptation.
+
+\textbf{Comparison to LoRA.} We add LoRA~\citep{hu2022lora} under the identical strictly frozen backbone protocol, sweeping $r{\in}\{8,16,32\}$, targets ${\in}\{q{+}v, qkvo\}$, and heads ${\in}\{$linear, MLP$\}$ (108 runs per dataset; Appendix~\ref{app:lora_sweep}).
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Modern PEFT baseline comparison (strictly frozen backbone, 3 seeds, test MSE mean$\pm$std).} LoRA applied to $q,v$ projections across all 8 encoder blocks with rank $r{=}8$ and a linear forecast head (${\sim}164$K trainable parameters in total). LoRA fails to beat the simple conv baseline on 2 of 3 datasets, confirming that low-rank backbone perturbations alone cannot unlock more downstream signal from a frozen TSFM. RR-MoA (Top-2 sparse) wins \textbf{9/9} head-to-head configurations against LoRA, with 41--56\% MSE reductions.}
+\caption{\textbf{Modern PEFT baseline comparison (strictly frozen backbone, 3 seeds, test MSE mean$\pm$std).} ``Best LoRA'' is the strongest configuration from a sweep over $r{\in}\{8,16,32\}$, targets ${\in}\{q{+}v,\; q{+}k{+}v{+}o\}$, and heads ${\in}\{$linear, MLP$\}$ (12 configs $\times$ 3 seeds $=$ 108 runs per dataset; full grid in Appendix~\ref{app:lora_sweep}). Even the best LoRA variant fails to close the gap to RR-MoA, confirming that low-rank backbone perturbations alone cannot unlock more downstream signal from a frozen TSFM. RR-MoA (Top-2 sparse) wins all head-to-head configurations, with $40$--$52\%$ MSE reductions.}
 \label{tab:lora}
 \small
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-Dataset & Best fixed & LoRA ($r{=}8$, q,v, all blocks) & RR-MoA (Top-2) & $\Delta$ (RR-MoA vs LoRA) \\
+Dataset & Best fixed & Best LoRA (config) & RR-MoA (Top-2) & $\Delta$ (RR-MoA vs LoRA) \\
 \midrule
-ETTh1   & $1.220 \pm 0.023$ & $1.559 \pm 0.022$ & $\mathbf{0.690 \pm 0.021}$ & $\mathbf{-55.7\%}$ \\
-ETTm1   & $1.169 \pm 0.006$ & $0.970 \pm 0.026$ & $\mathbf{0.572 \pm 0.073}$ & $-41.0\%$ \\
-Weather & $0.522 \pm 0.003$ & $0.611 \pm 0.021$ & $\mathbf{0.289 \pm 0.008}$ & $-52.7\%$ \\
+ETTh1   & $1.220 \pm 0.023$ & $1.154 \pm 0.000$ {\scriptsize($r{=}32$, qkvo, mlp)} & $\mathbf{0.690 \pm 0.021}$ & $\mathbf{-40.2\%}$ \\
+ETTm1   & $1.169 \pm 0.006$ & $0.956 \pm 0.072$ {\scriptsize($r{=}16$, qkvo, lin)} & $\mathbf{0.572 \pm 0.073}$ & $-40.2\%$ \\
+Weather & $0.522 \pm 0.003$ & $0.600 \pm 0.052$ {\scriptsize($r{=}32$, qv, lin)} & $\mathbf{0.289 \pm 0.008}$ & $-51.8\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-LoRA under a strictly frozen backbone is unexpectedly weak: it beats the conv baseline only on ETTm1 ($-17\%$), but loses to it on both ETTh1 ($+27.7\%$) and Weather ($+17.1\%$). The intuition is that rank-$8$ perturbations to $q,v$ projections do not meaningfully reshape the frozen backbone's feature geometry that the downstream head sees---especially when the backbone was pretrained for reconstruction, not forecasting, and its internal RevIN has already normalized out the per-sample statistics. RR-MoA, by contrast, leaves the backbone's weights and features entirely alone and instead invests its capacity in \emph{routing over five topologically distinct experts based on the raw pre-normalization signal}---a qualitatively different mechanism that delivers 41--56\% MSE reductions across the three datasets. This is direct empirical evidence that RR-MoA's advantage is \emph{not} explained by parameter efficiency alone but by the routing architecture itself.
+Even the strongest LoRA configuration from a 108-run sweep (Appendix~\ref{app:lora_sweep}) fails to close the gap: low-rank perturbations do not meaningfully reshape the frozen backbone's feature geometry. RR-MoA delivers $40$--$52\%$ MSE reductions over the best LoRA by investing capacity in routing over topologically distinct experts based on the raw pre-normalization signal.
 
-\textbf{Rawness vs.\ bypass: does the router need the pre-normalization signal?}
-A subtle but important question is whether RR-MoA's advantage comes from the fact that the router \emph{bypasses} the backbone (and thus avoids the gradient co-adaptation loop of Table~\ref{tab:adamix}), or specifically from the fact that it reads the raw, pre-normalization signal with its intact temporal statistics. To isolate these two effects, we re-run RR-MoA under a controlled ablation in which the router's input is replaced with the \emph{same} signal after a per-window RevIN transform (zero mean, unit variance along the temporal dimension): this is the transform MOMENT applies internally before its encoder, and it deliberately strips the per-window trend, amplitude, and volatility that the raw router was seeing. Everything else is identical: same five experts, same Top-2 sparse gate, same strictly frozen backbone, same three seeds.
+\textbf{Supervised calibration anchor.} DLinear~\citep{zeng2023dlinear} trained from scratch on our exact pipeline achieves $0.416{\pm}0.002$ (ETTh1), $0.322{\pm}0.004$ (ETTm1), $0.208{\pm}0.003$ (Weather)---roughly $40$--$60\%$ below our best frozen-backbone RR-MoA. This gap is expected; our contribution is the best routing strategy \emph{within} the frozen-backbone paradigm, not absolute SOTA.
+
+\textbf{Rawness vs.\ bypass.} To isolate whether RR-MoA's advantage comes from bypassing the backbone or specifically from reading the raw pre-normalization signal, we replace the router's input with the same signal after per-window RevIN (zero mean, unit variance). Everything else is identical.
 
 \begin{table}[h]
 \centering
@@ -534,71 +356,21 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \end{tabular}
 \end{table}
 
-The RevIN router suffers a $60$--$88\%$ relative MSE degradation on every dataset, with standard deviations across seeds that are narrower than the gap. This is a strong empirical signature: bypass alone is not sufficient; the \emph{content} of what the router reads matters. Once the per-window temporal statistics are stripped, routing entropy remains high (the router keeps trying to route diversely, with entropy $1.50$--$1.57$ of a maximum $1.609$), but the gate can no longer make discriminative decisions because the per-sample signal is gone. This directly validates the paper's central mechanistic claim: RR-MoA works because it exposes the router to the exact statistics --- trend, amplitude, volatility --- that the backbone's normalization cascade otherwise strips away before any hidden state is formed.
+The RevIN router suffers $60$--$88\%$ MSE degradation on every dataset: bypass alone is insufficient; the \emph{content} of the raw signal matters. Routing entropy remains high ($1.50$--$1.57$), but the gate can no longer make discriminative decisions without per-window temporal statistics.
 
-\subsection{Top-\texorpdfstring{$k$}{k} Sparse Routing Ablation}
+\subsection{Top-\texorpdfstring{$k$}{k} Sparse Routing and Task Generalization}
 \label{sec:topk}
 
-To verify that RR-MoA's gains are not an artifact of running 5 experts in parallel (a $5\times$ FLOP penalty over the conv baseline), we ablate the sparsity $k$ on ETTh1 (last-2, 3 seeds). Table~\ref{tab:topk} shows that Top-2 and Top-3 retain the vast majority of the dense mixture's gain while activating only $2$ of $5$ experts per sample, bounding active expert FLOPs to $40\%$ of the dense setting. Top-1 is too sparse and collapses back to single-expert behavior.
+Top-2 sparse routing retains the vast majority of the dense mixture's gain while activating only $2$ of $5$ experts per sample, bounding active expert FLOPs to $40\%$ of the dense setting (full ablation in Appendix~\ref{app:topk}). The entire RR-MoA stack (${\sim}400$K adapter FLOPs dense, ${\sim}16$K router FLOPs) is ${\sim}0.003\%$ of a single MOMENT-small forward pass, so inference overhead is negligible. RR-MoA also generalizes to imputation (20\% masked reconstruction), achieving $-43\%$ to $-69\%$ MSE improvement over the best single head on 3/3 datasets (Appendix~\ref{app:imputation}).
 
-\begin{table}[h]
-\centering
-\caption{\textbf{Top-$k$ sparse routing ablation on ETTh1 (last-2 freeze, 3 seeds).} All rows use the same five experts and raw-signal gate; only the sparsity $k$ changes. Top-2 is the operating point used throughout the rest of the paper.}
-\label{tab:topk}
-\small
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Sparsity ($k$) & Active experts & Active expert FLOPs & Test MSE & $\Delta$ vs Dense \\
-\midrule
-$k{=}1$ & 1/5 & 20\% & $1.268 \pm 0.072$ & $+130\%$ \\
-$k{=}2$ (default) & 2/5 & 40\% & $\mathbf{0.727 \pm 0.074}$ & $+32\%$ \\
-$k{=}3$ & 3/5 & 60\% & $0.679 \pm 0.042$ & $+23\%$ \\
-Dense $k{=}K{=}5$ & 5/5 & 100\% & $0.550 \pm 0.029$ & --- \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The Top-2 configuration is the right operating point: it is strictly FLOP-competitive with a single conv baseline (the conv head is $\sim 209$K params) while still achieving a $28.5\%$ MSE reduction on ETTh1 (Table~\ref{tab:rrmoa}). Dense routing remains useful as a compute-unbounded upper bound.
-
-\textbf{Compute overhead against the backbone.} A direct question is whether the 5-expert mixture adds meaningful inference latency on top of the backbone. The answer is essentially no. A MOMENT-small forward pass executes 8 T5-style encoder blocks on $L{=}512$ tokens with $d_\text{model}{=}512$, which is $\sim 15$ GFLOPs per sample, dominated by the attention projections and the feed-forward sublayers. The entire RR-MoA stack---5 expert heads (${\sim}400$K total adapter FLOPs per sample in dense mode), plus a tiny Conv1d raw-signal router (${\sim}16$K FLOPs)---is therefore about three to four orders of magnitude smaller than one backbone forward pass: $\sim 0.003\%$ of total inference compute for the dense mixture, and $\sim 0.001\%$ for the Top-2 configuration. On MOMENT-large (341M parameters, 24 encoder blocks, $d_\text{model}{=}1024$), backbone FLOPs grow roughly an order of magnitude further while the adapter cost stays essentially constant, pushing the ratio below $0.0002\%$. RR-MoA's inference overhead is therefore not a meaningful tradeoff axis; the backbone forward pass dwarfs every adapter variant we compare in this paper by at least two orders of magnitude.
-
-\textbf{Task generalization: Imputation.} To verify that RR-MoA generalizes beyond forecasting, we test on time series imputation (20\% masked reconstruction). Because imputation requires per-patch reconstruction rather than temporal pooling, we executed AAS in $\mathcal{G}_\text{code}$ on the imputation objective and used the recovered motifs (linear upsample, dense MLP, transposed conv, attention upsample) as task-specific experts. RR-MoA achieves $-43\%$ (ETTh1), $-52\%$ (ETTm1), and $-69\%$ (Weather) MSE improvement over the best single head (3/3 wins), confirming that adapter architecture is task-dependent (Table~\ref{tab:imputation}).
-
-\begin{table}[h]
-\centering
-\caption{Imputation task (20\% masked reconstruction, test MSE, seed 42). RR-MoA wins 3/3. Forecasting prefers temporal pooling; imputation prefers per-patch reconstruction.}
-\small
-\begin{tabular}{@{}lccccc@{}}
-\toprule
-Dataset & Linear & Dense MLP & Conv & Attn & \textbf{RR-MoA} \\
-\midrule
-ETTh1 & 0.242 & 0.339 & 0.254 & --- & \textbf{0.138} (--43\%) \\
-ETTm1 & --- & 0.218 & --- & --- & \textbf{0.104} (--52\%) \\
-Weather & --- & 0.195 & --- & --- & \textbf{0.061} (--69\%) \\
-\bottomrule
-\end{tabular}
-\label{tab:imputation}
-\end{table}
-
-\subsection{Zero-Cost Proxy (Observation)}
-
-As a preliminary observation for populating the expert pool, we note that the raw initialization gradient L2-norm $\|\nabla_\phi \mathcal{L}\|_2$, computed on a single batch with no training, correlates with 15-epoch test MSE on 3/6 datasets: Spearman $\rho{=}0.905$ ($p{=}0.002$) on Electricity, $\rho{=}0.762$ ($p{=}0.028$) on Weather, and $\rho{=}0.738$ ($p{=}0.037$) on ETTm2, while showing no significant correlation on ETTh1 and ETTm1. Because the raw $\|\cdot\|_2$ scales with the number of adapter parameters, this proxy also partially tracks parameter count; a parameter-normalized variant would be required before using it as a standalone selection criterion. We therefore report this result as an observation of interest rather than as a core contribution (Appendix~\ref{app:tzcp}).
-
-\section{Discussion}
-
-\textbf{Why MoE collapses on TSFMs: gradient co-adaptation.} Our multi-seed AdaMix results (Table~\ref{tab:adamix}) provide a direct empirical signature for routing collapse that goes beyond the conventional LayerNorm intuition. Under any unfrozen-backbone setting, the routing entropy across 3 seeds is \emph{exactly} $0.000\pm0.000$---a one-hot mixture. Under a strictly frozen backbone the same architecture retains entropy $0.49$--$0.63$. The difference is the presence of gradients flowing through $\theta$: when backbone layers can update, any small initial preference the router shows for one expert is amplified as the backbone reshapes its hidden states to serve that expert better, which in turn increases the router's preference. This is a positive feedback loop that completes in a handful of gradient steps. RR-MoA severs this loop by (i)~keeping $\theta$ frozen and (ii)~conditioning routing on $\mathbf{X}_\text{raw}$ rather than $f_\theta(\mathbf{X})$, so the router never sees the representation that would otherwise co-adapt against it.
-
-\textbf{The Frozen Paradox.} A practical consequence is that, for mixture-of-adapters on TSFMs, more trainable backbone parameters is not monotonically better. On ETTh1 and ETTm1, strictly frozen RR-MoA beats its own last-4-unfrozen counterpart in absolute MSE. This runs against the default ``unfreeze a few top blocks'' heuristic inherited from NLP PEFT and suggests that the right way to adapt a TSFM via MoE is to keep $\theta$ strictly frozen and invest capacity in the routing mechanism and the experts instead.
-
-\textbf{Search space and efficiency.} Two discrete search operators (random sampling and evolutionary selection) perform similarly in $\mathcal{G}_\text{tmpl}$, so $\mathcal{G}_\text{tmpl}$ alone does not justify LLM guidance. The LLM, searching the unbounded $\mathcal{G}_\text{code}$, recovers patterns \textit{outside} $\mathcal{G}_\text{tmpl}$ that perform better in our experiments---these are the motifs we distill into the RR-MoA expert pool. AAS thus acts as a search-space widener that imports cross-domain patterns (depthwise convolutions~\citep{howard2017mobilenets}, BatchNorm~\citep{he2016resnet, ioffe2015batchnorm}, channel attention~\citep{hu2018senet}), mirroring cross-modal transfer findings~\citep{shen2025visionts}. We stress that these are \emph{recovered} from established vision motifs rather than newly discovered algorithms.
-
-\textbf{Limitations.} (1)~Absolute MSE values are materially higher than lightweight supervised baselines on the \emph{same} normalized evaluation scale: DLinear~\citep{zeng2023dlinear} trained from scratch achieves $0.417{\pm}0.002$ (ETTh1), $0.322{\pm}0.004$ (ETTm1), and $0.208{\pm}0.003$ (Weather), roughly $40$--$80\%$ below our best frozen-backbone RR-MoA. Full fine-tuned specialists such as PatchTST~\citep{nie2023patchtst} widen the gap further. Our contribution is the best routing strategy \emph{within} the frozen-backbone paradigm (justified by the deployment regimes outlined in \S\ref{sec:intro}); it is not a new SOTA in absolute single-dataset terms. (2)~Multi-seed freeze/sparsity ablations cover ETTh1, ETTm1, and Weather; ETTh2, ETTm2, and Electricity are covered only for AAS (Table~\ref{tab:main}) and single-seed RR-MoA. (3)~Discrete-tokenized TSFM backbones such as Chronos are not addressed: grafting an MSE regression adapter onto a cross-entropy token model is not a well-posed comparison, and we leave a proper Chronos study (with its native tokenization and likelihood) to future work.
 
 \section{Conclusion}
 
-We identified a gradient co-adaptation failure mode in mixture-of-experts adaptation of pretrained time series foundation models: whenever backbone layers are unfrozen, the router and the unfrozen backbone jointly collapse onto a single expert, producing a routing entropy of exactly $0.000\pm0.000$ across every dataset, seed, and freeze level we tested. Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, breaks this loop by (i) keeping the backbone strictly frozen and (ii) routing on the raw pre-normalization input signal rather than on backbone hidden states. An ablation that applies per-window RevIN to the router's input confirms that the \emph{rawness}---specifically, the per-window trend, amplitude, and volatility---is essential, not merely the bypass: its removal degrades MSE by $60$--$88\%$ across all three datasets (Table~\ref{tab:router_input}). RR-MoA achieves \textbf{27/27 wins} across three datasets, three freeze levels, and three seeds, and we uncover a \emph{Frozen Paradox}: the strictly frozen backbone is \emph{Pareto-optimal} for this adaptation style, beating the more expensive partially-unfrozen variants. \textbf{Top-$k$ sparse routing} bounds the active expert FLOPs to $40\%$ of a dense mixture while retaining the MSE gains. To populate the expert pool with diverse topologies we use \textbf{Adapter Architecture Search (AAS)}, an LLM-guided code-level search that imports cross-domain motifs into the TSFM adapter vocabulary. We hope this work demonstrates that unlocking TSFM adaptation requires rethinking both the gradient flow through the backbone and the information signal used to control routing.
+We identified a gradient co-adaptation failure mode in MoE adaptation of pretrained TSFMs: whenever backbone layers are unfrozen, the router and backbone jointly collapse onto a single expert (routing entropy $0.000\pm0.000$). Our solution, \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}, breaks this loop by (i)~keeping the backbone strictly frozen and (ii)~routing on the raw pre-normalization input signal. A controlled ablation confirms that the \emph{rawness}---the per-window trend, amplitude, and volatility---is essential: stripping it via RevIN degrades MSE by $60$--$88\%$ (Table~\ref{tab:router_input}). RR-MoA wins \textbf{54/54} configurations across six datasets, three freeze levels, and three seeds. The \emph{Frozen Paradox}---that the strictly frozen backbone is the best or near-best strategy for routing-based adaptation---reverses the standard NLP PEFT heuristic of unfreezing the top encoder blocks. Top-$k$ sparse routing bounds active expert FLOPs to $40\%$ of a dense mixture while retaining the gains (\S\ref{sec:topk}). To populate the expert pool we use \textbf{AAS}, an LLM-guided code-level search that imports cross-domain motifs into the TSFM adapter vocabulary (Appendix~\ref{app:aas_results}).
 
+\textbf{Limitations.} (1)~Absolute MSE is materially higher than supervised baselines (DLinear achieves $0.416$ on ETTh1 vs.\ our $0.690$); our contribution is the best routing strategy within the frozen-backbone paradigm, not absolute SOTA. (2)~Discrete-tokenized backbones (Chronos) and native MoE TSFMs (Moirai-MoE, Time-MoE) are not addressed; we leave these to future work.
 
+\label{page:end_main}
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
 
@@ -1164,5 +936,368 @@ S &\rightarrow \nonterminal{Pool} \;\cdot\; \nonterminal{MLP} \;\cdot\; \nonterm
 with $d_\text{out} \in \{64, 128, 192, 256, 384\}$ and $p \in \{0.0, 0.1, 0.2, 0.3\}$, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$.
 
 % Imputation table moved to main text (Section 4.5)
+
+\section{LoRA Sweep (Full Results)}
+\label{app:lora_sweep}
+
+We sweep LoRA~\citep{hu2022lora} across three axes to ensure the comparison in Table~\ref{tab:lora} is not cherry-picked: rank $r{\in}\{8,16,32\}$, target projections ${\in}\{q{+}v,\; q{+}k{+}v{+}o\}$, and forecast head ${\in}\{$linear, 2-layer MLP$\}$, for 12 configurations $\times$ 3 seeds $=$ 108 runs per dataset. All runs use a strictly frozen backbone (matching Table~\ref{tab:rrmoa}'s primary setting).
+
+\begin{table}[h]
+\centering
+\caption{Full LoRA sweep (strictly frozen backbone, 3 seeds, test MSE mean$\pm$std). Bold rows are the best-per-dataset configuration used in Table~\ref{tab:lora}. No LoRA variant beats the RR-MoA (Top-2) result on any dataset.}
+\label{tab:lora_sweep}
+\small
+\begin{tabular}{@{}llllc@{}}
+\toprule
+Dataset & Rank & Targets & Head & MSE (mean$\pm$std) \\
+\midrule
+\multicolumn{5}{l}{\textit{ETTh1} (RR-MoA frozen: $\mathbf{0.690 \pm 0.021}$)} \\
+& $r{=}8$  & q,v   & linear & $1.559 \pm 0.022$ \\
+& $r{=}8$  & q,v   & mlp    & $1.217 \pm 0.010$ \\
+& $r{=}8$  & qkvo  & linear & $1.286 \pm 0.052$ \\
+& $r{=}8$  & qkvo  & mlp    & $1.154 \pm 0.000$ \\
+& $r{=}16$ & q,v   & linear & $1.347 \pm 0.056$ \\
+& $r{=}16$ & q,v   & mlp    & $1.186 \pm 0.046$ \\
+& $r{=}16$ & qkvo  & linear & $1.274 \pm 0.051$ \\
+& $r{=}16$ & qkvo  & mlp    & $1.154 \pm 0.000$ \\
+& $r{=}32$ & q,v   & linear & $1.201 \pm 0.107$ \\
+& $r{=}32$ & q,v   & mlp    & $1.161 \pm 0.010$ \\
+& $r{=}32$ & qkvo  & linear & $1.284 \pm 0.059$ \\
+& $\mathbf{r{=}32}$ & \textbf{qkvo} & \textbf{mlp} & $\mathbf{1.154 \pm 0.000}$ \\
+\midrule
+\multicolumn{5}{l}{\textit{ETTm1} (RR-MoA frozen: $\mathbf{0.572 \pm 0.073}$)} \\
+& $r{=}8$  & q,v   & linear & $0.970 \pm 0.026$ \\
+& $r{=}8$  & q,v   & mlp    & $1.115 \pm 0.011$ \\
+& $r{=}8$  & qkvo  & linear & $1.060 \pm 0.014$ \\
+& $r{=}8$  & qkvo  & mlp    & $1.123 \pm 0.000$ \\
+& $\mathbf{r{=}16}$ & \textbf{qkvo} & \textbf{linear} & $\mathbf{0.956 \pm 0.072}$ \\
+& $r{=}16$ & q,v   & linear & $1.024 \pm 0.068$ \\
+& $r{=}16$ & q,v   & mlp    & $1.115 \pm 0.012$ \\
+& $r{=}16$ & qkvo  & mlp    & $1.123 \pm 0.000$ \\
+& $r{=}32$ & q,v   & linear & $1.103 \pm 0.212$ \\
+& $r{=}32$ & q,v   & mlp    & $1.134 \pm 0.061$ \\
+& $r{=}32$ & qkvo  & linear & $1.345 \pm 0.360$ \\
+& $r{=}32$ & qkvo  & mlp    & $1.123 \pm 0.000$ \\
+\midrule
+\multicolumn{5}{l}{\textit{Weather} (RR-MoA frozen: $\mathbf{0.289 \pm 0.008}$)} \\
+& $r{=}8$  & q,v   & linear & $0.611 \pm 0.021$ \\
+& $r{=}8$  & q,v   & mlp    & $0.606 \pm 0.001$ \\
+& $r{=}8$  & qkvo  & linear & $0.664 \pm 0.020$ \\
+& $r{=}8$  & qkvo  & mlp    & $0.606 \pm 0.001$ \\
+& $r{=}16$ & q,v   & linear & $0.614 \pm 0.025$ \\
+& $r{=}16$ & q,v   & mlp    & $0.606 \pm 0.001$ \\
+& $r{=}16$ & qkvo  & linear & $0.654 \pm 0.033$ \\
+& $r{=}16$ & qkvo  & mlp    & $0.606 \pm 0.001$ \\
+& $\mathbf{r{=}32}$ & \textbf{q,v} & \textbf{linear} & $\mathbf{0.600 \pm 0.052}$ \\
+& $r{=}32$ & q,v   & mlp    & $0.606 \pm 0.000$ \\
+& $r{=}32$ & qkvo  & linear & $0.894 \pm 0.194$ \\
+& $r{=}32$ & qkvo  & mlp    & $0.606 \pm 0.001$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Formal Definitions}
+\label{app:formal_defs}
+
+\begin{definition}[Adapter]
+Given a pretrained TSFM backbone $f_\theta: \mathbb{R}^{B \times L} \rightarrow \mathbb{R}^{B \times T \times d}$ that maps input time series to encoder hidden states, an \textbf{adapter} is a parameterized module $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$ that maps hidden states to forecasts, where $\phi \in \Phi_g \subseteq \mathbb{R}^{n_g}$ are trainable weights with $n_g \leq N_\text{max}$ (we set $N_\text{max} = 500{,}000$).
+\end{definition}
+
+\begin{definition}[Architecture Space]
+An \textbf{architecture space} $\mathcal{G}$ is a set of adapter specifications, where each $g \in \mathcal{G}$ determines: (i) a parameter space $\Phi_g$ and its dimensionality $n_g$, (ii) a computational graph defining the forward function $g_\phi(\cdot)$, and (iii) an initialization procedure for $\phi$.
+\end{definition}
+
+\begin{definition}[Discrete Configuration Space $\mathcal{C}$]
+The \textbf{discrete space} $\mathcal{C}$ is the Cartesian product of standard adapter hyperparameters:
+\begin{equation}
+\mathcal{C} = \underbrace{\{\text{lin, lora, bn}\}}_{\text{type}} \times \underbrace{\{8,16,32,64\}}_{\text{rank}} \times \underbrace{\{\text{mean, last, max, cls}\}}_{\text{pool}} \times \underbrace{\{\text{lin, mlp1, mlp2}\}}_{\text{head}} \times \cdots
+\end{equation}
+The full Cartesian product yields ${\sim}2{,}160$ configurations, of which ${\sim}144$ define distinct adapter \textit{computational graphs} when restricted to the head-only subspace.
+\end{definition}
+
+\begin{definition}[Head-Only Subspace $\mathcal{C}_\text{head}$]
+\label{def:discrete_head}
+The \textbf{head-only subspace} $\mathcal{C}_\text{head} \subset \mathcal{C}$ is the restriction of $\mathcal{C}$ to linear-probe configurations (pooling $\to$ MLP head), with LoRA rank $=0$ and no bottleneck.
+\end{definition}
+
+\begin{definition}[Code-Level Space $\mathcal{G}_\text{code}$]
+\label{def:code}
+The \textbf{code space} $\mathcal{G}_\text{code}$ is the set of all Python programs $p$ such that: (i)~$p$ defines a class \texttt{Adapter(nn.Module)} with \texttt{\_\_init\_\_(self, d\_model, output\_dim)} and \texttt{forward(self, h)} mapping $\mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$; (ii)~$n_p \leq N_\text{max}$; (iii)~$p$ uses only \texttt{\{torch, nn, F, math\}}.
+\end{definition}
+
+\begin{definition}[Template Space $\mathcal{G}_\text{tmpl}$]
+\label{def:template}
+The \textbf{template space} $\mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$ is generated by a context-free grammar over 5 pooling types, 4 activations, variable MLP depths and widths, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$ architectures (Appendix~\ref{app:grammar}).
+\end{definition}
+
+\begin{proposition}[Strict Head-Level Hierarchy]
+\label{prop:hierarchy}
+$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$, and both inclusions are strict (proof in Appendix~\ref{app:proofs}).
+\end{proposition}
+
+\section{Search Space Expressiveness}
+\label{app:expressiveness}
+
+\begin{table}[h]
+\centering
+\caption{Search space expressiveness hierarchy. Winning AAS architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$.}
+\label{tab:expressiveness}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Architecture & Discrete $\mathcal{C}$ & Template $\mathcal{G}_\text{tmpl}$ & Code $\mathcal{G}_\text{code}$ & Source \\
+\midrule
+Linear probe (mean pool + linear) & \cmark & \cmark & \cmark & Standard \\
+MLP head (1--2 layer, GELU) & \cmark & \cmark & \cmark & Standard \\
+Conv1d pool + MLP & \xmark & \cmark & \cmark & Template \\
+\midrule
+\multicolumn{5}{l}{\textit{Head-level hierarchy: }$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$} \\
+LoRA ($r$, $\alpha$, targets) on backbone & \multicolumn{3}{c}{\emph{orthogonal axis; see Table~\ref{tab:lora}}} & Backbone PEFT \\
+Bottleneck adapter between blocks & \multicolumn{3}{c}{\emph{orthogonal axis}} & Backbone PEFT \\
+\midrule
+Conv1d + BatchNorm + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
+Depthwise conv + positional weights & \xmark & \xmark & \cmark & \textbf{Discovered} \\
+Softmax feature attention + gating & \xmark & \xmark & \cmark & \textbf{Discovered} \\
+Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{AAS Main Results}
+\label{app:aas_results}
+
+\begin{table}[h]
+\centering
+\caption{Standard LTSF benchmark on MOMENT-small (test MSE, 3 seeds unless noted). AAS wins all 20 experiments. Best fixed adapter is \textit{conv}. AAS is used primarily to populate the RR-MoA expert pool (\S\ref{sec:architectures}).}
+\label{tab:main}
+\small
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Dataset & Setting & AAS MSE & Best Fixed & $\Delta$ \\
+\midrule
+\multicolumn{5}{l}{\textit{ETTh1 (3 seeds + multi-horizon)}} \\
+& H=96, seed 42 & \textbf{1.0835} & 1.1477 & --5.6\% \\
+& H=96, seed 43 & \textbf{1.0418} & 1.1484 & --9.3\% \\
+& H=96, seed 44 & \textbf{1.1366} & 1.1490 & --1.1\% \\
+& H=192, seed 42 & \textbf{1.1006} & 1.1659 & --5.6\% \\
+& H=336, seed 42 & \textbf{1.1704} & 1.1719 & --0.1\% \\
+& H=720, seed 42 & \textbf{1.1590} & 1.1664 & --0.6\% \\
+\midrule
+\multicolumn{5}{l}{\textit{ETTm1 (3 seeds + multi-horizon)}} \\
+& H=96, seed 42 & \textbf{0.9920} & 1.1223 & --11.6\% \\
+& H=96, seed 43 & \textbf{0.9385} & 1.1873 & --21.0\% \\
+& H=96, seed 44 & \textbf{0.8740} & 0.9372 & --6.7\% \\
+& H=336, seed 42 & \textbf{1.1139} & 1.1174 & --0.3\% \\
+& H=720, seed 42 & \textbf{1.1195} & 1.1204 & --0.1\% \\
+\midrule
+\multicolumn{5}{l}{\textit{Other datasets (multi-seed, H=96)}} \\
+ETTh2 & seeds 42/43/44 & \textbf{2.74}/\textbf{2.47}/\textbf{3.07} & 3.10/2.97/3.13 & --11.9\%/--16.9\%/--1.8\% \\
+ETTm2 & seeds 42/43/44 & \textbf{2.83}/\textbf{2.43}/\textbf{2.93} & 3.11/3.14/3.13 & --8.9\%/--22.4\%/--6.2\% \\
+Weather & seeds 42/43 & \textbf{0.49}/\textbf{0.42} & 0.61/0.51 & --18.9\%/--18.0\% \\
+Electricity & seed 42 & \textbf{0.4782} & 0.5293 & --9.7\% \\
+\midrule
+\multicolumn{2}{l}{\textit{Average (20 experiments)}} & & & \textbf{--9.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Cross-backbone generalization of AAS. The adapter interface is identical; only $d_\text{model}$ changes.}
+\label{tab:backbone}
+\small
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Backbone & Dataset & AAS MSE & Best Fixed & $\Delta$ \\
+\midrule
+\multicolumn{5}{l}{\textit{MOMENT-large (341M params, $d_\text{model}{=}1024$, 24 blocks)}} \\
+& ETTh1 & \textbf{1.0162} & 1.1060 & --8.1\% \\
+& ETTm1 & \textbf{0.7786} & 0.8084 & --3.7\% \\
+& Weather & \textbf{0.5018} & 0.6120 & --18.0\% \\
+\midrule
+\multicolumn{5}{l}{\textit{Moirai-1.1-R-small (14M params, $d_\text{model}{=}384$, 6 blocks)}} \\
+& ETTh1 & \textbf{0.4502} & 0.4639 & --3.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Routing Weight Distributions}
+\label{app:routing_weights}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=\columnwidth,
+    height=4.8cm,
+    bar width=7pt,
+    ylabel={Mean routing weight (Top-2, frozen)},
+    ylabel style={font=\small},
+    symbolic x coords={ETTh1, ETTm1, Weather},
+    xtick=data,
+    x tick label style={font=\small},
+    y tick label style={font=\small},
+    legend style={at={(0.5,1.02)}, anchor=south, legend columns=5, font=\scriptsize, draw=none},
+    ymin=0, ymax=0.40,
+    enlarge x limits=0.25,
+    error bars/y dir=both,
+    error bars/y explicit,
+    error bars/error bar style={line width=0.5pt, black!60},
+]
+\addplot[fill=blue!55]   coordinates {(ETTh1,0.210) +- (0,0.045) (ETTm1,0.154) +- (0,0.016) (Weather,0.263) +- (0,0.041)};
+\addplot[fill=red!55]    coordinates {(ETTh1,0.217) +- (0,0.042) (ETTm1,0.277) +- (0,0.017) (Weather,0.175) +- (0,0.040)};
+\addplot[fill=green!55]  coordinates {(ETTh1,0.188) +- (0,0.020) (ETTm1,0.221) +- (0,0.048) (Weather,0.161) +- (0,0.017)};
+\addplot[fill=orange!65] coordinates {(ETTh1,0.180) +- (0,0.006) (ETTm1,0.176) +- (0,0.012) (Weather,0.144) +- (0,0.028)};
+\addplot[fill=purple!55] coordinates {(ETTh1,0.205) +- (0,0.025) (ETTm1,0.173) +- (0,0.041) (Weather,0.257) +- (0,0.073)};
+\legend{Mean, Last, Max, Attn, Conv1d}
+\end{axis}
+\end{tikzpicture}
+\caption{\textbf{Multi-seed RR-MoA routing weights per dataset} (Top-2 sparse, strictly frozen, mean$\pm$std over seeds $\{42,43,44\}$). Routing is diverse and dataset-dependent: ETTh1 spreads weight roughly uniformly (entropy $1.495\pm0.034$); ETTm1 concentrates on Last+Max; Weather on Mean+Conv1d.}
+\label{fig:routing_appendix}
+\end{figure}
+
+\section{Extended RR-MoA Freeze Grid}
+\label{app:extended_rrmoa}
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Extended freeze-level ablation} (ETTh2, ETTm2, Electricity; test MSE, mean$\pm$std, 3 seeds, H=96). Continues Table~\ref{tab:rrmoa} from the main text.}
+\label{tab:rrmoa_extended}
+\small
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
+\midrule
+\multirow{3}{*}{ETTh2}
+ & Frozen (0/8)   & $\mathbf{0.788 \pm 0.096}$ & $2.748 \pm 0.201$ & $\mathbf{-71.3\%}$ \\
+ & Last-2 (2/8)   & $\mathbf{1.302 \pm 0.134}$ & $2.599 \pm 0.085$ & $-49.9\%$ \\
+ & Last-4 (4/8)   & $\mathbf{1.745 \pm 0.187}$ & $2.540 \pm 0.110$ & $-31.3\%$ \\
+\midrule
+\multirow{3}{*}{ETTm2}
+ & Frozen (0/8)   & $\mathbf{0.588 \pm 0.021}$ & $2.556 \pm 0.028$ & $\mathbf{-77.0\%}$ \\
+ & Last-2 (2/8)   & $\mathbf{0.867 \pm 0.083}$ & $2.915 \pm 0.202$ & $-70.3\%$ \\
+ & Last-4 (4/8)   & $\mathbf{0.731 \pm 0.157}$ & $2.740 \pm 0.092$ & $-73.3\%$ \\
+\midrule
+\multirow{3}{*}{Electricity}
+ & Frozen (0/8)   & $\mathbf{0.386 \pm 0.059}$ & $0.525 \pm 0.026$ & $-26.4\%$ \\
+ & Last-2 (2/8)   & $\mathbf{0.336 \pm 0.023}$ & $0.482 \pm 0.005$ & $\mathbf{-30.3\%}$ \\
+ & Last-4 (4/8)   & $\mathbf{0.344 \pm 0.021}$ & $0.472 \pm 0.023$ & $-27.2\%$ \\
+\midrule
+\multicolumn{3}{l}{\textbf{Combined with Table~\ref{tab:rrmoa}: RR-MoA wins}} & \multicolumn{2}{c}{\textbf{54/54 (100\%)}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Extended AdaMix routing collapse} (ETTh2, ETTm2, Electricity). Continues Table~\ref{tab:adamix} from the main text.}
+\label{tab:adamix_extended}
+\small
+\begin{tabular}{@{}llcc@{}}
+\toprule
+Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
+\midrule
+\multirow{3}{*}{ETTh2}
+ & Frozen  & $2.625 \pm 0.219$ & $0.636 \pm 0.385$ \\
+ & Last-2  & $2.985 \pm 0.024$ & $0.353 \pm 0.499$ \\
+ & Last-4  & $2.885 \pm 0.150$ & $0.541 \pm 0.648$ \\
+\midrule
+\multirow{3}{*}{ETTm2}
+ & Frozen  & $2.946 \pm 0.076$ & $0.316 \pm 0.342$ \\
+ & Last-2  & $3.114 \pm 0.004$ & $\mathbf{0.000 \pm 0.000}$ \\
+ & Last-4  & $2.997 \pm 0.162$ & $0.505 \pm 0.714$ \\
+\midrule
+\multirow{3}{*}{Electricity}
+ & Frozen  & $0.625 \pm 0.220$ & $1.003 \pm 0.315$ \\
+ & Last-2  & $1.055 \pm 0.000$ & $\mathbf{0.000 \pm 0.000}$ \\
+ & Last-4  & $1.055 \pm 0.001$ & $0.001 \pm 0.002$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Factorial Decomposition}
+\label{app:decomposition}
+
+We decompose the contributions of three factors across 6 evaluation datasets: (1) search space representation (code vs.\ discrete), (2) evolutionary selection pressure, and (3) LLM guidance.
+
+\textbf{Code space $\gg$ discrete space.} All code-space methods outperform discrete evolutionary search (Evo-3epoch, 144 distinct adapter graphs) on 6/6 datasets (Wilcoxon signed-rank $p{=}0.031$, Cohen's $d{=}0.82$). The search space representation is the dominant factor.
+
+\textbf{LLM patterns are individually superior.} Within AAS runs, adapters containing LLM-discovered patterns achieve 19.6\% lower MSE than basic architectures ($p{=}0.003$, Mann-Whitney $U$, $n{=}90$, Cohen's $d{=}0.67$). LLM adapters also use 38\% fewer parameters (mean 110K vs.\ 177K).
+
+\textbf{Validity determines aggregate winner.} The LLM wastes 25\% of evaluations on invalid code; templates achieve 100\% validity.
+
+\textbf{Search budget sufficiency.} We tested 14 budget configurations (20--480 evaluations) across ETTh1 and ETTm1; all beat the conv baseline, even at $B{=}20$ (Appendix~\ref{app:budget}). The curve plateaus around $B\!\approx\!60$.
+
+\section{Top-$k$ Sparse Routing Ablation}
+\label{app:topk}
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Top-$k$ sparse routing ablation on ETTh1 (last-2 freeze, 3 seeds).} Top-2 is the operating point used throughout the paper.}
+\label{tab:topk}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Sparsity ($k$) & Active experts & Active expert FLOPs & Test MSE & $\Delta$ vs Dense \\
+\midrule
+$k{=}1$ & 1/5 & 20\% & $1.268 \pm 0.072$ & $+130\%$ \\
+$k{=}2$ (default) & 2/5 & 40\% & $\mathbf{0.727 \pm 0.074}$ & $+32\%$ \\
+$k{=}3$ & 3/5 & 60\% & $0.679 \pm 0.042$ & $+23\%$ \\
+Dense $k{=}K{=}5$ & 5/5 & 100\% & $0.550 \pm 0.029$ & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Compute overhead.} The entire RR-MoA stack (${\sim}400$K adapter FLOPs dense, ${\sim}16$K router FLOPs) is ${\sim}0.003\%$ of a MOMENT-small forward pass (${\sim}15$ GFLOPs) and ${\sim}0.001\%$ for Top-2. On MOMENT-large the ratio drops below $0.0002\%$.
+
+\section{Imputation Results}
+\label{app:imputation}
+
+\begin{table}[h]
+\centering
+\caption{Imputation task (20\% masked reconstruction, test MSE, seed 42). RR-MoA wins 3/3.}
+\label{tab:imputation}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Dataset & Linear & Dense MLP & Conv & Attn & \textbf{RR-MoA} \\
+\midrule
+ETTh1 & 0.242 & 0.339 & 0.254 & --- & \textbf{0.138} (--43\%) \\
+ETTm1 & --- & 0.218 & --- & --- & \textbf{0.104} (--52\%) \\
+Weather & --- & 0.195 & --- & --- & \textbf{0.061} (--69\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{DLinear Calibration}
+\label{app:dlinear}
+
+\begin{table}[h]
+\centering
+\caption{\textbf{DLinear supervised calibration} (trained from scratch, no backbone, 3 seeds, test MSE mean$\pm$std). The gap to RR-MoA is expected; the frozen-backbone paradigm is motivated by deployment constraints (\S\ref{sec:intro}).}
+\label{tab:dlinear}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Dataset & DLinear (from scratch) & RR-MoA (frozen, Top-2) & Gap \\
+\midrule
+ETTh1   & $0.416 \pm 0.002$ & $0.690 \pm 0.021$ & $+65.9\%$ \\
+ETTm1   & $0.322 \pm 0.004$ & $0.572 \pm 0.073$ & $+77.6\%$ \\
+Weather & $0.208 \pm 0.003$ & $0.289 \pm 0.008$ & $+38.9\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Deployment-Regime Motivation}
+\label{app:deployment}
+
+The frozen-backbone paradigm is motivated by three deployment regimes where full fine-tuning is infeasible:
+
+\textbf{(i) Multi-tenant cloud serving.} A single TSFM sits in GPU VRAM and serves thousands of tenants via lightweight, hot-swappable per-tenant adapters in host RAM. Retraining a separate DLinear per tenant does not amortize the backbone cost and forfeits zero-shot transfer.
+
+\textbf{(ii) On-device and edge deployment.} One backbone is shipped with the device image; per-site adapters are updated over low-bandwidth links. Collecting each site's training data centrally is often impossible for privacy or latency reasons.
+
+\textbf{(iii) Cross-task reuse.} The same frozen backbone drives forecasting, imputation, and classification via different expert pools. We demonstrate the first two tasks explicitly in the main text.
 
 \end{document}

@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from scripts.run_standard_evolution import load_standard_data
+from scripts.run_standard_evolution import load_standard_data, compute_denorm_mse
 
 
 class DLinear(nn.Module):
@@ -57,6 +57,8 @@ def main():
     splits, _ = load_standard_data(args.dataset, args.horizon)
     X_train, Y_train = splits["train"]
     X_test, Y_test = splits["test"]
+    test_ch = splits.get("test_ch")
+    scaler = splits.get("_scaler")
 
     input_len = X_train.shape[1]
     model = DLinear(input_len, args.horizon).to(args.device)
@@ -101,7 +103,21 @@ def main():
     test_mse = nn.MSELoss()(preds, tgts).item()
     test_mae = nn.L1Loss()(preds, tgts).item()
 
+    mse_denorm, mae_denorm = None, None
+    if test_ch is not None and scaler is not None:
+        mse_denorm, mae_denorm = compute_denorm_mse(preds, tgts, test_ch, scaler)
+
     print("DLinear: MSE=%.4f MAE=%.4f  time=%.0fs" % (test_mse, test_mae, elapsed))
+    if mse_denorm is not None:
+        print("DLinear: MSE_denorm=%.4f  MAE_denorm=%.4f (original units)" % (mse_denorm, mae_denorm))
+
+    scaler_info = None
+    if scaler is not None:
+        scaler_info = {
+            "scale_": [float(x) for x in scaler.scale_],
+            "mean_": [float(x) for x in scaler.mean_],
+            "mean_scale_sq": float(np.mean(scaler.scale_ ** 2)),
+        }
 
     out = {
         "dataset": args.dataset,
@@ -111,8 +127,11 @@ def main():
         "input_len": input_len,
         "dlinear_mse": test_mse,
         "dlinear_mae": test_mae,
+        "dlinear_mse_denorm": mse_denorm,
+        "dlinear_mae_denorm": mae_denorm,
         "param_count": n_params,
         "elapsed": elapsed,
+        "scaler": scaler_info,
     }
     path = "results/dlinear/%s_H%d_%d.json" % (args.dataset, args.horizon, args.seed)
     with open(path, "w") as f:

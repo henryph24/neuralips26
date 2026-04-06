@@ -15,26 +15,31 @@
       "conv1d": 0.169
     },
     "routing_entropy": 1.4382082223892212,
-    "routing_max_weight": 0.3407183587551117
+    "routing_max_weight": 0.3407183587551117,
+    "mse_denorm_approx": 77.74964516680275
   },
   "elapsed": 44.65112376213074,
   "baselines": {
     "linear": {
       "mse": 3.29364013671875,
       "mae": 1.3943865299224854,
-      "param_count": 49248
+      "param_count": 49248,
+      "mse_denorm_approx": 306.2436720873906
     },
     "attention": {
       "mse": 2.716048240661621,
       "mae": 1.2331560850143433,
-      "param_count": 49761
+      "param_count": 49761,
+      "mse_denorm_approx": 252.53900009105286
     },
     "conv": {
       "mse": 2.821601629257202,
       "mae": 1.249570369720459,
-      "param_count": 209248
+      "param_count": 209248,
+      "mse_denorm_approx": 262.3533866004976
     }
   },
   "winner": "RR-MoA",
-  "delta_pct": -69.21281657931245
+  "delta_pct": -69.21281657931245,
+  "scaler_mean_scale_sq": 92.98030731204359
 }

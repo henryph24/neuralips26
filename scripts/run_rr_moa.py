@@ -35,6 +35,10 @@ from feasibility.finetune import _extract_features_batch
 from feasibility.code_evolution import SEED_ADAPTERS, validate_adapter_code
 from scripts.run_standard_evolution import (
     load_standard_data, train_adapter, _detect_backbone_type,
+    compute_denorm_mse,
+)
+from feasibility.rrmoa_macro_experts import (
+    MACRO_EXPERT_CLASSES, MACRO_EXPERT_NAMES,
 )
 
 
@@ -82,6 +86,15 @@ class Conv1dPoolHead(nn.Module):
 HEAD_CLASSES = [MeanPoolHead, LastTokenHead, MaxPoolHead, AttentionPoolHead, Conv1dPoolHead]
 HEAD_NAMES = ["mean", "last", "max", "attention", "conv1d"]
 
+# T3.A: selectable expert pool. ``canonical`` = 5 simple pooling heads
+# (current RR-MoA default); ``macro`` = 5 AAS-discovered cross-domain
+# motifs from feasibility/rrmoa_macro_experts.py that unify the AAS and
+# RR-MoA contributions (W1).
+EXPERT_POOLS = {
+    "canonical": (HEAD_CLASSES, HEAD_NAMES),
+    "macro":     (MACRO_EXPERT_CLASSES, MACRO_EXPERT_NAMES),
+}
+
 
 class RawRoutedMoA(nn.Module):
     """Raw-Routed Mixture of Adapters.
@@ -94,17 +107,21 @@ class RawRoutedMoA(nn.Module):
     routing probability execute per sample (top_k=K gives dense mode).
     """
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None,
-                 router_input_mode="raw"):
+                 router_input_mode="raw", expert_pool="canonical"):
         super().__init__()
         self.K = K
         self.top_k = top_k if top_k is not None else K  # default: dense
         self.output_dim = output_dim
-        assert router_input_mode in ("raw", "revin"), router_input_mode
+        assert router_input_mode in ("raw", "revin", "uniform"), router_input_mode
         self.router_input_mode = router_input_mode
+        assert expert_pool in EXPERT_POOLS, expert_pool
+        self.expert_pool = expert_pool
 
+        pool_classes, pool_names = EXPERT_POOLS[expert_pool]
+        self._expert_names = pool_names
         # K expert adapter heads (operate on hidden states)
         self.adapters = nn.ModuleList([
-            HEAD_CLASSES[i % len(HEAD_CLASSES)](d_model, output_dim, hidden)
+            pool_classes[i % len(pool_classes)](d_model, output_dim, hidden)
             for i in range(K)
         ])
 
@@ -120,6 +137,16 @@ class RawRoutedMoA(nn.Module):
         self.load_balance_coeff = 0.01
 
     def _compute_logits(self, raw_input):
+        if self.router_input_mode == "uniform":
+            # T1.B ensemble-vs-specialization control: force a constant
+            # uniform mixture by returning zero logits (softmax -> 1/K).
+            # The router's Conv1d/Linear params are still present and get
+            # zero gradient; this keeps the rest of the training loop (and
+            # the checkpointable param set) identical to the raw / revin
+            # variants so any MSE gap is attributable to the routing
+            # decision alone, not to capacity differences.
+            B = raw_input.shape[0]
+            return torch.zeros(B, self.K, device=raw_input.device, dtype=raw_input.dtype)
         if self.router_input_mode == "revin":
             # Per-window RevIN-style normalization: zero mean, unit variance
             # along the temporal dimension. This replicates what MOMENT's
@@ -185,12 +212,13 @@ class RawRoutedMoA(nn.Module):
 def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
                  backbone_type="moment", K=5, hidden=64, top_k=None,
-                 router_input_mode="raw"):
+                 router_input_mode="raw", test_ch=None, scaler=None,
+                 expert_pool="canonical"):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
     adapter = RawRoutedMoA(
         hdim, forecast_horizon, input_len=512, K=K, hidden=hidden, top_k=top_k,
-        router_input_mode=router_input_mode,
+        router_input_mode=router_input_mode, expert_pool=expert_pool,
     ).to(device)
 
     trainable = list(adapter.parameters())
@@ -253,14 +281,34 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
     routing_entropy = -(routing * torch.log(routing + 1e-10)).sum(dim=-1).mean().item()
     routing_max = routing.max(dim=-1).values.mean().item()
 
-    return {
+    # T1.B analysis support: per-sample routing-weight variance across the
+    # test set. A near-zero value indicates the router is effectively
+    # constant, in which case RR-MoA is operating as a soft ensemble rather
+    # than a per-sample mixture of specialists.
+    routing_np = routing.float().numpy()
+    per_sample_std = float(np.mean(np.std(routing_np, axis=1)))
+    cross_sample_var = float(np.mean(np.var(routing_np, axis=0)))
+
+    names = adapter._expert_names
+    out = {
         "mse": mse, "mae": mae, "param_count": adapter.param_count(),
         "top_k": adapter.top_k,
         "router_input_mode": adapter.router_input_mode,
-        "routing": {HEAD_NAMES[i]: round(w, 3) for i, w in enumerate(mean_routing[:len(HEAD_NAMES)])},
+        "expert_pool": adapter.expert_pool,
+        "routing": {names[i]: round(w, 3) for i, w in enumerate(mean_routing[:len(names)])},
         "routing_entropy": routing_entropy,
         "routing_max_weight": routing_max,
+        "routing_per_sample_std": per_sample_std,
+        "routing_cross_sample_var": cross_sample_var,
     }
+
+    # T1.A denormalized MSE in original (un-standardized) units.
+    if test_ch is not None and scaler is not None:
+        mse_d, mae_d = compute_denorm_mse(preds, tgts, test_ch, scaler)
+        out["mse_denorm"] = mse_d
+        out["mae_denorm"] = mae_d
+
+    return out
 
 
 def _apply_unfreeze(blocks, unfreeze):
@@ -288,12 +336,23 @@ def main():
     parser.add_argument("--K", type=int, default=5)
     parser.add_argument("--top-k", type=int, default=None,
                         help="Top-K sparse routing (default: dense, all K experts)")
-    parser.add_argument("--router-input-mode", default="raw", choices=["raw", "revin"],
-                        help="Signal the gate reads: raw (channel-standardized input, default) "
-                             "or revin (per-window zero-mean unit-variance). Ablation for "
-                             "rawness-vs-bypass analysis in the paper.")
+    parser.add_argument("--router-input-mode", default="raw",
+                        choices=["raw", "revin", "uniform"],
+                        help="Signal the gate reads: raw (channel-standardized input, default); "
+                             "revin (per-window zero-mean unit-variance, rawness-vs-bypass "
+                             "ablation); uniform (no routing, fixed 1/K weights, "
+                             "ensemble-vs-specialization control).")
     parser.add_argument("--unfreeze", default="last4", choices=["frozen", "last2", "last4", "all"],
                         help="Backbone unfreezing strategy")
+    parser.add_argument("--expert-pool", default="canonical",
+                        choices=list(EXPERT_POOLS.keys()),
+                        help="Which expert pool to populate RR-MoA with. "
+                             "'canonical' = 5 simple pooling heads (mean/last/max/attn/conv1d, "
+                             "current default). 'macro' = 5 AAS-distilled cross-domain motifs "
+                             "from feasibility/rrmoa_macro_experts.py (BN+mean, multi-scale "
+                             "conv, Conv1d+BN+residual, depthwise separable, gated conv). "
+                             "The 'macro' option is the T3.A integration experiment that "
+                             "unifies the AAS and RR-MoA contributions (reviewer W1).")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
@@ -323,6 +382,8 @@ def main():
     splits, _ = load_standard_data(args.dataset, args.horizon)
     X_train, Y_train = splits["train"]
     X_test, Y_test = splits["test"]
+    test_ch = splits.get("test_ch")
+    scaler = splits.get("_scaler")
     print("%s H=%d: train=%d, test=%d" % (args.dataset, args.horizon, len(X_train), len(X_test)))
 
     # === RR-MoA ===
@@ -333,13 +394,20 @@ def main():
     result = train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                           device=args.device, forecast_horizon=args.horizon,
                           backbone_type=bb_type, K=args.K, top_k=args.top_k,
-                          n_epochs=args.epochs, router_input_mode=args.router_input_mode)
+                          n_epochs=args.epochs, router_input_mode=args.router_input_mode,
+                          test_ch=test_ch, scaler=scaler,
+                          expert_pool=args.expert_pool)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
+    if "mse_denorm" in result:
+        print("RR-MoA: MSE_denorm=%.4f  MAE_denorm=%.4f (original units)" % (
+            result["mse_denorm"], result["mae_denorm"]))
     print("Routing: %s" % result["routing"])
     print("Routing entropy: %.3f / %.3f (max)" % (result["routing_entropy"], np.log(args.K)))
     print("Routing max weight: %.3f (1.0 = collapsed)" % result["routing_max_weight"])
+    print("Routing per-sample std: %.4f  cross-sample var: %.6f" % (
+        result["routing_per_sample_std"], result["routing_cross_sample_var"]))
 
     # === Baselines ===
     baseline_results = {}
@@ -357,9 +425,12 @@ def main():
             try:
                 tr = train_adapter(code, model2, blocks2, X_train, Y_train, X_test, Y_test,
                                    device=args.device, n_epochs=args.epochs, forecast_horizon=args.horizon,
-                                   backbone_type=bb_type)
+                                   backbone_type=bb_type, eval_ch=test_ch, scaler=scaler)
                 baseline_results[name] = tr
-                print("  %-15s MSE=%.4f" % (name, tr["mse"]))
+                if "mse_denorm" in tr:
+                    print("  %-15s MSE=%.4f  MSE_denorm=%.4f" % (name, tr["mse"], tr["mse_denorm"]))
+                else:
+                    print("  %-15s MSE=%.4f" % (name, tr["mse"]))
             except Exception as e:
                 print("  %-15s ERROR: %s" % (name, e))
 
@@ -374,6 +445,17 @@ def main():
         winner = "N/A"
         delta = 0.0
 
+    # Record the per-channel scale vector so that verify.py / downstream
+    # analysis can reconstruct denorm numbers without re-loading the dataset.
+    scaler_info = None
+    if scaler is not None:
+        scaler_info = {
+            "scale_": [float(x) for x in scaler.scale_],
+            "mean_": [float(x) for x in scaler.mean_],
+            "n_features_in_": int(getattr(scaler, "n_features_in_", len(scaler.scale_))),
+            "mean_scale_sq": float(np.mean(scaler.scale_ ** 2)),
+        }
+
     save_data = {
         "dataset": args.dataset, "horizon": args.horizon, "seed": args.seed,
         "K": args.K, "top_k": args.top_k or args.K, "unfreeze": args.unfreeze,
@@ -382,16 +464,20 @@ def main():
         "rr_moa": result, "elapsed": elapsed,
         "baselines": {k: v for k, v in baseline_results.items()},
         "winner": winner, "delta_pct": delta,
+        "scaler": scaler_info,
     }
-    # Append router mode suffix only for non-default modes so existing raw-mode
-    # JSONs keep their current filenames (and verify.py's paths keep working).
-    if args.router_input_mode == "raw":
-        path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d.json" % (
-            args.dataset, args.horizon, args.K, top_k_label, args.unfreeze, args.seed)
-    else:
-        path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d_router-%s.json" % (
-            args.dataset, args.horizon, args.K, top_k_label, args.unfreeze,
-            args.seed, args.router_input_mode)
+    # Append router mode / pool suffixes only for non-default options so
+    # existing raw+canonical JSONs keep their current filenames (and
+    # evidence_vm/verify.py's paths keep working).
+    suffixes = []
+    if args.router_input_mode != "raw":
+        suffixes.append("router-%s" % args.router_input_mode)
+    if args.expert_pool != "canonical":
+        suffixes.append("pool-%s" % args.expert_pool)
+    suffix = ("_" + "_".join(suffixes)) if suffixes else ""
+    path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d%s.json" % (
+        args.dataset, args.horizon, args.K, top_k_label, args.unfreeze,
+        args.seed, suffix)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)

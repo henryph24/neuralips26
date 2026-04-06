@@ -35,7 +35,9 @@ from feasibility.model import (
 )
 from feasibility.finetune import _extract_features_batch
 from feasibility.config import AdapterConfig
-from scripts.run_standard_evolution import load_standard_data, _detect_backbone_type
+from scripts.run_standard_evolution import (
+    load_standard_data, _detect_backbone_type, compute_denorm_mse,
+)
 
 
 class LoRALinearHead(nn.Module):
@@ -49,8 +51,33 @@ class LoRALinearHead(nn.Module):
         return self.fc(hidden_states.mean(dim=1))
 
 
-def build_lora_model(backbone_name, device, rank, unfreeze):
-    """Load MOMENT, attach LoRA to q,v across all blocks, apply freeze policy."""
+class LoRAMLPHead(nn.Module):
+    """Two-layer MLP forecast head for the T3.B LoRA sweep."""
+    def __init__(self, d_model, horizon, hidden=128):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(d_model, hidden),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden, horizon),
+        )
+
+    def forward(self, hidden_states):
+        return self.net(hidden_states.mean(dim=1))
+
+
+def build_head(head_type, d_model, horizon):
+    if head_type == "linear":
+        return LoRALinearHead(d_model, horizon)
+    if head_type == "mlp2":
+        return LoRAMLPHead(d_model, horizon)
+    raise ValueError("unknown head_type: %s" % head_type)
+
+
+def build_lora_model(backbone_name, device, rank, unfreeze, target_modules_key="qv",
+                     head_type="linear"):
+    """Load MOMENT, attach LoRA to the requested modules across all blocks,
+    apply freeze policy."""
     model = load_backbone(backbone_name, device)
     _disable_gradient_checkpointing(model)
 
@@ -61,12 +88,12 @@ def build_lora_model(backbone_name, device, rank, unfreeze):
         adapter_type="lora",
         lora_rank=rank,
         lora_alpha=rank * 2,
-        target_modules_key="qv",
+        target_modules_key=target_modules_key,
         layer_placement="all",
         unfreeze=unfreeze,
-        head_type="linear",
+        head_type=head_type,
         pooling="mean",
-        config_id=f"lora_r{rank}_qv_all_{unfreeze}",
+        config_id=f"lora_r{rank}_{target_modules_key}_all_{unfreeze}_{head_type}",
     )
     model = attach_lora(model, cfg, module_map)
 
@@ -90,7 +117,8 @@ def build_lora_model(backbone_name, device, rank, unfreeze):
 
 def train_lora_baseline(model, blocks, head, X_train, Y_train, X_test, Y_test,
                         trainable_params, device="cuda", n_epochs=15,
-                        forecast_horizon=96, batch_size=128, backbone_type="moment"):
+                        forecast_horizon=96, batch_size=128, backbone_type="moment",
+                        test_ch=None, scaler=None):
     """Training loop mirrors run_rr_moa.py structure."""
     optimizer = torch.optim.Adam(trainable_params, lr=1e-3)
     mse_fn = nn.MSELoss()
@@ -135,7 +163,10 @@ def train_lora_baseline(model, blocks, head, X_train, Y_train, X_test, Y_test,
     preds, tgts = torch.cat(preds), torch.cat(tgts)
     mse = nn.MSELoss()(preds, tgts).item()
     mae = nn.L1Loss()(preds, tgts).item()
-    return mse, mae
+    mse_denorm, mae_denorm = None, None
+    if test_ch is not None and scaler is not None:
+        mse_denorm, mae_denorm = compute_denorm_mse(preds, tgts, test_ch, scaler)
+    return mse, mae, mse_denorm, mae_denorm
 
 
 def main():
@@ -143,6 +174,11 @@ def main():
     parser.add_argument("--dataset", default="ETTh1")
     parser.add_argument("--horizon", type=int, default=96)
     parser.add_argument("--rank", type=int, default=8)
+    parser.add_argument("--target-modules", default="qv", choices=["qv", "qkvo"],
+                        help="LoRA target projections. qv = query+value (default); "
+                             "qkvo = query+key+value+out (stronger T3.B sweep option).")
+    parser.add_argument("--head", default="linear", choices=["linear", "mlp2"],
+                        help="Forecast head on top of the LoRA-wrapped backbone.")
     parser.add_argument("--unfreeze", default="frozen", choices=["frozen", "last2", "last4", "all"])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--epochs", type=int, default=15)
@@ -157,12 +193,13 @@ def main():
     # Build LoRA-wrapped model
     model, blocks, lora_params, cfg = build_lora_model(
         args.backbone, args.device, args.rank, args.unfreeze,
+        target_modules_key=args.target_modules, head_type=args.head,
     )
     hdim = _get_hidden_dim(model)
     bb_type = _detect_backbone_type(args.backbone)
 
     # Forecast head (trainable)
-    head = LoRALinearHead(hdim, args.horizon).to(args.device)
+    head = build_head(args.head, hdim, args.horizon).to(args.device)
     trainable_params = lora_params + list(head.parameters())
 
     n_lora = sum(p.numel() for p in lora_params)
@@ -175,19 +212,32 @@ def main():
     splits, _ = load_standard_data(args.dataset, args.horizon)
     X_train, Y_train = splits["train"]
     X_test, Y_test = splits["test"]
+    test_ch = splits.get("test_ch")
+    scaler = splits.get("_scaler")
     print("%s H=%d: train=%d, test=%d" % (args.dataset, args.horizon, len(X_train), len(X_test)))
 
     # Train + evaluate
     print("\nLoRA r=%d: %s unfreeze=%s seed=%d" % (args.rank, args.dataset, args.unfreeze, args.seed))
     start = time.time()
-    mse, mae = train_lora_baseline(
+    mse, mae, mse_denorm, mae_denorm = train_lora_baseline(
         model, blocks, head, X_train, Y_train, X_test, Y_test,
         trainable_params, device=args.device, n_epochs=args.epochs,
         forecast_horizon=args.horizon, backbone_type=bb_type,
+        test_ch=test_ch, scaler=scaler,
     )
     elapsed = time.time() - start
 
     print("LoRA: MSE=%.4f  MAE=%.4f  time=%.0fs" % (mse, mae, elapsed))
+    if mse_denorm is not None:
+        print("LoRA: MSE_denorm=%.4f  MAE_denorm=%.4f (original units)" % (mse_denorm, mae_denorm))
+
+    scaler_info = None
+    if scaler is not None:
+        scaler_info = {
+            "scale_": [float(x) for x in scaler.scale_],
+            "mean_": [float(x) for x in scaler.mean_],
+            "mean_scale_sq": float(np.mean(scaler.scale_ ** 2)),
+        }
 
     save_data = {
         "dataset": args.dataset,
@@ -198,14 +248,28 @@ def main():
         "backbone": args.backbone,
         "lora_mse": mse,
         "lora_mae": mae,
+        "lora_mse_denorm": mse_denorm,
+        "lora_mae_denorm": mae_denorm,
         "lora_params": n_lora,
         "head_params": n_head,
         "total_trainable_params": n_total_trainable,
         "elapsed": elapsed,
         "config_id": cfg.config_id,
+        "target_modules": args.target_modules,
+        "head": args.head,
+        "scaler": scaler_info,
     }
-    path = "results/lora_baseline/%s_H%d_r%d_%s_%d.json" % (
-        args.dataset, args.horizon, args.rank, args.unfreeze, args.seed)
+    # Legacy filename format (rank, unfreeze, seed) is preserved for the
+    # default r=8, qv, linear config so verify.py / reviewer-replication
+    # scripts keep working. Any sweep variant goes into a new filename
+    # that includes the targets and head to avoid collisions.
+    if args.target_modules == "qv" and args.head == "linear":
+        path = "results/lora_baseline/%s_H%d_r%d_%s_%d.json" % (
+            args.dataset, args.horizon, args.rank, args.unfreeze, args.seed)
+    else:
+        path = "results/lora_baseline/%s_H%d_r%d_%s_%s_%s_%d.json" % (
+            args.dataset, args.horizon, args.rank, args.target_modules,
+            args.head, args.unfreeze, args.seed)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
