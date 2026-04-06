@@ -51,7 +51,20 @@ SPLITS = {
 
 
 def load_standard_data(dataset_name, forecast_horizon=96, max_samples=5000):
-    """Load with standard chronological splits."""
+    """Load with standard chronological splits.
+
+    Returns ``(splits, n_ch)`` where ``splits`` is a dict keyed by ``"train"``,
+    ``"val"``, ``"test"`` whose values are ``(X, Y)`` numpy arrays. For
+    backwards compatibility the core two-tuple entry is unchanged, but the
+    dict also carries extra metadata used by denormalized-MSE reporting:
+
+    - ``splits["_scaler"]`` : the fitted sklearn ``StandardScaler``
+    - ``splits["<name>_ch"]`` : per-sample channel index array aligned with
+      ``splits["<name>"]``. Since DataLoader iterates the test tensor with
+      ``shuffle=False``, this can be used to denormalize predictions back to
+      original units via
+      ``pred * scaler.scale_[ch] + scaler.mean_[ch]``.
+    """
     if dataset_name.startswith("ETT"):
         url = "%s/%s.csv" % (ETT_BASE, dataset_name)
         df = pd.read_csv(io.BytesIO(urlopen(url).read()))
@@ -78,7 +91,7 @@ def load_standard_data(dataset_name, forecast_horizon=96, max_samples=5000):
     scaler = StandardScaler()
     scaler.fit(values[:n_train])
 
-    splits = {}
+    splits = {"_scaler": scaler}
     for name, start, length in [
         ("train", 0, n_train),
         ("val", n_train, n_val),
@@ -86,19 +99,56 @@ def load_standard_data(dataset_name, forecast_horizon=96, max_samples=5000):
     ]:
         data = scaler.transform(values[start:start+length]).astype(np.float32)
         total_len = INPUT_LEN + forecast_horizon
-        X, Y = [], []
+        X, Y, CH = [], [], []
         for ch in range(n_ch):
             s = data[:, ch]
             for i in range(0, len(s) - total_len + 1):
                 X.append(s[i:i+INPUT_LEN])
                 Y.append(s[i+INPUT_LEN:i+total_len])
-        X, Y = np.array(X, np.float32), np.array(Y, np.float32)
+                CH.append(ch)
+        X = np.array(X, np.float32)
+        Y = np.array(Y, np.float32)
+        CH = np.array(CH, np.int32)
         if len(X) > max_samples:
             idx = np.random.default_rng(42).choice(len(X), max_samples, replace=False)
-            X, Y = X[idx], Y[idx]
+            X, Y, CH = X[idx], Y[idx], CH[idx]
         splits[name] = (X, Y)
+        splits[name + "_ch"] = CH
 
     return splits, n_ch
+
+
+def compute_denorm_mse(preds, tgts, ch_idx, scaler):
+    """Compute MSE in the original (un-standardized) unit space.
+
+    Inverse-transforms normalized (B, H) predictions and targets using per-
+    sample channel indices, then computes MSE and MAE on the original scale.
+
+    Args:
+        preds: torch.Tensor or numpy array of shape (B, horizon), post-
+            StandardScaler normalized predictions.
+        tgts: same shape as preds, normalized ground truth.
+        ch_idx: int array of shape (B,) giving the channel of each sample.
+        scaler: fitted sklearn StandardScaler with mean_ and scale_ of shape
+            (n_ch,).
+
+    Returns:
+        (mse_denorm, mae_denorm) as Python floats.
+    """
+    import torch as _torch
+    if isinstance(preds, _torch.Tensor):
+        preds = preds.detach().cpu().numpy()
+    if isinstance(tgts, _torch.Tensor):
+        tgts = tgts.detach().cpu().numpy()
+    ch_idx = np.asarray(ch_idx, dtype=np.int64)
+    scale = scaler.scale_[ch_idx][:, None].astype(np.float32)  # (B, 1)
+    mean = scaler.mean_[ch_idx][:, None].astype(np.float32)    # (B, 1)
+    preds_d = preds * scale + mean
+    tgts_d = tgts * scale + mean
+    err = preds_d - tgts_d
+    mse_denorm = float(np.mean(err ** 2))
+    mae_denorm = float(np.mean(np.abs(err)))
+    return mse_denorm, mae_denorm
 
 
 def _detect_backbone_type(backbone_name):
@@ -111,7 +161,7 @@ def _detect_backbone_type(backbone_name):
 
 def train_adapter(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
                   device="cuda", n_epochs=3, forecast_horizon=96, batch_size=128,
-                  backbone_type="moment"):
+                  backbone_type="moment", eval_ch=None, scaler=None):
     """Train adapter on train set, evaluate on eval set (val or test).
 
     Uses bf16 mixed precision and larger batch size for ~3x speedup on A10G.
@@ -164,7 +214,12 @@ def train_adapter(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
     preds, tgts = torch.cat(preds), torch.cat(tgts)
     mse = nn.MSELoss()(preds, tgts).item()
     mae = nn.L1Loss()(preds, tgts).item()
-    return {"mse": mse, "mae": mae, "param_count": param_count}
+    out = {"mse": mse, "mae": mae, "param_count": param_count}
+    if eval_ch is not None and scaler is not None:
+        mse_d, mae_d = compute_denorm_mse(preds, tgts, eval_ch, scaler)
+        out["mse_denorm"] = mse_d
+        out["mae_denorm"] = mae_d
+    return out
 
 
 def main():

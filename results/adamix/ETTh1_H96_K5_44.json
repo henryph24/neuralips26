@@ -15,26 +15,31 @@
       "attention": 1.0,
       "conv1d": 0.0
     },
-    "routing_entropy": -0.0
+    "routing_entropy": -0.0,
+    "mse_denorm_approx": 26.019710885209054
   },
   "elapsed": 44.771690368652344,
   "baselines": {
     "linear": {
       "mse": 1.1677350997924805,
       "mae": 0.8588773012161255,
-      "param_count": 49248
+      "param_count": 49248,
+      "mse_denorm_approx": 26.353678812376604
     },
     "attention": {
       "mse": 1.0278418064117432,
       "mae": 0.7824443578720093,
-      "param_count": 49761
+      "param_count": 49761,
+      "mse_denorm_approx": 23.196539044618753
     },
     "conv": {
       "mse": 1.1035789251327515,
       "mae": 0.8001123070716858,
-      "param_count": 209248
+      "param_count": 209248,
+      "mse_denorm_approx": 24.905789457065026
     }
   },
   "winner": "BASELINE",
-  "delta_pct": 12.170659748680203
+  "delta_pct": 12.170659748680203,
+  "scaler_mean_scale_sq": 22.56819960028601
 }
