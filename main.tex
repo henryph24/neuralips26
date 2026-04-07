@@ -354,12 +354,12 @@ The RevIN router suffers $60$--$88\%$ MSE degradation on every dataset: bypass a
 Let $X$ be a random input window, $E \in \{1,\ldots,K\}$ the expert assignment produced by any deterministic router, and $S = (X - M)/\Sigma$ the RevIN-normalized shape.
 \begin{enumerate}
     \item[\textup{(i)}] $I(X; E) \geq I(S; E)$ \hfill\textup{(Data Processing Inequality)}
-    \item[\textup{(ii)}] If $(M, \Sigma) \perp\!\!\!\perp S$, then $I(X; E) - I(S; E) = I(M, \Sigma;\, E)$.
+    \item[\textup{(ii)}] If $(M, \Sigma) \perp\!\!\!\perp S$, then $I(X; E) - I(S; E) \geq I(M, \Sigma;\, E)$, with equality iff $(M,\Sigma) \perp\!\!\!\perp S \mid E$.
     \item[\textup{(iii)}] If additionally $E \perp\!\!\!\perp S \mid (M, \Sigma)$, then $I(X; E) - I(S; E) = H(E)$.
 \end{enumerate}
 \end{proposition}
 
-Part~(i) is the DPI applied to $X \to S \to E$. Part~(ii) uses the chain rule: $I(X;E) = I(S;E) + I(M,\Sigma; E \mid S)$, which equals $I(S;E) + I(M,\Sigma; E)$ under independence. Part~(iii) shows that when routing depends \emph{entirely} on the stripped statistics, RevIN destroys \emph{all} routing information ($H(E)$ nats). Full proof in Appendix~\ref{app:proofs}. The independence $(M,\Sigma) \perp\!\!\!\perp S$ is RevIN's design assumption; $E \perp\!\!\!\perp S \mid (M,\Sigma)$ is validated by Figure~\ref{fig:routing_viz}, where expert selection clusters by amplitude and volatility regardless of waveform shape.
+Part~(i) is the DPI applied to $X \to S \to E$. Part~(ii) uses the chain rule: $I(X;E) = I(S;E) + I(M,\Sigma; E \mid S)$; under $(M,\Sigma) \perp\!\!\!\perp S$ this simplifies to $I(S;E) + I(M,\Sigma; E) + I(M,\Sigma; S \mid E)$, giving a lower bound since $I(M,\Sigma; S \mid E) \geq 0$. The residual term $I(M,\Sigma; S \mid E)$ captures the \emph{collider effect}: conditioning on the expert assignment $E$ can induce dependence between otherwise independent statistics and shape, meaning RevIN may destroy \emph{more} routing information than $I(M,\Sigma; E)$ alone. Part~(iii) shows that when routing depends \emph{entirely} on the stripped statistics, RevIN destroys \emph{all} routing information ($H(E)$ nats). Full proof in Appendix~\ref{app:proofs}. The independence $(M,\Sigma) \perp\!\!\!\perp S$ is RevIN's design assumption; $E \perp\!\!\!\perp S \mid (M,\Sigma)$ is validated by Figure~\ref{fig:routing_viz}, where expert selection clusters by amplitude and volatility regardless of waveform shape.
 
 \textbf{Quantitative prediction.} Proposition~\ref{thm:mi_decomp} implies that datasets where RevIN strips more information---i.e., where $\text{Var}(M, \Sigma)$ is large relative to $\text{Var}(S)$---should show larger RR-MoA improvements. We define the \emph{routing signal ratio} $R(\mathcal{D}) = [\text{Var}(M) + \text{Var}(\Sigma)] / \overline{\text{Var}(S)}$ and compute it for each dataset. Figure~\ref{fig:signal_ratio} validates this prediction across all seven LTSF benchmarks: $R$ correlates with the RR-MoA improvement $\Delta\%$ with Spearman $\rho = -0.96$ ($p < 0.001$). Crucially, Traffic---the dataset with the lowest $R{=}0.14$---is correctly predicted as the boundary case where raw routing provides no advantage ($\Delta{=}{+}2.9\%$), demonstrating that the theory identifies not only \emph{where} raw routing helps but also \emph{where it does not}.
 
@@ -1048,13 +1048,13 @@ Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
 \begin{align*}
 I(X; E) &= I(M, \Sigma, S;\, E) = I(S;\, E) + I(M, \Sigma;\, E \mid S).
 \end{align*}
-Under the assumption $(M, \Sigma) \perp\!\!\!\perp S$, the conditional mutual information simplifies:
+Under the assumption $(M, \Sigma) \perp\!\!\!\perp S$, we expand:
 \begin{align*}
 I(M, \Sigma;\, E \mid S) &= H(M, \Sigma \mid S) - H(M, \Sigma \mid E, S) \\
 &= H(M, \Sigma) - H(M, \Sigma \mid E, S) = I(M, \Sigma;\, E, S) \\
-&= I(M, \Sigma;\, E) + I(M, \Sigma;\, S \mid E) = I(M, \Sigma;\, E)
+&= I(M, \Sigma;\, E) + \underbrace{I(M, \Sigma;\, S \mid E)}_{\geq\, 0}
 \end{align*}
-where the last step uses $(M,\Sigma) \perp\!\!\!\perp S \mid E$ (which follows from $(M,\Sigma) \perp\!\!\!\perp S$ and the fact that conditioning on $E$, a function of $(M,\Sigma,S)$, cannot create dependence between independent variables). Therefore $I(X;E) - I(S;E) = I(M,\Sigma;\,E)$.
+The non-negative residual $I(M,\Sigma; S \mid E)$ arises because $E$, as a function of $(M,\Sigma,S)$, acts as a collider: conditioning on $E$ can induce dependence between its otherwise independent parents $(M,\Sigma)$ and $S$ (Berkson's paradox). Therefore $I(X;E) - I(S;E) = I(M,\Sigma;\,E) + I(M,\Sigma;\,S \mid E) \geq I(M,\Sigma;\,E)$, with equality iff $(M,\Sigma) \perp\!\!\!\perp S \mid E$.
 
 \emph{Part (iii)}: If $E \perp\!\!\!\perp S \mid (M, \Sigma)$, then $E$ is determined entirely by $(M,\Sigma)$: $I(S;\,E) = I(S;\,E \mid M,\Sigma) + I(S;\,E;\,M,\Sigma) - \ldots$. More directly, $I(S;E) = 0$ because $S \to (M,\Sigma) \to E$ forms a Markov chain under this assumption. Therefore $I(X;E) - I(S;E) = I(X;E) = I(M,\Sigma;E) = H(E) - H(E \mid M,\Sigma) = H(E)$ since $(M,\Sigma)$ determine $E$.
 \end{proof}
@@ -1080,7 +1080,11 @@ Consider a single input $\mathbf{x}$ with backbone $\mathbf{h} = A\mathbf{x}$, r
 \end{equation*}
 Under gradient descent $\dot{A} = -\eta\,\partial\ell/\partial A$, the induced change in expert~1's loss is:
 \begin{equation*}
-\dot{\ell}_1\big|_A = \left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^\top\dot{A}\,\mathbf{x} \approx -\eta\,p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2\|\mathbf{x}\|^2
+\dot{\ell}_1\big|_A = \left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^\top\dot{A}\,\mathbf{x} = -\eta\|\mathbf{x}\|^2\!\left[p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2 + (1{-}p)\left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^{\!\top}\frac{\partial\ell_2}{\partial\mathbf{h}} + (\ell_1{-}\ell_2)\,p(1{-}p)\left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^{\!\top}\mathbf{w}\right]
+\end{equation*}
+The first term (self-gradient) always decreases $\ell_1$. The second (cross-gradient) is negligible when expert gradients are approximately orthogonal---a condition that holds empirically once experts specialize to distinct input clusters (Appendix~\ref{app:routing_entropy}). The third (loss-coupling) term is small early in training when $|\ell_1 - \ell_2| \ll \|\partial\ell_1/\partial\mathbf{h}\|$. Retaining only the dominant first term:
+\begin{equation*}
+\dot{\ell}_1\big|_A \approx -\eta\,p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2\|\mathbf{x}\|^2
 \end{equation*}
 and analogously $\dot{\ell}_2\big|_A \approx -\eta\,(1{-}p)\left\|\frac{\partial\ell_2}{\partial\mathbf{h}}\right\|^2\|\mathbf{x}\|^2$. When $p > 1{-}p$ (expert~1 dominates), $\ell_1$ decreases faster than $\ell_2$. The third term in $\partial\ell/\partial A$ further reinforces this: when $\ell_1 < \ell_2$, the factor $(\ell_1 - \ell_2) < 0$ drives $\dot{p} > 0$, pushing $p$ toward~1. Together these create the self-reinforcing loop: dominant expert gets more gradient $\to$ its loss drops faster $\to$ router increases its weight $\to$ it becomes more dominant.
 
@@ -1492,7 +1496,7 @@ Weather & $0.289{\pm}0.008$ & $0.522$ {\scriptsize($-45\%$)} & $0.267{\pm}0.014$
 
 The frozen-backbone paradigm is motivated by three deployment regimes where full fine-tuning is infeasible:
 
-\textbf{(i) Multi-tenant cloud serving.} A single TSFM sits in GPU VRAM and serves thousands of tenants via lightweight, hot-swappable per-tenant adapters in host RAM. Retraining a separate DLinear per tenant does not amortize the backbone cost and forfeits zero-shot transfer.
+\textbf{(i) Multi-tenant cloud serving.} A single TSFM sits in GPU VRAM and serves thousands of tenants via lightweight, hot-swappable per-tenant adapters in host RAM. Per-tenant DLinear requires collecting, storing, and periodically retraining on each tenant's historical data ($O(N)$ training pipelines for $N$ tenants), whereas the frozen backbone is loaded once and adapter weights (${\sim}50$--$500$K parameters, ${\sim}0.2$--$2$\,MB) are swapped from host RAM in microseconds. At $N{=}1{,}000$ tenants, the adapter approach eliminates $1{,}000$ independent training jobs and enables instant onboarding of new tenants via zero-shot transfer---capabilities absent from per-tenant supervised baselines.
 
 \textbf{(ii) On-device and edge deployment.} One backbone is shipped with the device image; per-site adapters are updated over low-bandwidth links. Collecting each site's training data centrally is often impossible for privacy or latency reasons.
 
