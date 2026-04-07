@@ -1,0 +1,13 @@
+so how good our paper is now for neuralips 2026 ultrathink
+
+---
+
+plan the push to 8+
+
+---
+
+Let's do that, use VM when needed to run experiments
+
+---
+
+so we hit a deadline, cannot make our way to neuralips ultrathink ?
