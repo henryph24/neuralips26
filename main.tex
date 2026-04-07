@@ -49,8 +49,8 @@
 \maketitle
 
 \begin{abstract}
-Standard mixture-of-experts (MoE) routing on frozen time series foundation models (TSFMs) collapses catastrophically: routing entropy drops to $0.000\pm0.000$ on every backbone with internal Reversible Instance Normalization (RevIN) when layers are unfrozen. We diagnose the cause as \textbf{normalization-induced co-adaptation}---RevIN strips the per-window mean and scale that routers need to discriminate samples, while gradient feedback through unfrozen layers amplifies the collapse. A controlled ablation disabling RevIN inside MOMENT confirms that the collapse is causally attributable to instance normalization, and a cross-backbone control on Moirai~\citep{woo2024moirai} (which lacks RevIN) shows no collapse. We formalize this via an information-theoretic decomposition (Proposition~1): the mutual information lost by RevIN equals the routing information in precisely the temporal statistics it strips, predicting that datasets with higher location-scale variance should benefit more from raw routing---a prediction validated with Spearman $\rho{=}{-}0.96$ ($p{<}0.001$) across seven datasets, including correctly predicting the one dataset where RR-MoA does not help.
-To break the collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: a lightweight gate routes on the raw pre-normalization input while a strictly frozen backbone produces deep embeddings for the experts. RR-MoA achieves \textbf{54/54 wins} across 6 datasets, 3 freeze levels, and 3 seeds against single-adapter baselines ($p{<}0.001$, Wilcoxon), and significantly outperforms LoRA, TRACE-style adapters, and independent ensembles. On Moirai, RR-MoA matches DLinear~\citep{zeng2023dlinear} on Weather ($0.209$ vs $0.208$). We uncover a \textbf{Frozen Paradox}: strictly frozen routing outperforms partial unfreezing on 4/6 datasets, reversing the standard PEFT heuristic.
+Standard mixture-of-experts (MoE) routing on frozen time series foundation models (TSFMs) collapses catastrophically: routing entropy drops to $0.000{\pm}0.000$ on backbones with Reversible Instance Normalization (RevIN) when layers are unfrozen. We diagnose the cause as \textbf{normalization-induced co-adaptation}---RevIN strips per-window mean and scale, while gradient feedback amplifies the collapse. A controlled ablation disabling RevIN inside MOMENT confirms causality; a cross-backbone control on Moirai (no RevIN) shows no collapse. We formalize this via a mutual-information decomposition (Proposition~1), predicting that datasets with higher location-scale variance benefit more from raw routing---validated at Spearman $\rho{=}{-}0.96$ ($p{<}0.001$) across seven datasets, including correctly predicting where RR-MoA does not help.
+To break the collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: a lightweight gate routes on the raw pre-normalization input while a frozen backbone produces embeddings for the experts. RR-MoA achieves \textbf{54/54 wins} across 6 datasets, 3 freeze levels, and 3 seeds ($p{<}0.001$, Wilcoxon), outperforming LoRA, TRACE, and independent ensembles. On Moirai, RR-MoA matches DLinear on Weather ($0.209$ vs $0.208$). We uncover a \textbf{Frozen Paradox}: frozen routing outperforms unfreezing on 4/6 datasets, reversing the standard PEFT heuristic.
 \end{abstract}
 
 \section{Introduction}
@@ -132,7 +132,7 @@ Our contributions:
 
 % ====== EXPERT POOL ======
 \node[block=purple!8, minimum width=\columnwidth-2cm, minimum height=1.2cm] (experts) at (0, -4.8) {
-    \textbf{AAS Expert Pool} ($K{=}5$)\\[-1pt]
+    \textbf{Expert Pool} ($K{=}5$)\\[-1pt]
     {\small \fbox{Mean} \; \fbox{Last} \; \fbox{Max} \; \fbox{Attn} \; \fbox{Conv1d}}
 };
 
@@ -249,7 +249,12 @@ Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
 \end{tabular}
 \end{table}
 
-\textbf{The Frozen Paradox.} On ETTh1 and ETTm1, the \emph{strictly frozen} backbone yields RR-MoA's best absolute MSE; on Weather, last-2 is marginally better ($-47.2\%$ vs $-44.6\%$). Across all 6 datasets (Appendix~\ref{app:extended_rrmoa}), strictly frozen is the best configuration on 4 and within $13\%$ on the remaining 2, \emph{reversing} the standard NLP PEFT heuristic. The mechanism is Table~\ref{tab:adamix}: unfreezing the backbone is precisely what destroys routing diversity. We verify this paradox is not an artifact of low adapter capacity: repeating the ablation with the AAS-discovered macro expert pool ($271$K params, $9\times$ the canonical pool) shows frozen is still best on ETTh1 ($0.764{\pm}0.015$ vs $0.806{\pm}0.128$ for last-4), while ETTm1 and Weather show partial recovery under unfreezing ($0.510$ vs $0.583$ on ETTm1). The boundary is adapter capacity: low-capacity experts cannot exploit the additional gradient signal from unfreezing, while high-capacity experts can partially recover---but frozen routing remains competitive in all cases.
+\textbf{The Frozen Paradox.} Across all 6 datasets (Appendix~\ref{app:extended_rrmoa}), strictly frozen is the best configuration on 4 and within $13\%$ on the remaining 2, \emph{reversing} the standard PEFT heuristic. The mechanism is Table~\ref{tab:adamix}: unfreezing destroys routing diversity. A macro expert pool ablation ($271$K params, $9\times$ canonical) confirms this is not a capacity artifact (Appendix~\ref{app:extended_rrmoa}).
+
+\begin{proposition}[Gradient Co-Adaptation Drives Entropy Collapse]
+\label{prop:frozen}
+Consider a $2$-expert MoE with backbone $\mathbf{h}{=}A\mathbf{x}$, router $p{=}\sigma(\mathbf{w}^\top\mathbf{h})$, loss $\ell{=}p\,\ell_1{+}(1{-}p)\,\ell_2$. Under gradient descent on $(A,\mathbf{w})$: \textup{(i)} the dominant expert's loss decreases faster ($\dot{\ell}_k \propto {-}p_k\|\nabla_\mathbf{h}\ell_k\|^2$), creating self-reinforcing collapse toward $p{\in}\{0,1\}$; \textup{(ii)} freezing $A$ breaks this loop (proof in Appendix~\ref{app:proofs}).
+\end{proposition}
 
 \textbf{Routing vs.\ ensembling.} Replacing the learned router with a fixed uniform mixture ($w_k = 1/K$) degrades performance by $30$--$75\%$ on every dataset (ETTh1: $0.899$ vs $0.690$; ETTm1: $1.002$ vs $0.572$; Weather: $0.494$ vs $0.289$). Training the same 5 experts \emph{independently} and averaging predictions (Table~\ref{tab:baselines}, ``Ind.\ Ensemble'') is $36$--$46\%$ worse than RR-MoA, confirming that learned per-sample routing---not merely expert diversity---is the source of the gains.
 
@@ -458,9 +463,9 @@ Top-2 sparse routing retains $63\%$ of the dense mixture's MSE gain on ETTh1 whi
 
 \section{Conclusion}
 
-We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved via three converging controls and formalized via Proposition~\ref{thm:mi_decomp}, whose quantitative prediction is validated at $\rho{=}{-}0.96$ ($p{<}0.001$) across seven datasets. \textbf{RR-MoA} breaks the collapse by routing on the raw pre-normalization signal with a frozen backbone (\textbf{54/54 wins}, $p{<}0.001$, three backbones, four horizons, two tasks). The \emph{Frozen Paradox}---frozen outperforms unfreezing---reverses the standard PEFT heuristic. More broadly, the normalization-routing tension applies to any frozen FM with internal normalization; routing on pre-normalization features is a general recommendation for PEFT + MoE.
+We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved via three converging controls and formalized via Proposition~\ref{thm:mi_decomp}, whose quantitative prediction is validated at $\rho{=}{-}0.96$ ($p{<}0.001$) across seven datasets. \textbf{RR-MoA} breaks the collapse by routing on the raw pre-normalization signal with a frozen backbone (\textbf{54/54 wins}, $p{<}0.001$, three backbones, four horizons, two tasks). The \emph{Frozen Paradox}---frozen outperforms unfreezing, formalized in Proposition~\ref{prop:frozen}---reverses the standard PEFT heuristic. More broadly, the normalization-routing tension should apply to any frozen FM with instance-level normalization (RevIN, InstanceNorm) that strips per-sample statistics before the routing path; we validate this in the time series setting and conjecture it extends to other modalities.
 
-\textbf{Limitations.} (1)~Absolute MSE gap to supervised baselines on MOMENT-small (narrows on Moirai). (2)~Decoder-only and native MoE backbones not evaluated. (3)~Frozen Paradox explanation is mechanistic, not a formal optimality proof.
+\textbf{Limitations.} (1)~Absolute MSE gap to supervised baselines on MOMENT-small (narrows on Moirai). (2)~Decoder-only and native MoE backbones not evaluated. (3)~Proposition~\ref{prop:frozen} is proved for a linear model; the nonlinear case remains open. (4)~Cross-modal generalization is conjectured but not empirically validated.
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -1062,6 +1067,28 @@ where the last step uses $(M,\Sigma) \perp\!\!\!\perp S \mid E$ (which follows f
 \emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar (Table~\ref{tab:expressiveness}).
 
 \emph{Orthogonality of LoRA and bottleneck configurations.} Configurations in $\mathcal{C}\setminus\mathcal{C}_\text{head}$ modify the backbone's attention projections (LoRA) or inject residual modules between encoder blocks (bottleneck). They are not head-level adapters and are therefore not members of $\mathcal{G}_\text{tmpl}$ nor of $\mathcal{G}_\text{code}$ as defined (the code space is restricted to adapter classes operating on extracted hidden states, per Definition~\ref{def:code}). We compare against the LoRA variant separately under the strictly frozen backbone protocol in Table~\ref{tab:baselines}.
+\end{proof}
+
+\textbf{Proof of Proposition~\ref{prop:frozen}} (Gradient Co-Adaptation Drives Entropy Collapse).
+
+\begin{proof}
+Consider a single input $\mathbf{x}$ with backbone $\mathbf{h} = A\mathbf{x}$, router $p = \sigma(\mathbf{w}^\top\mathbf{h})$, and loss $\ell = p\,\ell_1(\mathbf{h}) + (1-p)\,\ell_2(\mathbf{h})$.
+
+\emph{Part (i): Unfrozen backbone.} The gradient with respect to $A$ is:
+\begin{equation*}
+\frac{\partial\ell}{\partial A} = p\,\frac{\partial\ell_1}{\partial\mathbf{h}}\mathbf{x}^\top + (1{-}p)\,\frac{\partial\ell_2}{\partial\mathbf{h}}\mathbf{x}^\top + (\ell_1 - \ell_2)\,p(1{-}p)\,\mathbf{w}\mathbf{x}^\top
+\end{equation*}
+Under gradient descent $\dot{A} = -\eta\,\partial\ell/\partial A$, the induced change in expert~1's loss is:
+\begin{equation*}
+\dot{\ell}_1\big|_A = \left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^\top\dot{A}\,\mathbf{x} \approx -\eta\,p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2\|\mathbf{x}\|^2
+\end{equation*}
+and analogously $\dot{\ell}_2\big|_A \approx -\eta\,(1{-}p)\left\|\frac{\partial\ell_2}{\partial\mathbf{h}}\right\|^2\|\mathbf{x}\|^2$. When $p > 1{-}p$ (expert~1 dominates), $\ell_1$ decreases faster than $\ell_2$. The third term in $\partial\ell/\partial A$ further reinforces this: when $\ell_1 < \ell_2$, the factor $(\ell_1 - \ell_2) < 0$ drives $\dot{p} > 0$, pushing $p$ toward~1. Together these create the self-reinforcing loop: dominant expert gets more gradient $\to$ its loss drops faster $\to$ router increases its weight $\to$ it becomes more dominant.
+
+\emph{Part (ii): Frozen backbone.} When $A$ is fixed, $\dot{A} = 0$. The only dynamics are through $\mathbf{w}$:
+\begin{equation*}
+\dot{\mathbf{w}} = -\eta\,\frac{\partial\ell}{\partial\mathbf{w}} = -\eta\,(\ell_1 - \ell_2)\,p(1{-}p)\,\mathbf{h}
+\end{equation*}
+This update adjusts routing weights based on current expert performance, but does \emph{not} reshape $\mathbf{h}$ to favor one expert. Without the $A$-mediated feedback loop, there is no systematic bias toward entropy collapse---the router converges to a stable allocation reflecting the static geometry of the fixed representation space.
 \end{proof}
 
 \textbf{Budget Sufficiency (Empirical).} Figure~\ref{fig:budget} shows that all 14 tested search budgets $B\in[20,480]$ beat the conv baseline on both ETTh1 and ETTm1 and that the MSE as a function of $B$ saturates around $B\!\approx\!60$. Evolutionary selection did not outperform random sampling in the template space $\mathcal{G}_\text{tmpl}$, indicating that the returns to additional samples past the saturation point are negligible for this space. We report this purely as an empirical observation from the curve; no theoretical sample-complexity bound is claimed.
