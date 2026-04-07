@@ -361,13 +361,16 @@ def main():
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--no-baselines", action="store_true",
                         help="Skip baseline evaluation (faster for ablation sweeps)")
+    parser.add_argument("--disable-revin", action="store_true",
+                        help="Controlled ablation: disable RevIN inside MOMENT backbone")
     args = parser.parse_args()
 
     os.makedirs("results/rr_moa", exist_ok=True)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    model = load_backbone(args.backbone, args.device)
+    model = load_backbone(args.backbone, args.device,
+                          disable_revin=args.disable_revin)
     _disable_gradient_checkpointing(model)
     blocks = _get_encoder_blocks(model)
     hdim = _get_hidden_dim(model)
@@ -416,7 +419,8 @@ def main():
     baseline_results = {}
     if not args.no_baselines:
         print("\nBaselines (%d epochs, unfreeze=%s):" % (args.epochs, args.unfreeze))
-        model2 = load_backbone(args.backbone, args.device)
+        model2 = load_backbone(args.backbone, args.device,
+                               disable_revin=args.disable_revin)
         _disable_gradient_checkpointing(model2)
         blocks2 = _get_encoder_blocks(model2)
         for p in model2.parameters():
@@ -463,6 +467,7 @@ def main():
         "dataset": args.dataset, "horizon": args.horizon, "seed": args.seed,
         "K": args.K, "top_k": args.top_k or args.K, "unfreeze": args.unfreeze,
         "router_input_mode": args.router_input_mode,
+        "disable_revin": args.disable_revin,
         "backbone_trainable_params": backbone_trainable,
         "rr_moa": result, "elapsed": elapsed,
         "baselines": {k: v for k, v in baseline_results.items()},
@@ -473,6 +478,8 @@ def main():
     # options so existing raw+canonical JSONs keep their current filenames
     # (and evidence_vm/verify.py's paths keep working).
     suffixes = []
+    if args.disable_revin:
+        suffixes.append("no-revin")
     if args.router_input_mode != "raw":
         suffixes.append("router-%s" % args.router_input_mode)
     if args.expert_pool != "canonical":

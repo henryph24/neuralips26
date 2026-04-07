@@ -358,6 +358,8 @@ def main():
                              "(T2.A mechanistic verification). If omitted, no trajectory is "
                              "recorded. Example: --trajectory results/adamix/trajectory_ETTh1_last4_42.jsonl")
     parser.add_argument("--trajectory-max-steps", type=int, default=400)
+    parser.add_argument("--disable-revin", action="store_true",
+                        help="Controlled ablation: disable RevIN inside MOMENT backbone")
     args = parser.parse_args()
 
     os.makedirs("results/adamix", exist_ok=True)
@@ -366,7 +368,8 @@ def main():
 
     # Load model
     print("Loading %s..." % args.backbone)
-    model = load_backbone(args.backbone, args.device)
+    model = load_backbone(args.backbone, args.device,
+                          disable_revin=args.disable_revin)
     _disable_gradient_checkpointing(model)
     blocks = _get_encoder_blocks(model)
     hdim = _get_hidden_dim(model)
@@ -417,7 +420,8 @@ def main():
     # === Run fixed baselines ===
     print("\nFixed baselines (%d epochs, unfreeze=%s):" % (args.epochs, args.unfreeze))
     # Reload model for fair baseline comparison
-    model2 = load_backbone(args.backbone, args.device)
+    model2 = load_backbone(args.backbone, args.device,
+                           disable_revin=args.disable_revin)
     _disable_gradient_checkpointing(model2)
     blocks2 = _get_encoder_blocks(model2)
     for p in model2.parameters():
@@ -469,6 +473,7 @@ def main():
         "K": args.K,
         "hidden": args.hidden,
         "unfreeze": args.unfreeze,
+        "disable_revin": args.disable_revin,
         "backbone_trainable_params": backbone_trainable,
         "adamix": result,
         "elapsed": elapsed,
@@ -477,7 +482,8 @@ def main():
         "delta_pct": delta,
         "scaler": scaler_info,
     }
-    path = "results/adamix/%s_H%d_K%d_%s_%d.json" % (args.dataset, args.horizon, args.K, args.unfreeze, args.seed)
+    revin_suffix = "_no_revin" if args.disable_revin else ""
+    path = "results/adamix/%s_H%d_K%d_%s_%d%s.json" % (args.dataset, args.horizon, args.K, args.unfreeze, args.seed, revin_suffix)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
