@@ -1,0 +1,93 @@
+Based on a rigorous evaluation of the provided manuscript against the standards of top-tier machine learning conferences, **this paper is highly unlikely to be accepted at NeurIPS 2026** and would likely receive scores reflecting a **Strong Reject**. 
+
+While the paper presents a polished narrative, visually compelling ablation studies, and an interesting empirical observation regarding routing collapse in time series foundation models (TSFMs), it suffers from a **fatal mathematical fallacy**, a **severely flawed practical motivation**, and what reviewers call "math-washing."
+
+Here is a detailed breakdown of the major flaws that an Area Chair (AC) or expert reviewer would immediately flag:
+
+### 1. Fatal Theoretical Flaw: Misunderstanding Collider Bias (Proposition 2)
+The paper’s core theoretical claim (Proposition 2) attempts to rigorously quantify the routing information lost due to RevIN. However, the proof provided in Appendix F contains a textbook error in probabilistic graphical model theory.
+
+In Part (ii) of the proof, the authors claim $I(M,\Sigma ; S \mid E) = 0$ and state:
+> *"…where the last step uses $(M,\Sigma) \perp\!\!\perp S \mid E$ (which follows from $(M,\Sigma) \perp\!\!\perp S$ and the fact that conditioning on E, a function of $(M,\Sigma, S)$ cannot create dependence between independent variables)."*
+
+**This statement is mathematically false.** In causal inference and Bayesian networks, if a variable $E$ (the router's assignment) is a deterministic function of two independent variables $A$ (the mean/variance) and $B$ (the shape), then $E$ acts as a **collider** ($A \rightarrow E \leftarrow B$). 
+
+Conditioning on a collider *always* induces dependence between its independent parents—a phenomenon known as **Berkson's paradox** or the "explaining away" effect. Because $(M,\Sigma)$ and $S$ become conditionally dependent given the router's choice $E$, the conditional mutual information $I(M,\Sigma ; S \mid E)$ is strictly greater than zero. Therefore, the exact equality claimed in the proof collapses. NeurIPS theory reviewers will instantly spot this fundamental statistical error, invalidating the paper's primary theoretical contribution.
+
+### 2. The Baseline Paradox Destroys the Motivation
+The paper justifies the use of a frozen TSFM backbone with complex MoE adapters by citing "deployment constraints" (Appendix T) such as multi-tenant cloud serving, arguing that training a separate model per tenant is economically infeasible. However, Table 3 reveals a glaring technical contradiction:
+*   **DLinear (a basic 1-layer baseline from 2023, trained from scratch):** 0.416 MSE on ETTh1
+*   **RR-MoA (Frozen MOMENT backbone + 5 experts):** 0.690 MSE on ETTh1
+
+The authors attempt to dismiss this massive underperformance (nearly 65% worse) as an accepted trade-off. **Reviewers in the time-series community will dismantle this argument with basic arithmetic:**
+*   A dataset-specific, channel-independent DLinear model (for a lookback of $L=512$ and horizon $H=96$) is just a single weight matrix of size $512 \times 96$, requiring roughly **~49K parameters**.
+*   The authors' proposed RR-MoA adapter pool requires up to **~500K parameters** *per tenant*, plus the massive inference RAM and FLOP cost of executing the ~341-million parameter foundation model backbone (~15 GFLOPs per pass).
+
+Why would a practitioner pay a monumental inference compute penalty to load a foundation model into VRAM alongside 500K-parameter MoE adapters, when a simple linear layer has 10x fewer parameters, takes seconds to train, uses negligible memory, and achieves substantially lower error? The foundational motivation for the problem is economically and technically backwards.
+
+### 3. "Math-Washing" in Proposition 1
+In the proof for Proposition 1 (Appendix F), the authors attempt to prove gradient co-adaptation by calculating the induced change in expert 1's loss. They claim:
+$$ \dot{l}_1|_A = \left(\frac{\partial l_1}{\partial h}\right)^\top \dot{A} x \approx -\eta p \left\|\frac{\partial l_1}{\partial h}\right\|^2 \|x\|^2 $$
+
+If you actually expand $\dot{A} = -\eta \frac{\partial l}{\partial A}$ and substitute it back in, you get several cross-terms, such as $(1-p) (\frac{\partial l_1}{\partial h})^\top (\frac{\partial l_2}{\partial h})$ and $(l_1 - l_2) p(1-p) (\frac{\partial l_1}{\partial h})^\top w$. The authors drop these terms without any mathematical justification or explicit assumptions about expert gradient orthogonality, hiding the gap behind an "$\approx$" sign. Using equations to feign rigor without following through on the math is highly penalized at top venues.
+
+### Minor/Formatting Red Flags
+*   **Conference Name:** The prompt/title asks about "NeuralIPS 2026." The official acronym has been **NeurIPS** since 2018. 
+*   **LLM Hallucinations:** In Appendix G, the authors state they used **`gpt-40-mini`**. The actual OpenAI model is `gpt-4o-mini` (with the letter "o", not the number "40").
+
+### Summary
+To be fair to the manuscript, the empirical diagnosis of **normalization-induced co-adaptation** is a clever insight, and the ablation controls (like disabling RevIN inside MOMENT to see if entropy recovers) represent excellent experimental design. The "Frozen Paradox" is also a fantastic empirical hook. 
+
+However, no amount of clean ablation studies can save a paper that relies on a mathematically false causal proof (Berkson's paradox) and an illogical real-world motivation (spending massive compute to drastically underperform a 49k-parameter linear layer). An AC would ultimately flag this as a **Strong Reject**.
+
+---
+
+Based on a rigorous evaluation of the provided manuscript against the standards of top-tier machine learning conferences, **this paper is highly unlikely to be accepted at NeurIPS 2026** and would likely receive scores reflecting a **Strong Reject**. 
+
+While the paper presents a polished narrative, visually compelling ablation studies, and an interesting empirical observation regarding routing collapse in time series foundation models (TSFMs), it suffers from a **fatal mathematical fallacy**, a **severely flawed practical motivation**, and what reviewers call "math-washing."
+
+Here is a detailed breakdown of the major flaws that an Area Chair (AC) or expert reviewer would immediately flag:
+
+### 1. Fatal Theoretical Flaw: Misunderstanding Collider Bias (Proposition 2)
+The paper’s core theoretical claim (Proposition 2) attempts to rigorously quantify the routing information lost due to RevIN. However, the proof provided in Appendix F contains a textbook error in probabilistic graphical model theory.
+
+In Part (ii) of the proof, the authors claim $I(M,\Sigma ; S \mid E) = 0$ and state:
+> *"…where the last step uses $(M,\Sigma) \perp\!\!\perp S \mid E$ (which follows from $(M,\Sigma) \perp\!\!\perp S$ and the fact that conditioning on E, a function of $(M,\Sigma, S)$ cannot create dependence between independent variables)."*
+
+**This statement is mathematically false.** In causal inference and Bayesian networks, if a variable $E$ (the router's assignment) is a deterministic function of two independent variables $A$ (the mean/variance) and $B$ (the shape), then $E$ acts as a **collider** ($A \rightarrow E \leftarrow B$). 
+
+Conditioning on a collider *always* induces dependence between its independent parents—a phenomenon known as **Berkson's paradox** or the "explaining away" effect. Because $(M,\Sigma)$ and $S$ become conditionally dependent given the router's choice $E$, the conditional mutual information $I(M,\Sigma ; S \mid E)$ is strictly greater than zero. Therefore, the exact equality claimed in the proof collapses. NeurIPS theory reviewers will instantly spot this fundamental statistical error, invalidating the paper's primary theoretical contribution.
+
+### 2. The Baseline Paradox Destroys the Motivation
+The paper justifies the use of a frozen TSFM backbone with complex MoE adapters by citing "deployment constraints" (Appendix T) such as multi-tenant cloud serving, arguing that training a separate model per tenant is economically infeasible. However, Table 3 reveals a glaring technical contradiction:
+*   **DLinear (a basic 1-layer baseline from 2023, trained from scratch):** 0.416 MSE on ETTh1
+*   **RR-MoA (Frozen MOMENT backbone + 5 experts):** 0.690 MSE on ETTh1
+
+The authors attempt to dismiss this massive underperformance (nearly 65% worse) as an accepted trade-off. **Reviewers in the time-series community will dismantle this argument with basic arithmetic:**
+*   A dataset-specific, channel-independent DLinear model (for a lookback of $L=512$ and horizon $H=96$) is just a single weight matrix of size $512 \times 96$, requiring roughly **~49K parameters**.
+*   The authors' proposed RR-MoA adapter pool requires up to **~500K parameters** *per tenant*, plus the massive inference RAM and FLOP cost of executing the ~341-million parameter foundation model backbone (~15 GFLOPs per pass).
+
+Why would a practitioner pay a monumental inference compute penalty to load a foundation model into VRAM alongside 500K-parameter MoE adapters, when a simple linear layer has 10x fewer parameters, takes seconds to train, uses negligible memory, and achieves substantially lower error? The foundational motivation for the problem is economically and technically backwards.
+
+### 3. "Math-Washing" in Proposition 1
+In the proof for Proposition 1 (Appendix F), the authors attempt to prove gradient co-adaptation by calculating the induced change in expert 1's loss. They claim:
+$$ \dot{l}_1|_A = \left(\frac{\partial l_1}{\partial h}\right)^\top \dot{A} x \approx -\eta p \left\|\frac{\partial l_1}{\partial h}\right\|^2 \|x\|^2 $$
+
+If you actually expand $\dot{A} = -\eta \frac{\partial l}{\partial A}$ and substitute it back in, you get several cross-terms, such as $(1-p) (\frac{\partial l_1}{\partial h})^\top (\frac{\partial l_2}{\partial h})$ and $(l_1 - l_2) p(1-p) (\frac{\partial l_1}{\partial h})^\top w$. The authors drop these terms without any mathematical justification or explicit assumptions about expert gradient orthogonality, hiding the gap behind an "$\approx$" sign. Using equations to feign rigor without following through on the math is highly penalized at top venues.
+
+### Minor/Formatting Red Flags
+*   **Conference Name:** The prompt/title asks about "NeuralIPS 2026." The official acronym has been **NeurIPS** since 2018. 
+*   **LLM Hallucinations:** In Appendix G, the authors state they used **`gpt-40-mini`**. The actual OpenAI model is `gpt-4o-mini` (with the letter "o", not the number "40").
+
+### Summary
+To be fair to the manuscript, the empirical diagnosis of **normalization-induced co-adaptation** is a clever insight, and the ablation controls (like disabling RevIN inside MOMENT to see if entropy recovers) represent excellent experimental design. The "Frozen Paradox" is also a fantastic empirical hook. 
+
+However, no amount of clean ablation studies can save a paper that relies on a mathematically false causal proof (Berkson's paradox) and an illogical real-world motivation (spending massive compute to drastically underperform a 49k-parameter linear layer). An AC would ultimately flag this as a **Strong Reject**.
+
+---
+
+Let's do that
+
+---
+
+recompile and reopen
