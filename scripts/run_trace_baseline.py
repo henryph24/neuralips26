@@ -180,6 +180,8 @@ def main():
     parser.add_argument("--horizon", type=int, default=96)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
+    parser.add_argument("--unfreeze", default="last4", choices=["frozen", "last2", "last4"],
+                        help="Backbone unfreezing strategy (default: last4 for backward compat)")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
 
@@ -195,10 +197,13 @@ def main():
 
     for p in model.parameters():
         p.requires_grad = False
-    for i in range(max(0, len(blocks)-4), len(blocks)):
-        for p in blocks[i].parameters():
-            p.requires_grad = True
-    print("Unfreezing last 4 encoder blocks, d_model=%d" % hdim)
+    if args.unfreeze != "frozen":
+        n_unfreeze = {"last2": 2, "last4": 4}[args.unfreeze]
+        for i in range(max(0, len(blocks) - n_unfreeze), len(blocks)):
+            for p in blocks[i].parameters():
+                p.requires_grad = True
+    n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("Unfreeze=%s, d_model=%d, backbone_trainable=%d" % (args.unfreeze, hdim, n_trainable))
 
     # Load data
     splits, n_ch = load_standard_data(args.dataset, args.horizon)
@@ -261,7 +266,8 @@ def main():
         "seed": args.seed,
         "results": results,
     }
-    path = "results/trace_baseline/%s_H%d_%d.json" % (args.dataset, args.horizon, args.seed)
+    uf_suffix = "" if args.unfreeze == "last4" else "_%s" % args.unfreeze
+    path = "results/trace_baseline/%s_H%d_%d%s.json" % (args.dataset, args.horizon, args.seed, uf_suffix)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)

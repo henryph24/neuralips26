@@ -208,7 +208,7 @@ def train_adapter(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
         for bx, by in eval_loader:
             bx, by = bx.to(device).unsqueeze(1), by.to(device)
             mask = torch.ones(bx.shape[0], bx.shape[2], device=device)
-            preds.append(adapter(_extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)).cpu())
+            preds.append(adapter(_extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)).float().cpu())
             tgts.append(by.cpu())
 
     preds, tgts = torch.cat(preds), torch.cat(tgts)

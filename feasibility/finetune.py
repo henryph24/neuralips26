@@ -158,24 +158,26 @@ def _forward_chronos(model, encoder_blocks, batch_x):
 
 
 def _forward_moirai(model, encoder_blocks, batch_x):
-    """Forward pass for Moirai encoder."""
+    """Forward pass for Moirai encoder.
+
+    Discovers d_model dynamically (supports small/base/large variants).
+    The hook on encoder_blocks[-1] captures the output automatically.
+    """
     import torch
+    from feasibility.model import _get_hidden_dim
     # batch_x is (B, 1, 512) — squeeze to (B, 512)
     x = batch_x.squeeze(1)
 
-    # Moirai encoder expects (B, n_patches, d_model)
-    # Simple: reshape into patches and project
-    d_model = 384  # Moirai-small
+    # Discover d_model from the model itself (not hardcoded)
+    d_model = _get_hidden_dim(model)
     patch_size = 32
     n_patches = x.shape[1] // patch_size  # 512 / 32 = 16
 
     # Reshape into patches: (B, n_patches, patch_size)
     patches = x[:, :n_patches * patch_size].reshape(x.shape[0], n_patches, patch_size)
 
-    # Simple linear projection to d_model (use a temp projection)
-    # The model.in_proj handles this normally, but we do a simple version
+    # Project patches to d_model using model's own projection if available
     if hasattr(model, 'in_proj'):
-        # Use model's own projection if available
         try:
             projected = model.in_proj(patches)
         except Exception:
@@ -183,6 +185,7 @@ def _forward_moirai(model, encoder_blocks, batch_x):
     else:
         projected = torch.nn.functional.pad(patches, (0, d_model - patch_size))
 
+    # Forward through encoder — hook on encoder_blocks[-1] captures output
     encoder = model.encoder
     encoder(projected)
 
