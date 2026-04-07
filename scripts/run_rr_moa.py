@@ -356,6 +356,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
+    parser.add_argument("--batch-size", type=int, default=128,
+                        help="Training/eval batch size (reduce for large backbones)")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--no-baselines", action="store_true",
                         help="Skip baseline evaluation (faster for ablation sweeps)")
@@ -396,7 +398,8 @@ def main():
                           backbone_type=bb_type, K=args.K, top_k=args.top_k,
                           n_epochs=args.epochs, router_input_mode=args.router_input_mode,
                           test_ch=test_ch, scaler=scaler,
-                          expert_pool=args.expert_pool)
+                          expert_pool=args.expert_pool,
+                          batch_size=args.batch_size)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -466,14 +469,24 @@ def main():
         "winner": winner, "delta_pct": delta,
         "scaler": scaler_info,
     }
-    # Append router mode / pool suffixes only for non-default options so
-    # existing raw+canonical JSONs keep their current filenames (and
-    # evidence_vm/verify.py's paths keep working).
+    # Append router mode / pool / backbone suffixes only for non-default
+    # options so existing raw+canonical JSONs keep their current filenames
+    # (and evidence_vm/verify.py's paths keep working).
     suffixes = []
     if args.router_input_mode != "raw":
         suffixes.append("router-%s" % args.router_input_mode)
     if args.expert_pool != "canonical":
         suffixes.append("pool-%s" % args.expert_pool)
+    # Backbone suffix for non-default backbones
+    bb_lower = args.backbone.lower()
+    if "moment" in bb_lower and "large" in bb_lower:
+        suffixes.append("bb-moment-large")
+    elif "moirai" in bb_lower:
+        suffixes.append("bb-moirai")
+    elif "chronos" in bb_lower:
+        suffixes.append("bb-chronos")
+    elif args.backbone != "AutonLab/MOMENT-1-small":
+        suffixes.append("bb-" + args.backbone.split("/")[-1].lower())
     suffix = ("_" + "_".join(suffixes)) if suffixes else ""
     path = "results/rr_moa/%s_H%d_K%d_%s_%s_%d%s.json" % (
         args.dataset, args.horizon, args.K, top_k_label, args.unfreeze,
