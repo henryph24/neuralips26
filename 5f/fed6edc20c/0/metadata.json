@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "5ffed6edc20c",
+  "session_id": "b3c16d33-6b0f-4862-af2e-5404aafb6989",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-07T14:33:25.480174Z",
+  "branch": "main",
+  "checkpoints_count": 11,
+  "files_touched": [
+    "checklist.tex",
+    "feasibility/model.py",
+    "main.tex",
+    "scripts/analyze_routing_signal_ratio.py",
+    "scripts/run_8plus_experiments.sh",
+    "scripts/run_adamix.py",
+    "scripts/run_rr_moa.py",
+    "scripts/run_standard_evolution.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c18670c4a6c8",
+  "token_usage": {
+    "input_tokens": 5171,
+    "cache_creation_tokens": 486554,
+    "cache_read_tokens": 34857204,
+    "output_tokens": 95085,
+    "api_call_count": 184
+  },
+  "session_metrics": {
+    "turn_count": 13
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-07T14:33:21.747088Z",
+    "agent_lines": 508,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 508,
+    "agent_percentage": 100
+  }
+}
