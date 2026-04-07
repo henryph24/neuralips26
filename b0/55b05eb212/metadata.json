@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "b055b05eb212",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 21,
+  "files_touched": [
+    "feasibility/finetune.py",
+    "main.tex",
+    "scripts/compute_significance.py",
+    "scripts/run_all_improvements.sh",
+    "scripts/run_independent_ensemble.py",
+    "scripts/run_patchwise_analysis.py",
+    "scripts/run_rr_moa.py",
+    "scripts/run_standard_evolution.py",
+    "scripts/run_trace_baseline.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b0/55b05eb212/0/metadata.json",
+      "transcript": "/b0/55b05eb212/0/full.jsonl",
+      "content_hash": "/b0/55b05eb212/0/content_hash.txt",
+      "prompt": "/b0/55b05eb212/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 395,
+    "cache_creation_tokens": 888501,
+    "cache_read_tokens": 68426206,
+    "output_tokens": 126900,
+    "api_call_count": 326
+  }
+}
