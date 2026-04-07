@@ -74,6 +74,9 @@ def load_standard_data(dataset_name, forecast_horizon=96, max_samples=5000):
     elif dataset_name == "Electricity":
         local_path = os.path.join(os.path.dirname(__file__), "..", "data", "electricity.csv")
         df = pd.read_csv(local_path)
+    elif dataset_name == "Traffic":
+        local_path = os.path.join(os.path.dirname(__file__), "..", "data", "traffic.csv")
+        df = pd.read_csv(local_path)
     else:
         raise ValueError("Unknown dataset: %s" % dataset_name)
 

@@ -12,7 +12,8 @@ from feasibility.config import AdapterConfig
 _MOMENT_MODULE_MAP = None
 
 
-def load_moment(device: str = "cpu", model_name: str = "AutonLab/MOMENT-1-small") -> nn.Module:
+def load_moment(device: str = "cpu", model_name: str = "AutonLab/MOMENT-1-small",
+                disable_revin: bool = False) -> nn.Module:
     """Load MOMENT pretrained model (small, base, or large)."""
     from momentfm import MOMENTPipeline
 
@@ -23,6 +24,14 @@ def load_moment(device: str = "cpu", model_name: str = "AutonLab/MOMENT-1-small"
     model.init()
     model = model.to(device)
     model.eval()
+
+    if disable_revin:
+        class _IdentityNormalizer(nn.Module):
+            """Replace RevIN with identity for controlled ablation."""
+            def forward(self, x, mode="norm", mask=None):
+                return x
+        model.normalizer = _IdentityNormalizer()
+
     return model
 
 
@@ -45,10 +54,12 @@ def load_moirai(device: str = "cpu", model_name: str = "Salesforce/moirai-1.1-R-
     return model
 
 
-def load_backbone(backbone_name: str, device: str = "cpu") -> nn.Module:
+def load_backbone(backbone_name: str, device: str = "cpu",
+                   disable_revin: bool = False) -> nn.Module:
     """Load any supported TSFM backbone by name."""
     if "MOMENT" in backbone_name or "moment" in backbone_name.lower():
-        return load_moment(device, model_name=backbone_name)
+        return load_moment(device, model_name=backbone_name,
+                           disable_revin=disable_revin)
     elif "chronos" in backbone_name.lower():
         return load_chronos(device, model_name=backbone_name)
     elif "moirai" in backbone_name.lower():
