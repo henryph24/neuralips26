@@ -180,12 +180,14 @@ def _forward_moirai(model, encoder_blocks, batch_x):
     # Reshape into patches: (B, n_patches, patch_size)
     patches = x[:, :n_patches * patch_size].reshape(x.shape[0], n_patches, patch_size)
 
-    # Project patches to d_model using model's own projection if available
-    if hasattr(model, 'in_proj'):
-        try:
-            projected = model.in_proj(patches)
-        except Exception:
-            projected = torch.nn.functional.pad(patches, (0, d_model - patch_size))
+    # Project patches to d_model using model's pre-trained input projection
+    if hasattr(model, 'in_proj') and hasattr(model, 'patch_sizes'):
+        # Moirai's MultiInSizeLinear expects (x_padded_to_max_feat, in_feat_size)
+        max_feat = max(model.patch_sizes)
+        patches_padded = torch.nn.functional.pad(patches, (0, max_feat - patch_size))
+        in_feat_size = torch.full(patches.shape[:2], patch_size,
+                                  dtype=torch.long, device=patches.device)
+        projected = model.in_proj(patches_padded, in_feat_size)
     else:
         projected = torch.nn.functional.pad(patches, (0, d_model - patch_size))
 
