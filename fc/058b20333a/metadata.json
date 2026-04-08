@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "fc058b20333a",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 19,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_checkmate_race.sh",
+    "scripts/run_fewshot_curve.py",
+    "scripts/run_tier5_race.sh",
+    "tasks/closing_dlinear_gap.md",
+    "tasks/closing_dlinear_gap_FINAL.md",
+    "tasks/closing_dlinear_gap_POSTMORTEM.md",
+    "tasks/closing_dlinear_gap_v2.md",
+    "tasks/closing_dlinear_gap_v3.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/fc/058b20333a/0/metadata.json",
+      "transcript": "/fc/058b20333a/0/full.jsonl",
+      "content_hash": "/fc/058b20333a/0/content_hash.txt",
+      "prompt": "/fc/058b20333a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 569,
+    "cache_creation_tokens": 1941246,
+    "cache_read_tokens": 115037355,
+    "output_tokens": 190984,
+    "api_call_count": 429
+  }
+}
