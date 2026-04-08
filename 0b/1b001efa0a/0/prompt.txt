@@ -1,0 +1,177 @@
+a new review: "Based on the content provided, this paper is a **very strong candidate** for acceptance at a top-tier conference like NeurIPS. It follows the standard "problem-diagnosis-solution-theory" pipeline that reviewers typically favor.
+
+Here is an evaluation of its likelihood of acceptance based on the NeurIPS review criteria:
+
+## 1. Originality & Significance
+[cite_start]The paper identifies a previously undocumented failure mode: **normalization-induced co-adaptation**[cite: 8, 27]. 
+* [cite_start]**The Problem:** Standard Mixture-of-Experts (MoE) routing collapses catastrophically (entropy drops to $0.000$) when used with time series models that employ Reversible Instance Normalization (RevIN)[cite: 7, 28].
+* [cite_start]**The Fix:** They propose **Raw-Routed Mixture of Adapters (RR-MoA)**, which routes based on the raw, pre-normalization input[cite: 11, 34].
+* [cite_start]**Impact:** This addresses a practical bottleneck for deploying large Time Series Foundation Models (TSFMs) in multi-tenant or on-device environments where full fine-tuning is impossible [cite: 25, 649-652].
+
+## 2. Empirical Quality
+The experimental section is exceptionally rigorous, which is a major "green flag" for NeurIPS reviewers:
+* [cite_start]**Breadth:** Evaluation across 6–7 standard datasets (ETTh1, ETTm1, Weather, etc.), 3 freeze levels, and 3 seeds[cite: 12, 135].
+* [cite_start]**Consistency:** It achieves **54/54 wins** across configurations with high statistical significance ($p < 0.001$, Wilcoxon)[cite: 12, 44].
+* [cite_start]**Baselines:** It compares against modern PEFT methods like LoRA and TRACE, as well as independent ensembles[cite: 125, 184].
+* [cite_start]**Cross-Backbone:** The method generalizes across MOMENT-small/large and Moirai[cite: 46, 247].
+
+## 3. Theoretical Grounding
+Reviewers often look for a "why" behind empirical gains. This paper provides:
+* [cite_start]**Proposition 1:** A formal proof showing how gradient feedback loops drive entropy collapse when the backbone is unfrozen [cite: 138-139, 535].
+* [cite_start]**Proposition 2:** An information-theoretic decomposition showing that RevIN strips mutual information necessary for routing[cite: 47, 199].
+* [cite_start]**Predictive Power:** The authors use their theory to predict *where* the model will help, validated by a Spearman correlation of $\rho = -0.96$[cite: 10, 211].
+
+## 4. Clarity and Reproducibility
+* [cite_start]**Visualizations:** The paper includes clear architecture diagrams (Figure 1), training trajectories (Figure 2), and expert selection clusters (Figure 3)[cite: 49, 142, 206].
+* [cite_start]**Open Source:** They include a self-verification script (`verify.py`) and promise to open-source all code and JSON results[cite: 127, 696].
+* [cite_start]**Honesty:** The paper explicitly acknowledges its limitations, such as the remaining MSE gap to supervised baselines and the boundary case (Traffic dataset) where it doesn't improve performance[cite: 177, 212, 283].
+
+---
+
+### Potential "Weak" Points (Reviewer Critiques)
+* [cite_start]**Supervised Gap:** Reviewers might point out that DLinear (a simple supervised baseline) still outperforms RR-MoA on some datasets[cite: 118, 187]. [cite_start]However, the authors defend this by focusing on the "frozen-backbone paradigm" necessary for specific deployment scales[cite: 25, 687].
+* [cite_start]**LLM Dependency:** The use of an LLM (GPT-4o-mini) for the architecture search (AAS) might be seen as adding complexity, though they provide a "template grammar" control to isolate its effect [cite: 39, 631-633].
+
+**Verdict:** If this were submitted to NeurIPS 2026, it would likely receive scores in the **7–8 range (Accept/Strong Accept)** due to its combination of a "novel failure diagnosis," "theoretically backed solution," and "flawless win-rate" on benchmarks.
+
+Are you preparing this for a specific submission deadline, or are you looking to dive deeper into the math behind the entropy collapse?"
+
+---
+
+a new review: "Based on the content provided, this paper is a **very strong candidate** for acceptance at a top-tier conference like NeurIPS. It follows the standard "problem-diagnosis-solution-theory" pipeline that reviewers typically favor.
+
+Here is an evaluation of its likelihood of acceptance based on the NeurIPS review criteria:
+
+## 1. Originality & Significance
+[cite_start]The paper identifies a previously undocumented failure mode: **normalization-induced co-adaptation**[cite: 8, 27]. 
+* [cite_start]**The Problem:** Standard Mixture-of-Experts (MoE) routing collapses catastrophically (entropy drops to $0.000$) when used with time series models that employ Reversible Instance Normalization (RevIN)[cite: 7, 28].
+* [cite_start]**The Fix:** They propose **Raw-Routed Mixture of Adapters (RR-MoA)**, which routes based on the raw, pre-normalization input[cite: 11, 34].
+* [cite_start]**Impact:** This addresses a practical bottleneck for deploying large Time Series Foundation Models (TSFMs) in multi-tenant or on-device environments where full fine-tuning is impossible [cite: 25, 649-652].
+
+## 2. Empirical Quality
+The experimental section is exceptionally rigorous, which is a major "green flag" for NeurIPS reviewers:
+* [cite_start]**Breadth:** Evaluation across 6–7 standard datasets (ETTh1, ETTm1, Weather, etc.), 3 freeze levels, and 3 seeds[cite: 12, 135].
+* [cite_start]**Consistency:** It achieves **54/54 wins** across configurations with high statistical significance ($p < 0.001$, Wilcoxon)[cite: 12, 44].
+* [cite_start]**Baselines:** It compares against modern PEFT methods like LoRA and TRACE, as well as independent ensembles[cite: 125, 184].
+* [cite_start]**Cross-Backbone:** The method generalizes across MOMENT-small/large and Moirai[cite: 46, 247].
+
+## 3. Theoretical Grounding
+Reviewers often look for a "why" behind empirical gains. This paper provides:
+* [cite_start]**Proposition 1:** A formal proof showing how gradient feedback loops drive entropy collapse when the backbone is unfrozen [cite: 138-139, 535].
+* [cite_start]**Proposition 2:** An information-theoretic decomposition showing that RevIN strips mutual information necessary for routing[cite: 47, 199].
+* [cite_start]**Predictive Power:** The authors use their theory to predict *where* the model will help, validated by a Spearman correlation of $\rho = -0.96$[cite: 10, 211].
+
+## 4. Clarity and Reproducibility
+* [cite_start]**Visualizations:** The paper includes clear architecture diagrams (Figure 1), training trajectories (Figure 2), and expert selection clusters (Figure 3)[cite: 49, 142, 206].
+* [cite_start]**Open Source:** They include a self-verification script (`verify.py`) and promise to open-source all code and JSON results[cite: 127, 696].
+* [cite_start]**Honesty:** The paper explicitly acknowledges its limitations, such as the remaining MSE gap to supervised baselines and the boundary case (Traffic dataset) where it doesn't improve performance[cite: 177, 212, 283].
+
+---
+
+### Potential "Weak" Points (Reviewer Critiques)
+* [cite_start]**Supervised Gap:** Reviewers might point out that DLinear (a simple supervised baseline) still outperforms RR-MoA on some datasets[cite: 118, 187]. [cite_start]However, the authors defend this by focusing on the "frozen-backbone paradigm" necessary for specific deployment scales[cite: 25, 687].
+* [cite_start]**LLM Dependency:** The use of an LLM (GPT-4o-mini) for the architecture search (AAS) might be seen as adding complexity, though they provide a "template grammar" control to isolate its effect [cite: 39, 631-633].
+
+**Verdict:** If this were submitted to NeurIPS 2026, it would likely receive scores in the **7–8 range (Accept/Strong Accept)** due to its combination of a "novel failure diagnosis," "theoretically backed solution," and "flawless win-rate" on benchmarks.
+
+Are you preparing this for a specific submission deadline, or are you looking to dive deeper into the math behind the entropy collapse?"
+
+
+ultrathink
+
+---
+
+so we will failed neuralips ultrathink ?
+
+---
+
+plan further experiments that drive this paper to solid acceptance, we had RACE VM with GPU ready (recall from memory)
+
+---
+
+let's run experiments at race vm now
+
+---
+
+<task-notification>
+<task-id>bzena3y97</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bzena3y97.output</output-file>
+<status>completed</status>
+<summary>Background command "Check progress after 15 more minutes" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bzena3y97.output
+
+---
+
+<task-notification>
+<task-id>bcw4ly8uh</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bcw4ly8uh.output</output-file>
+<status>completed</status>
+<summary>Background command "Read background check results" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bcw4ly8uh.output
+
+---
+
+<task-notification>
+<task-id>bjf2l00mv</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bjf2l00mv.output</output-file>
+<status>completed</status>
+<summary>Background command "Check progress after 30 minutes" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bjf2l00mv.output
+
+---
+
+<task-notification>
+<task-id>b088vte49</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/b088vte49.output</output-file>
+<status>completed</status>
+<summary>Background command "Check progress after 1 hour" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/b088vte49.output
+
+---
+
+<task-notification>
+<task-id>bpnawklli</task-id>
+<tool-use-id>toolu_01PDBs2yfDEAdiHgyw2o4TZE</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bpnawklli.output</output-file>
+<status>failed</status>
+<summary>Background command "Check full progress after 2 hours" failed with exit code 1</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bpnawklli.output
+
+---
+
+<task-notification>
+<task-id>bu72n15od</task-id>
+<tool-use-id>toolu_01DppEedg1ESNVi4pkmMHWLt</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bu72n15od.output</output-file>
+<status>completed</status>
+<summary>Background command "Launch fixed experiment batch" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bu72n15od.output
+
+---
+
+<task-notification>
+<task-id>bc3am0dfm</task-id>
+<tool-use-id>toolu_01PwzMn1TYkyR1xvhXQkShv5</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bc3am0dfm.output</output-file>
+<status>failed</status>
+<summary>Background command "Check progress after 1.5 more hours" failed with exit code 1</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bc3am0dfm.output
+
+---
+
+let's do that carefully
+
+---
+
+Let's do that

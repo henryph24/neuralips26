@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "0b1b001efa0a",
+  "session_id": "db4a8d3b-caab-4f7d-92a6-ade807e32f39",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-08T05:45:32.348793Z",
+  "branch": "main",
+  "checkpoints_count": 10,
+  "files_touched": [
+    "feasibility/finetune.py",
+    "main.tex",
+    "scripts/analyze_tier2.py",
+    "scripts/benchmark_inference.py",
+    "scripts/run_full_finetune.py",
+    "scripts/run_tier2_race.sh"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "4443bcada9c7",
+  "token_usage": {
+    "input_tokens": 198,
+    "cache_creation_tokens": 812867,
+    "cache_read_tokens": 24540154,
+    "output_tokens": 64670,
+    "api_call_count": 167
+  },
+  "session_metrics": {
+    "turn_count": 12
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-08T05:45:30.879971Z",
+    "agent_lines": 870,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 870,
+    "agent_percentage": 100
+  }
+}
