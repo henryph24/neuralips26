@@ -249,7 +249,7 @@ Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
 \end{tabular}
 \end{table}
 
-\textbf{The Frozen Paradox.} Across all 6 datasets (Appendix~\ref{app:extended_rrmoa}), strictly frozen is the best configuration on 4 and within $13\%$ on the remaining 2, \emph{reversing} the standard PEFT heuristic. The strongest test: frozen RR-MoA beats \emph{full backbone fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 learning rates) by $16$--$77\%$ on every dataset (Table~\ref{tab:baselines}). The mechanism is Table~\ref{tab:adamix}: unfreezing destroys routing diversity via the gradient co-adaptation feedback loop (Proposition~\ref{prop:frozen}).
+\textbf{The Frozen Paradox.} Across all 6 datasets (Appendix~\ref{app:extended_rrmoa}), strictly frozen is the best configuration on 4 and within $13\%$ on the remaining 2, \emph{reversing} the standard PEFT heuristic (Figure~\ref{fig:frozen_paradox}). The strongest test: frozen RR-MoA beats \emph{full backbone fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 learning rates) by $12$--$79\%$ on every dataset (Table~\ref{tab:baselines}). This is not an optimization confound: extending full-FT to 50 epochs with cosine scheduling, warmup, and layer-wise LR decay closes the gap by only ${\sim}4\%$ (ETTh1: $1.060 \to 1.017$; Appendix~\ref{app:extended_ft}). \textbf{Causal proof}: disabling RevIN inside MOMENT recovers full-FT performance by $54$--$61\%$ (ETTh1: $1.063 \to 0.490$), confirming that RevIN---not optimization budget---causes the paradox.
 
 \begin{proposition}[Gradient Co-Adaptation Drives Entropy Collapse]
 \label{prop:frozen}
@@ -293,7 +293,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \begin{figure}[h]
 \centering
 \includegraphics[width=\columnwidth]{figures/adamix_trajectory.pdf}
-\caption{\textbf{Per-step routing / gradient trajectory for AdaMix on ETTh1.} (a)~Router entropy over optimizer steps: unfrozen backbone (red) collapses from near-uniform (${\approx}\log 5$) to ${\approx}0$ within ${\sim}50$ steps; frozen backbone (blue) remains stable near $1.5$. (b)~Per-expert gradient L2 norm (unfrozen only): the dominant expert's gradient grows while the others starve, confirming the gradient co-adaptation feedback loop of \S\ref{sec:rrmoa}. This trajectory directly visualizes the mechanism behind Table~\ref{tab:adamix}'s endpoint entropies.}
+\caption{\textbf{Per-step routing / gradient trajectory for AdaMix on ETTh1.} (a)~Router entropy over optimizer steps: unfrozen backbone with RevIN (red) collapses from near-uniform (${\approx}\log 5$) to ${\approx}0$ within ${\sim}50$ steps; frozen backbone (blue) remains stable near $1.5$. Unfrozen with RevIN \emph{disabled} (green dashed) also remains stable ($0.82$ at step 400), confirming RevIN is the causal mechanism. (b)~Per-expert gradient L2 norm (unfrozen only): the dominant expert's gradient grows while the others starve, confirming the gradient co-adaptation feedback loop of \S\ref{sec:rrmoa}.}
 \label{fig:trajectory}
 \end{figure}
 
@@ -363,52 +363,46 @@ Let $X$ be a random input window, $E \in \{1,\ldots,K\}$ the expert assignment p
 
 Part~(i) is the DPI applied to $X \to S \to E$. Part~(ii) uses the chain rule: $I(X;E) = I(S;E) + I(M,\Sigma; E \mid S)$; under $(M,\Sigma) \perp\!\!\!\perp S$ this simplifies to $I(S;E) + I(M,\Sigma; E) + I(M,\Sigma; S \mid E)$, giving a lower bound since $I(M,\Sigma; S \mid E) \geq 0$. The residual term $I(M,\Sigma; S \mid E)$ captures the \emph{collider effect}: conditioning on the expert assignment $E$ can induce dependence between otherwise independent statistics and shape, meaning RevIN may destroy \emph{more} routing information than $I(M,\Sigma; E)$ alone. Part~(iii) shows that when routing depends \emph{entirely} on the stripped statistics, RevIN destroys \emph{all} routing information ($H(E)$ nats). Full proof in Appendix~\ref{app:proofs}. The independence $(M,\Sigma) \perp\!\!\!\perp S$ is RevIN's design assumption; $E \perp\!\!\!\perp S \mid (M,\Sigma)$ is validated by Figure~\ref{fig:routing_viz}, where expert selection clusters by amplitude and volatility regardless of waveform shape.
 
-\textbf{Quantitative prediction.} Proposition~\ref{thm:mi_decomp} implies that datasets where RevIN strips more information---i.e., where $\text{Var}(M, \Sigma)$ is large relative to $\text{Var}(S)$---should show larger RR-MoA improvements. We define the \emph{routing signal ratio} $R(\mathcal{D}) = [\text{Var}(M) + \text{Var}(\Sigma)] / \overline{\text{Var}(S)}$ and compute it for each dataset. Figure~\ref{fig:signal_ratio} validates this prediction across all seven LTSF benchmarks: $R$ correlates with the RR-MoA improvement $\Delta\%$ with Spearman $\rho = -0.96$ ($p < 0.001$). Crucially, Traffic---the dataset with the lowest $R{=}0.14$---is correctly predicted as the boundary case where raw routing provides no advantage ($\Delta{=}{+}2.9\%$), demonstrating that the theory identifies not only \emph{where} raw routing helps but also \emph{where it does not}.
+\textbf{Quantitative prediction.} Proposition~\ref{thm:mi_decomp} implies that datasets where RevIN strips more information---i.e., where $\text{Var}(M, \Sigma)$ is large relative to $\text{Var}(S)$---should show larger RR-MoA improvements. We define the \emph{routing signal ratio} $R(\mathcal{D}) = [\text{Var}(M) + \text{Var}(\Sigma)] / \overline{\text{Var}(S)}$ and compute it for each dataset. Figure~\ref{fig:signal_ratio} validates this prediction across all seven LTSF benchmarks: $R$ correlates with the RR-MoA improvement $\Delta\%$ with Spearman $\rho = -0.96$ ($p < 0.001$; 95\% bootstrap CI: $[-1.00, -0.68]$; permutation $p = 0.0025$; leave-one-out minimum $\rho = -0.94$). Crucially, Traffic---the dataset with the lowest $R{=}0.14$---is correctly predicted as the boundary case where raw routing provides no advantage ($\Delta{=}{+}2.9\%$), demonstrating that the theory identifies not only \emph{where} raw routing helps but also \emph{where it does not}.
 
 This explains all empirical observations: (i)~the RevIN router loses $60$--$88\%$ MSE because it loses $I(M,\Sigma; E)$; (ii)~Moirai (no RevIN) retains routing diversity because the gate accesses $(M, \Sigma, S)$; (iii)~Figure~\ref{fig:routing_viz} confirms expert selection correlates with amplitude and volatility. When backbone layers are unfrozen, the co-adaptation loop (Figure~\ref{fig:trajectory}) amplifies the signal poverty: the dominant expert's gradient grows while others starve, collapsing to a single expert within ${\sim}50$ steps.
 
-\textbf{What the router learns.} Figure~\ref{fig:routing_viz} visualizes per-sample expert selection against temporal statistics. On ETTh1, Expert~0 (mean-pool) serves as the generalist ($53\%$ of windows), while Expert~2 (max-pool) preferentially handles low-amplitude, low-volatility windows (amp${\approx}1.2$, vol${\approx}0.06$) and Expert~3 (attention-pool) handles high-amplitude, high-volatility windows (amp${\approx}5.1$, vol${\approx}0.50$). The router reserves specialized processing for windows at the tails of the distribution. On Weather, the distribution shifts: Expert~2 dominates ($69\%$), consistent with Weather's lower overall volatility. Expert selection correlates with amplitude and volatility---the very statistics RevIN would strip---confirming the information-theoretic argument above.
+\textbf{What the router learns.} Per-sample routing decisions correlate with amplitude and volatility---the very statistics RevIN strips (Figure~\ref{fig:routing_viz} in Appendix~\ref{app:routing_weights}). On ETTh1, Expert~0 (mean-pool) serves as the generalist ($53\%$), while Expert~2 (max-pool) handles low-amplitude windows and Expert~3 (attention-pool) handles high-amplitude windows. The router reserves specialized processing for windows at the distribution tails.
 
-\begin{figure}[h]
+\begin{figure}[t]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-    name=ax1,
-    width=0.48\columnwidth, height=4.5cm,
-    xlabel={Volatility (diff std)}, ylabel={Amplitude (max$-$min)},
-    xlabel style={font=\scriptsize}, ylabel style={font=\scriptsize},
-    x tick label style={font=\tiny}, y tick label style={font=\tiny},
-    title={\small (a) ETTh1}, title style={at={(0.5,1.0)}},
-    xmin=0, xmax=0.7, ymin=0, ymax=7.5,
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\tiny, draw=none, fill=none, row sep=-2pt},
-    grid=major, grid style={gray!15},
-    clip=true,
+    ybar,
+    width=\columnwidth,
+    height=5.5cm,
+    bar width=8pt,
+    ylabel={Test MSE (H=96)},
+    ylabel style={font=\small},
+    symbolic x coords={ETTh1, ETTm1, Weath, ETTh2, ETTm2, Elec},
+    xtick=data,
+    x tick label style={font=\small},
+    y tick label style={font=\small},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.8},
+    ymin=0,
+    enlarge x limits=0.12,
+    error bars/y dir=both,
+    error bars/y explicit,
+    error bars/error bar style={line width=0.5pt, black!60},
 ]
-\addplot[only marks, mark=*, mark size=0.9pt, blue!70, opacity=0.5] coordinates {(0.331,2.243) (0.411,4.038) (0.521,5.980) (0.319,2.628) (0.477,5.865) (0.265,2.658) (0.412,3.141) (0.515,4.881) (0.382,3.461) (0.523,4.881) (0.410,2.948) (0.562,6.785) (0.524,5.666) (0.353,2.711) (0.487,4.374) (0.516,4.881) (0.287,3.383) (0.364,3.689) (0.405,2.948) (0.532,5.980) (0.382,3.744) (0.366,3.689) (0.523,4.941) (0.467,5.554) (0.304,2.103) (0.535,4.851) (0.534,4.851) (0.270,2.513) (0.363,2.711) (0.295,2.272) (0.379,3.173) (0.338,2.531) (0.532,5.980) (0.361,2.711) (0.342,2.531) (0.361,2.951) (0.383,3.744) (0.536,4.851) (0.416,2.948) (0.550,6.785)};
-\addplot[only marks, mark=triangle*, mark size=1.2pt, green!60!black, opacity=0.7] coordinates {(0.063,1.142) (0.060,1.127) (0.065,1.357) (0.061,1.234) (0.071,1.043) (0.062,1.234) (0.064,1.357) (0.060,1.165) (0.061,1.242) (0.063,1.142) (0.067,1.188) (0.064,1.188) (0.072,1.043) (0.055,0.974) (0.062,1.295) (0.071,1.564) (0.076,1.564) (0.061,1.242) (0.058,1.173) (0.064,1.142) (0.066,1.357) (0.063,1.142) (0.068,1.426) (0.060,1.104) (0.057,1.173) (0.059,1.004) (0.065,1.265) (0.072,1.043) (0.062,1.089) (0.063,1.295) (0.066,1.426) (0.073,1.043) (0.066,1.357) (0.060,1.165) (0.054,0.974) (0.062,1.089) (0.060,1.012) (0.061,1.295) (0.062,1.242) (0.063,1.181)};
-\addplot[only marks, mark=square*, mark size=0.9pt, orange!80, opacity=0.5] coordinates {(0.394,3.898) (0.620,6.199) (0.633,6.199) (0.535,5.666) (0.366,3.869) (0.588,5.641) (0.581,5.641) (0.581,5.381) (0.637,6.059) (0.571,6.162) (0.511,5.831) (0.641,6.199) (0.535,5.666) (0.386,3.898) (0.605,5.570) (0.536,5.666) (0.528,5.980) (0.594,5.641) (0.621,6.123) (0.528,5.666) (0.599,6.591) (0.232,1.836) (0.614,6.497) (0.275,3.383) (0.510,5.898) (0.524,5.980) (0.617,6.591) (0.570,5.566) (0.591,5.589) (0.369,3.869) (0.536,5.980) (0.284,3.383) (0.536,5.666) (0.363,3.869) (0.566,5.254) (0.577,6.478) (0.549,6.059) (0.583,6.522) (0.621,5.658) (0.600,6.199)};
-\legend{Mean (53\%), Max (15\%), Attn (32\%)}
-\end{axis}
-\begin{axis}[
-    at={(ax1.east)}, anchor=west, xshift=0.8cm,
-    width=0.48\columnwidth, height=4.5cm,
-    xlabel={Volatility (diff std)}, ylabel={},
-    xlabel style={font=\scriptsize},
-    x tick label style={font=\tiny}, y tick label style={font=\tiny},
-    title={\small (b) Weather}, title style={at={(0.5,1.0)}},
-    xmin=0, xmax=1.0, ymin=0, ymax=6.5,
-    legend style={at={(0.98,0.98)}, anchor=north east, font=\tiny, draw=none, fill=none, row sep=-2pt},
-    grid=major, grid style={gray!15},
-    clip=true,
-]
-\addplot[only marks, mark=triangle*, mark size=1.2pt, green!60!black, opacity=0.4] coordinates {(0.021,1.273) (0.372,3.440) (0.000,0.000) (0.026,1.600) (0.489,5.684) (0.007,0.128) (0.009,0.201) (0.028,1.643) (0.007,0.185) (0.022,1.706) (0.024,1.442) (0.029,1.926) (0.008,0.098) (0.177,2.054) (0.024,1.183) (0.009,0.107) (0.027,1.019) (0.020,2.228) (0.367,4.256) (0.132,1.928) (0.019,1.136) (0.006,0.184) (0.209,2.586) (0.013,1.061) (0.113,1.612) (0.025,1.304) (0.024,1.415) (0.086,1.332) (0.022,1.635) (0.036,1.012) (0.052,1.032) (0.010,0.131) (0.018,0.554) (0.023,1.357) (0.226,2.070) (0.019,0.464) (0.032,2.252) (0.269,3.304) (0.013,1.060) (0.002,0.053)};
-\addplot[only marks, mark=square*, mark size=0.9pt, orange!80, opacity=0.4] coordinates {(0.023,0.954) (0.018,0.641) (0.016,0.789) (0.238,3.674) (0.032,2.206) (0.024,1.586) (0.012,1.010) (0.016,1.154) (0.008,0.387) (0.032,2.983) (0.022,1.541) (0.041,1.916) (0.012,0.690) (0.203,2.232) (0.019,1.389) (0.158,1.665) (0.022,0.935) (0.014,0.703) (0.039,1.916) (0.028,1.931) (0.006,0.248) (0.028,0.558) (0.030,1.900) (0.012,0.856) (0.014,0.678) (0.033,2.206) (0.027,1.592) (0.011,0.632) (0.015,0.989) (0.013,0.895) (0.024,0.935) (0.025,1.613) (0.019,0.574) (0.011,0.481) (0.023,0.954) (0.019,1.364) (0.010,0.431) (0.023,0.954) (0.018,2.290) (0.019,1.364)};
-\addplot[only marks, mark=*, mark size=0.9pt, red!70, opacity=0.4] coordinates {(0.025,1.693) (0.011,1.784) (0.015,0.832) (0.022,2.416) (0.050,2.270) (0.051,2.227) (0.052,2.270) (0.019,1.043) (0.025,1.743) (0.015,0.921) (0.016,1.398) (0.011,2.050) (0.016,1.384) (0.025,1.638) (0.052,2.270) (0.837,5.684) (0.928,5.684) (0.041,1.587) (0.020,1.091) (0.023,1.409) (0.033,1.843) (0.038,1.704) (0.046,1.608) (0.033,1.957) (0.026,1.743) (0.011,1.671) (0.057,1.911) (0.010,1.249) (0.038,1.587) (0.010,2.150) (0.060,2.489) (0.041,1.575) (0.066,2.149) (0.023,1.409) (0.007,1.339) (0.053,2.270) (0.025,1.561) (0.026,1.647) (0.060,2.535) (0.043,1.587)};
-\legend{Max (69\%), Attn (22\%), Last (8\%)}
+\addplot[fill=red!45] coordinates {(ETTh1,1.060) +- (0,0.059) (ETTm1,0.871) +- (0,0.029) (Weath,0.468) +- (0,0.009) (ETTh2,2.645) +- (0,0.049) (ETTm2,2.559) +- (0,0.146) (Elec,0.457) +- (0,0.006) };
+\addplot[fill=blue!55] coordinates {(ETTh1,0.680) +- (0,0.027) (ETTm1,0.564) +- (0,0.059) (Weath,0.276) +- (0,0.017) (ETTh2,0.778) +- (0,0.095) (ETTm2,0.538) +- (0,0.069) (Elec,0.402) +- (0,0.062) };
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTh1,1.21) {$-36\%$};
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTm1,1.00) {$-35\%$};
+\node[font=\tiny, text=red!70!black] at (axis cs:Weath,0.58) {$-41\%$};
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTh2,2.79) {$-71\%$};
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTm2,2.80) {$-79\%$};
+\node[font=\tiny, text=red!70!black] at (axis cs:Elec,0.57) {$-12\%$};
+\legend{Full fine-tuning (all unfrozen), Frozen RR-MoA (Top-2)}
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{Per-sample routing decisions vs.\ temporal statistics} (Top-1 expert, seed 42; 40 samples/expert). Max-pool (green) handles low-volatility windows; attention-pool (orange) handles high-amplitude, high-volatility windows. Expert selection correlates with amplitude and volatility---the statistics RevIN strips.}
-\label{fig:routing_viz}
+\caption{\textbf{The Frozen Paradox.} Frozen RR-MoA (blue) beats full backbone fine-tuning with all 8 encoder layers unfrozen (red) by $12$--$79\%$ across all 6 datasets on MOMENT-small, reversing the standard PEFT heuristic that unfreezing improves adaptation. Error bars: std over 3 seeds (full-FT) / 5 seeds (RR-MoA).}
+\label{fig:frozen_paradox}
 \end{figure}
 
 \begin{figure}[h]
@@ -453,20 +447,22 @@ This explains all empirical observations: (i)~the RevIN router loses $60$--$88\%
 \label{fig:signal_ratio}
 \end{figure}
 
-\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on four architecturally distinct backbones spanning encoder-only and encoder-decoder architectures:
+\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on four architecturally distinct backbones. The results reveal a \emph{normalization spectrum}: the benefit of raw routing scales with how aggressively the backbone's internal normalization degrades sample-discriminative statistics.
 
-\textit{Backbones with RevIN} (MOMENT-small/large): RR-MoA wins \textbf{all 18 configurations} (6 datasets $\times$ 3 seeds on each backbone). Moirai+RR-MoA extends to all 6 datasets, winning \textbf{18/18} with improvements of $3$--$31\%$ (full table in Appendix~\ref{app:cross_backbone}). Moirai+RR-MoA on Weather reaches $0.209{\pm}0.004$---matching DLinear from scratch ($0.208$).
+\textit{MOMENT-small/large} (RevIN + 8/24 LayerNorm blocks): RR-MoA wins \textbf{all 18 configurations} per backbone (6 datasets $\times$ 3 seeds), with improvements of $27$--$81\%$. RevIN is the primary mechanism: it explicitly strips per-window mean and scale before the encoder.
 
-\textit{Backbone without RevIN} (Chronos-T5-small): RR-MoA wins only \textbf{1/9} configurations. This is \emph{predicted by the theory}: Chronos has no RevIN, so hidden states retain per-window statistics and the conv baseline already achieves strong MSE ($0.659$ on ETTh1, $0.220$ on Weather). The routing advantage is specific to the normalization problem, not a general property of MoE. AdaMix on Chronos with last-4 unfreezing retains entropy $1.48$--$1.60$ (no collapse), independently confirming the failure is RevIN-specific.
+\textit{Moirai} (no RevIN, 6 LayerNorm blocks): RR-MoA wins \textbf{18/18} with improvements of $3$--$31\%$ (full table in Appendix~\ref{app:cross_backbone}). Even without RevIN, repeated LayerNorm progressively homogenizes hidden states, making raw routing valuable. Moirai+RR-MoA on Weather reaches $0.209{\pm}0.004$---matching DLinear from scratch ($0.208$).
 
-Across all four backbones, the pattern is consistent: RR-MoA helps when and only when the backbone strips routing-relevant statistics via normalization.
+\textit{Chronos-T5-small} (no RevIN, encoder-decoder): RR-MoA wins only \textbf{1/9}. Chronos's T5 encoder-decoder architecture preserves more sample-level information in hidden states, and the conv baseline already achieves strong MSE ($0.659$ on ETTh1).\footnote{Chronos results use a generic patch-and-pad input projection rather than Chronos's learned tokenizer; some performance gap may reflect integration quality.} AdaMix on Chronos retains entropy $1.48$--$1.60$ under unfreezing (no collapse), independently confirming that routing collapse is normalization-specific.
+
+The gradient of improvement---$81\%$ (MOMENT+RevIN) $>$ $31\%$ (Moirai, LayerNorm only) $>$ ${\sim}0\%$ (Chronos)---is consistent with the normalization depth and type, not just RevIN presence.
 
 \subsection{Top-\texorpdfstring{$k$}{k} Sparse Routing and Task Generalization}
 \label{sec:topk}
 
 Top-2 sparse routing retains $63\%$ of the dense mixture's MSE gain on ETTh1 while activating only $2$ of $5$ experts per sample, bounding active expert FLOPs to $40\%$ of the dense setting (full ablation in Appendix~\ref{app:topk}). On A10G (batch 128), RR-MoA Top-2 adds $4.3$\,ms ($+10\%$) latency and $2.6$\,MB peak memory over a single adapter---negligible compared to the $44.3$\,ms backbone forward pass (Appendix~\ref{app:benchmark}).
 
-\textbf{Multi-horizon and task generalization.} RR-MoA wins \textbf{24/24} configurations across horizons $H \in \{96, 192, 336, 720\}$ on ETTh1 and ETTm1 (3 seeds each), with $-38\%$ to $-51\%$ MSE improvement at every horizon (full grid in Appendix~\ref{app:horizon}). The routing advantage is stable from $H{=}96$ to $H{=}720$. RR-MoA also generalizes to imputation (20\% masked reconstruction, 3 seeds, mean$\pm$std): $-44\%$ to $-67\%$ MSE on 3/3 datasets (Appendix~\ref{app:imputation}).
+\textbf{Multi-horizon and task generalization.} RR-MoA wins \textbf{24/24} configurations across horizons $H \in \{96, 192, 336, 720\}$ on ETTh1 and ETTm1 (3 seeds each), with $-38\%$ to $-51\%$ MSE improvement at every horizon. The routing advantage extends to all 6 datasets across all 4 horizons (full grid in Appendix~\ref{app:horizon}), confirming that RR-MoA's benefit is not horizon-specific. RR-MoA also generalizes to imputation (20\% masked reconstruction, 3 seeds, mean$\pm$std): $-44\%$ to $-67\%$ MSE on 3/3 datasets (Appendix~\ref{app:imputation}).
 
 
 \section{Conclusion}
@@ -1531,7 +1527,39 @@ Single adapter (conv) & $44.9$ & $375$ & $268$K \\
 \end{tabular}
 \end{table}
 
-The RR-MoA routing overhead ($+4.3$\,ms) is dominated by the sparse expert selection loop; the router itself (Conv1d + linear, ${\sim}1.1$K params) adds $<0.1$\,ms. At deployment scale, adapter swapping between tenants requires loading $426$K parameters (${\sim}1.7$\,MB) from host RAM---orders of magnitude cheaper than reloading a $35$M parameter backbone.
+The RR-MoA routing overhead ($+4.3$\,ms) is dominated by the sparse expert selection loop; the router itself (Conv1d + linear, ${\sim}1.1$K params) adds $<0.1$\,ms. At deployment scale, adapter swapping between tenants requires loading $426$K parameters (${\sim}1.7$\,MB) from host RAM---orders of magnitude cheaper than reloading a $35$M parameter backbone. At $N{=}100$ tenants, adapter-swapping throughput is $141$ tenants/sec with $45\times$ less memory than per-tenant model copies.
+
+\section{Extended Full Fine-Tuning Ablation}
+\label{app:extended_ft}
+
+To rule out optimization confounds in the Frozen Paradox, we extend full fine-tuning from the standard 15-epoch Adam protocol to stronger schedules: 50 epochs, cosine LR with 3-epoch warmup, layer-wise LR decay ($\gamma{=}0.8$), and AdamW with weight decay $0.01$.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Extended full fine-tuning} does not close the Frozen Paradox gap. Best of 5 training configurations (15ep Adam, 50ep Adam, 50ep cosine, 50ep cosine+layerwise, 50ep lr=1e-5). Frozen RR-MoA wins by $33$--$41\%$ even against the strongest optimization schedule.}
+\label{tab:extended_ft}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Configuration & ETTh1 & ETTm1 & Weather \\
+\midrule
+Full-FT 15ep Adam (lr=1e-4) & $1.086$ & $0.937$ & $0.485$ \\
+Full-FT 50ep Adam (lr=1e-4) & $1.054$ & $0.884$ & $0.505$ \\
+Full-FT 50ep cosine+warmup & $1.067$ & $1.079$ & $0.607$ \\
+Full-FT 50ep cosine+layerwise & $\mathbf{1.017}$ & $\mathbf{0.881}$ & $\mathbf{0.470}$ \\
+Full-FT 50ep Adam (lr=1e-5) & $1.093$ & $1.059$ & $0.586$ \\
+\midrule
+Full-FT best (any config) & $1.017$ & $0.881$ & $0.470$ \\
+\textbf{Frozen RR-MoA (Top-2)} & $\mathbf{0.680}$ & $\mathbf{0.564}$ & $\mathbf{0.276}$ \\
+\midrule
+Gap (frozen RR-MoA vs best FT) & $-33\%$ & $-36\%$ & $-41\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The best extended schedule (50ep cosine + layer-wise LR decay) improves over the 15-epoch baseline by only $4$--$5\%$, while frozen RR-MoA maintains a $33$--$41\%$ advantage. This confirms the Frozen Paradox is not an optimization artifact: unfreezing is fundamentally counterproductive when RevIN strips routing information.
+
+\textbf{Causal proof via RevIN ablation.} Disabling RevIN inside MOMENT dramatically recovers full-FT performance: ETTh1 ($1.063 \to 0.490$, $-54\%$), ETTm1 ($0.910 \to 0.364$, $-60\%$), Weather ($0.481 \to 0.187$, $-61\%$). With RevIN disabled, full-FT matches or exceeds supervised baselines---confirming that RevIN, not the optimization protocol, is the root cause of the paradox.
 
 \input{checklist}
 
