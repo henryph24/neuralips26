@@ -53,6 +53,8 @@ def main():
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--disable-revin", action="store_true",
+                        help="Disable RevIN inside MOMENT backbone (causal ablation)")
     args = parser.parse_args()
 
     os.makedirs("results/full_finetune", exist_ok=True)
@@ -76,7 +78,8 @@ def main():
         # Reload model fresh for each lr to avoid state leakage
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)
-        model = load_backbone(args.backbone, args.device)
+        model = load_backbone(args.backbone, args.device,
+                              disable_revin=args.disable_revin)
         _disable_gradient_checkpointing(model)
         blocks = _get_encoder_blocks(model)
 
@@ -135,8 +138,9 @@ def main():
     elif "large" in args.backbone.lower():
         bb_suffix = "_bb-moment-large"
 
-    fname = "results/full_finetune/%s_H%d_%d%s.json" % (
-        args.dataset, args.horizon, args.seed, bb_suffix)
+    revin_suffix = "_no-revin" if args.disable_revin else ""
+    fname = "results/full_finetune/%s_H%d_%d%s%s.json" % (
+        args.dataset, args.horizon, args.seed, bb_suffix, revin_suffix)
     payload = {
         "dataset": args.dataset,
         "horizon": args.horizon,
@@ -157,8 +161,9 @@ def main():
 
 def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
                       device="cuda", n_epochs=3, forecast_horizon=96, batch_size=128,
-                      backbone_type="moment", eval_ch=None, scaler=None, lr=1e-4):
-    """Same as train_adapter but with configurable learning rate."""
+                      backbone_type="moment", eval_ch=None, scaler=None, lr=1e-4,
+                      use_cosine=False, warmup_epochs=0, layerwise_decay=1.0):
+    """Train adapter with configurable lr, cosine schedule, warmup, and layer-wise LR decay."""
     from torch.utils.data import DataLoader, TensorDataset
     from feasibility.finetune import _extract_features_batch
 
@@ -168,20 +173,47 @@ def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
     adapter = namespace["Adapter"](hdim, forecast_horizon).to(device)
     param_count = sum(p.numel() for p in adapter.parameters())
 
-    trainable = list(adapter.parameters())
-    pids = {id(p) for p in trainable}
-    for p in model.parameters():
-        if p.requires_grad and id(p) not in pids:
-            trainable.append(p)
-            pids.add(id(p))
+    # Build parameter groups with optional layer-wise LR decay
+    if layerwise_decay < 1.0 and len(blocks) > 0:
+        param_groups = [{"params": list(adapter.parameters()), "lr": lr}]
+        n_blocks = len(blocks)
+        for i, block in enumerate(blocks):
+            block_params = [p for p in block.parameters() if p.requires_grad]
+            if block_params:
+                depth_from_top = n_blocks - 1 - i
+                block_lr = lr * (layerwise_decay ** depth_from_top)
+                param_groups.append({"params": block_params, "lr": block_lr})
+        optimizer = torch.optim.AdamW(param_groups, lr=lr, weight_decay=0.01)
+    else:
+        trainable = list(adapter.parameters())
+        pids = {id(p) for p in trainable}
+        for p in model.parameters():
+            if p.requires_grad and id(p) not in pids:
+                trainable.append(p)
+                pids.add(id(p))
+        optimizer = torch.optim.Adam(trainable, lr=lr)
 
-    optimizer = torch.optim.Adam(trainable, lr=lr)
     mse_fn = nn.MSELoss()
     use_amp = device == "cuda"
 
     loader = DataLoader(TensorDataset(
         torch.from_numpy(X_train).float(), torch.from_numpy(Y_train).float(),
     ), batch_size=batch_size, shuffle=True)
+
+    # Cosine schedule with warmup
+    total_steps = n_epochs * len(loader)
+    warmup_steps = warmup_epochs * len(loader)
+    scheduler = None
+    if use_cosine:
+        from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+        schedulers = []
+        if warmup_steps > 0:
+            schedulers.append(LinearLR(optimizer, start_factor=0.01, total_iters=warmup_steps))
+        schedulers.append(CosineAnnealingLR(optimizer, T_max=total_steps - warmup_steps))
+        if len(schedulers) > 1:
+            scheduler = SequentialLR(optimizer, schedulers, milestones=[warmup_steps])
+        else:
+            scheduler = schedulers[0]
 
     for epoch in range(n_epochs):
         model.train()
@@ -195,6 +227,8 @@ def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            if scheduler is not None:
+                scheduler.step()
 
     # Evaluate
     model.eval()
