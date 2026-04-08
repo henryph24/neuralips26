@@ -1613,6 +1613,8 @@ The best extended schedule (50ep cosine + layer-wise LR decay) improves over the
 
 \textbf{Causal proof via RevIN ablation.} Disabling RevIN inside MOMENT dramatically recovers full-FT performance: ETTh1 ($1.063 \to 0.490$, $-54\%$), ETTm1 ($0.910 \to 0.364$, $-60\%$), Weather ($0.481 \to 0.187$, $-61\%$). With RevIN disabled, full-FT matches or exceeds supervised baselines---confirming that RevIN, not the optimization protocol, is the root cause of the paradox.
 
+\textbf{Adapter training budget.} Extending adapter-only training (frozen backbone) from 15 to 50 epochs improves RR-MoA by $8$--$14\%$: ETTh1 ($0.690 \to 0.633$), ETTm1 ($0.572 \to 0.494$), Weather ($0.289 \to 0.250$). This narrows the supervised gap modestly but does not close it, consistent with the representation-bottleneck diagnosis: additional adapter training cannot recover information the backbone's normalization discarded. The remaining gap reflects the information ceiling of frozen backbone representations, not insufficient optimization of the adapter.
+
 \input{checklist}
 
 \end{document}
