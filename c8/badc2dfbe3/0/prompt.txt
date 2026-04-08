@@ -327,3 +327,7 @@ is it complete now
 <summary>Background command "Launch Tier 4 batch" completed (exit code 0)</summary>
 </task-notification>
 Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bt46d07e5.output
+
+---
+
+pull the results and incorpate into the paper
