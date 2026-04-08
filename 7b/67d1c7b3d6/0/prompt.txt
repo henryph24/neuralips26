@@ -1,0 +1,288 @@
+so how good our paper is now for neuralips 2026 ultrathink
+
+---
+
+plan for push to 8+, Race VM is always ther for us to run any other experiments
+
+---
+
+so how many experiments are we having running at RACE VM
+
+---
+
+What do you think of this review: """Summary
+This paper diagnoses and addresses a previously unreported failure mode of mixture-of-experts (MoE) adapters for time-series foundation models (TSFMs): when routing is performed on hidden states from backbones with Reversible Instance Normalization (RevIN) and layers are unfrozen, routing entropy collapses to a single expert due to a normalization-induced gradient co-adaptation loop. The authors propose Raw-Routed Mixture of Adapters (RR-MoA), which uses a lightweight gate that reads the raw, pre-normalization input to select among a small pool of diverse adapter heads while keeping the backbone strictly frozen; empirically, RR-MoA consistently outperforms strong frozen baselines and even full fine-tuning across multiple datasets, backbones, and tasks, and its benefits are predicted by an information-theoretic analysis linking RevIN to loss of routing signal in location-scale statistics.
+
+Strengths
+Technical novelty and innovation
+Identifies and convincingly characterizes a specific mechanism—normalization-induced co-adaptation—driving routing collapse for MoE adapters on TSFMs with RevIN, a failure mode not discussed in prior work.
+Introduces a simple but effective architectural fix: route on the raw (pre-RevIN) signal while using a frozen backbone, thus decoupling routing from normalized hidden states.
+Provides an information-theoretic decomposition (Proposition 2) connecting RevIN to loss of routing signal in mean/scale statistics and a minimal dynamical argument (Proposition 1) explaining entropy collapse under unfreezing.
+The adapter-level MoE design is orthogonal to backbone-level MoE approaches (e.g., Moirai-MoE, Time-MoE) and complements existing PEFT techniques (e.g., LoRA, TRACE).
+Experimental rigor and validation
+Multi-dataset, multi-backbone evaluation (MOMENT-small/large, Moirai, Chronos), multiple seeds, and both forecasting and imputation tasks; ablations over freeze levels and Top-k routing.
+Clear, targeted controls isolating the role of RevIN: disabling RevIN inside MOMENT recovers routing diversity; backbones without RevIN (Moirai, Chronos) do not exhibit collapse; applying RevIN to the router’s input degrades performance substantially.
+Strong comparative baselines including LoRA (extensive sweep), TRACE-style adapters, independent ensembles, AdaMix routing, and full fine-tuning; significance testing (Wilcoxon) reported.
+Latency and memory overheads quantified for Top-k routing, showing minimal deployment costs.
+Clarity of presentation
+The problem, diagnosis, and solution are articulated clearly with intuitive figures and well-described ablations.
+Theoretical propositions are stated precisely with assumptions discussed and empirical evidence aligned to the theory’s predictions.
+The paper carefully distinguishes frozen versus unfrozen settings and dissects the interplay between normalization and routing information.
+Significance of contributions
+Addresses a central practical bottleneck for adapting TSFMs with PEFT: how to recover sample-wise specialization without destabilizing routing or unfreezing the backbone.
+The “Frozen Paradox” (frozen routing outperforming full unfreezing) challenges common PEFT heuristics and could influence practice in TSFM adaptation and deployment.
+The normalization–routing tension is broadly relevant wherever instance-level normalization precedes routing or gating decisions.
+Weaknesses
+Technical limitations or concerns
+The “Frozen Paradox” could partially reflect training protocol or optimization budget (15 epochs) rather than an inherent limitation of unfreezing; stronger optimization for full fine-tuning may narrow or reverse the gap.
+Proposition 1 is shown for a simplified linear model; while the qualitative mechanism is plausible, a more general analysis (e.g., with nonlinear backbones and load-balancing regularizers) would strengthen the theoretical claim.
+The independence assumptions in Proposition 2 ((M,Σ) ⊥ S, and E ⊥ S | (M,Σ)) are strong; the empirical validation is suggestive but not definitive.
+Experimental gaps or methodological issues
+Full fine-tuning with only 15 epochs and limited hyperparameter search may be under-optimized compared to typical TSFM practice; this weakens the strength of the “frozen beats full FT” claim.
+TRACE is reimplemented “TRACE-style” without public code; although motivated, deviations may affect fairness of the comparison.
+While a LoRA sweep is reported, other PEFT baselines (e.g., adapters with re-injection of stats or alternative routing regularizers/aux losses) could further contextualize the gains.
+The reported Spearman correlation (ρ ≈ −0.96) across only seven datasets, while striking, is based on a very small n; confidence intervals or robustness checks (e.g., bootstrap across seeds) are not shown.
+Clarity or presentation issues
+The ubiquitous “54/54 wins” framing, while precise in context, can overshadow the fact that absolute MSE is still worse than specialized supervised baselines on some backbones (e.g., DLinear on MOMENT-small), which the paper acknowledges but could emphasize more consistently.
+Some implementation details for AdaMix/load-balancing, and the exact placement/behavior of RevIN in each backbone, could be more explicit to facilitate replication.
+Missing related work or comparisons
+Recent MoE stability approaches (e.g., uncertainty-aware or Bayesian routing like VMoER) are not compared; although conceptually different, they offer another line against collapse.
+Segment-wise MoE inside backbones (SEG-MOE) suggests alternative inductive biases; a discussion of how RR-MoA’s adapter-level routing contrasts in compute/accuracy/robustness would be useful.
+Normalization reappraisals for time series show RevIN can discard predictive instance statistics; aligning with this literature more concretely (e.g., where/when reinjection is beneficial) would further situate the findings.
+Detailed Comments
+Technical soundness evaluation
+The causal chain—RevIN strips per-window statistics that are informative for routing; unfreezing lets gradients co-adapt hidden states toward one expert; entropy collapses—is coherent and supported by targeted ablations and trajectories (entropy and per-expert gradient norms).
+Proposition 2 formalizes an intuitive DPI argument and a chain-rule decomposition; the added collider term explanation is a nice touch. However, assumptions about independence and conditional independence may not hold strictly in real data; acknowledgments are appropriate, but further stress-testing (e.g., synthetic data with controlled correlations) would strengthen the claim.
+Proposition 1 captures the positive feedback loop in a 2-expert linearized setting. While illustrative, empirical tests of standard MoE safeguards (auxiliary load-balancing loss, noise in routing, capacity factors) would help disentangle RevIN effects from generic MoE instabilities.
+Experimental evaluation assessment
+Breadth: multiple datasets (ETT*, Weather, Electricity; Traffic in correlation analysis), horizons, tasks (forecasting, imputation), and backbones (RevIN and non-RevIN). Multiple seeds and nontrivial baselines bolster credibility.
+Depth: key controls (disable RevIN; router sees RevIN-processed vs raw input) are carefully designed and strongly support the diagnosis. The “routing vs ensembling” comparison cleanly isolates the benefit of per-sample routing beyond expert diversity.
+Fairness: full fine-tuning may be undertrained (15 epochs) and minimally tuned; a stronger schedule (e.g., more epochs, warmup, layer-wise lrs) could materially change conclusions. Likewise, TRACE reproduction and AdaMix configs (load balancing, stochasticity, capacity) deserve fuller disclosure.
+Reporting: significance tests are appropriate; latency/memory overheads are small and reported; code/repro claims are positive. The small-n correlation study should be complemented by uncertainty quantification.
+Comparison with related work (using the summaries provided)
+Compared to backbone-level MoE (Moirai-MoE, SEG-MOE, Time Tracker), RR-MoA addresses a different axis: adapter-level specialization under a frozen backbone. This makes it attractive for deployment and for multi-tenant settings, consistent with the paper’s motivation.
+TRACE targets PEFT selection and head reconstruction inside a finetuning regime; RR-MoA instead focuses on conditional specialization via raw-signal routing. Given TRACE’s strengths, a more direct comparison using public code would be ideal, but the “TRACE-style” baseline is a reasonable proxy.
+RevIN reappraisals emphasize that per-instance normalization can discard useful statistics; RR-MoA’s success with raw routing aligns with those findings and concretely operationalizes “reinjecting instance statistics” for routing.
+Bayesian/stochastic routing methods (e.g., VMoER) aim to stabilize routing and improve calibration. While orthogonal, they could mitigate collapse even with hidden-state routing; a brief discussion of combining such uncertainty-aware gating with raw routing would round out the landscape.
+Discussion of broader impact and significance
+Practical: RR-MoA offers a simple, low-cost, and easily deployable template for robust per-window specialization in TSFMs, with minimal latency/memory overhead and strong accuracy gains in the frozen-backbone regime.
+Conceptual: The normalization–routing tension extends beyond TSFMs wherever instance-level normalization is applied before a gating/routing decision; the diagnosis and fix may generalize to other modalities.
+Caveats: Absolute performance can still trail strong supervised baselines on some backbones; and the “frozen beats full FT” conclusion requires cautious interpretation given possible optimization confounds.
+Questions for Authors
+How sensitive are the “Frozen Paradox” results to the full fine-tuning schedule (epochs, warmup, optimizer, layer-wise learning rates, weight decay)? Can you provide curves showing whether longer training narrows the gap?
+What load-balancing and stabilization strategies were used for AdaMix (auxiliary losses, noise, capacity factors)? Did stochastic routing or stronger balance losses reduce collapse under RevIN?
+Could you report additional details on RevIN placement and behavior in each backbone (exact layers, statistics, learned affine or not) and whether any alternative normalizers change the outcome?
+How robust are the RR-MoA gains to the router architecture and capacity (e.g., MLP-only, different kernel sizes, deeper gates), and to Top-k choices beyond k=2?
+For the TRACE baseline, can you share an ablation verifying that your “TRACE-style” implementation reproduces or approximates results from the original paper on shared backbones/datasets?
+Can you extend the correlation analysis (routing signal ratio vs. gains) with uncertainty estimates, alternative definitions of R, or synthetic data where R is controlled, to strengthen the causal link?
+Do your conclusions persist for probabilistic forecasting metrics (e.g., CRPS, NLL) and for classification/anomaly detection tasks where instance statistics might play different roles?
+On Chronos (no RevIN), RR-MoA rarely helps. Is this because hidden states already encode the relevant statistics, or because the chosen expert pool is suboptimal? Could raw routing still help with a richer expert set?
+Have you tried combining raw routing with uncertainty-aware routing (e.g., VMoER-like temperature or amortized VI on logits) to further stabilize and improve calibration?
+Can you release the verify.py and raw logs for the ablations (especially disabling RevIN) to facilitate community replication?
+Overall Assessment
+This paper delivers a compelling diagnosis of why hidden-state MoE routing can fail for TSFMs with RevIN and proposes a simple, effective remedy: route on the raw pre-normalization input while keeping the backbone frozen. The empirical evidence is broad and well-aligned with the theory, and the controls are carefully chosen to isolate the role of normalization. The main caveat is that some headline claims—particularly that frozen RR-MoA outperforms full unfreezing—may partly reflect optimization or training-budget choices (15 epochs) rather than a fundamental limitation of unfreezing. Even so, the core insight about normalization-induced routing signal loss and its practical resolution via raw routing is novel, significant, and actionable for the TSFM community. With stronger fine-tuning baselines and additional robustness checks (routing stabilization variants; larger n for correlation analysis), this work would be a clear accept; as is, it remains a strong contribution that I recommend for publication."""
+
+---
+
+let's added them all
+
+---
+
+so in 5 hours we will have new results, including the from the recent review
+
+---
+
+/loop notify me progress every 1 hour
+
+---
+
+<task-notification>
+<task-id>bovwsg6jg</task-id>
+<tool-use-id>toolu_01WrDxaCt9skQJsdqdKxvrrK</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bovwsg6jg.output</output-file>
+<status>completed</status>
+<summary>Background command "Launch Tier 3 batch on RACE VM" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bovwsg6jg.output
+
+---
+
+Check RACE VM experiment progress: SSH in, show tail of tier3_run.log and reviewer_response.log, count completed multi-horizon files, check if reviewer response batch has started, and report status to the user.
+
+---
+
+<task-notification>
+<task-id>bguakumce</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bguakumce.output</output-file>
+<status>completed</status>
+<summary>Background command "Queue reviewer response to run after Tier 3" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bguakumce.output
+
+---
+
+<task-notification>
+<task-id>bn1z79c1n</task-id>
+<tool-use-id>toolu_015ff8DWjer8WRBxWnmetn79</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bn1z79c1n.output</output-file>
+<status>completed</status>
+<summary>Background command "Check progress after 2 hours" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bn1z79c1n.output
+
+---
+
+<task-notification>
+<task-id>bdc7zl1kx</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bdc7zl1kx.output</output-file>
+<status>completed</status>
+<summary>Background command "Launch reviewer response batch" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hungpq2412-neuralips26/babd13cc-122e-4583-b952-a91d96fc96b3/tasks/bdc7zl1kx.output
+
+---
+
+Check RACE VM experiment progress: SSH in, show tail of tier3_run.log and reviewer_response.log, count completed multi-horizon files, check if reviewer response batch has started, and report status to the user.
+
+---
+
+let go
+
+---
+
+did we fully address the review of: """Get detailed AI feedback on your research paper (free!)
+
+S
+paperreview.ai
+By Stanford ML Group
+
+Upload Paper
+View Review
+Tech Overview
+View Your Review
+Raw-Routed Mixture of Adapters for Time Series Foundation Models
+NeurIPS
+Submitted: April 8, 2026
+Contents
+Summary
+Strengths
+Weaknesses
+Detailed Comments
+Questions
+Overall Assessment
+Summary
+This paper diagnoses and addresses a previously unreported failure mode of mixture-of-experts (MoE) adapters for time-series foundation models (TSFMs): when routing is performed on hidden states from backbones with Reversible Instance Normalization (RevIN) and layers are unfrozen, routing entropy collapses to a single expert due to a normalization-induced gradient co-adaptation loop. The authors propose Raw-Routed Mixture of Adapters (RR-MoA), which uses a lightweight gate that reads the raw, pre-normalization input to select among a small pool of diverse adapter heads while keeping the backbone strictly frozen; empirically, RR-MoA consistently outperforms strong frozen baselines and even full fine-tuning across multiple datasets, backbones, and tasks, and its benefits are predicted by an information-theoretic analysis linking RevIN to loss of routing signal in location-scale statistics.
+
+Strengths
+Technical novelty and innovation
+Identifies and convincingly characterizes a specific mechanism—normalization-induced co-adaptation—driving routing collapse for MoE adapters on TSFMs with RevIN, a failure mode not discussed in prior work.
+Introduces a simple but effective architectural fix: route on the raw (pre-RevIN) signal while using a frozen backbone, thus decoupling routing from normalized hidden states.
+Provides an information-theoretic decomposition (Proposition 2) connecting RevIN to loss of routing signal in mean/scale statistics and a minimal dynamical argument (Proposition 1) explaining entropy collapse under unfreezing.
+The adapter-level MoE design is orthogonal to backbone-level MoE approaches (e.g., Moirai-MoE, Time-MoE) and complements existing PEFT techniques (e.g., LoRA, TRACE).
+Experimental rigor and validation
+Multi-dataset, multi-backbone evaluation (MOMENT-small/large, Moirai, Chronos), multiple seeds, and both forecasting and imputation tasks; ablations over freeze levels and Top-k routing.
+Clear, targeted controls isolating the role of RevIN: disabling RevIN inside MOMENT recovers routing diversity; backbones without RevIN (Moirai, Chronos) do not exhibit collapse; applying RevIN to the router’s input degrades performance substantially.
+Strong comparative baselines including LoRA (extensive sweep), TRACE-style adapters, independent ensembles, AdaMix routing, and full fine-tuning; significance testing (Wilcoxon) reported.
+Latency and memory overheads quantified for Top-k routing, showing minimal deployment costs.
+Clarity of presentation
+The problem, diagnosis, and solution are articulated clearly with intuitive figures and well-described ablations.
+Theoretical propositions are stated precisely with assumptions discussed and empirical evidence aligned to the theory’s predictions.
+The paper carefully distinguishes frozen versus unfrozen settings and dissects the interplay between normalization and routing information.
+Significance of contributions
+Addresses a central practical bottleneck for adapting TSFMs with PEFT: how to recover sample-wise specialization without destabilizing routing or unfreezing the backbone.
+The “Frozen Paradox” (frozen routing outperforming full unfreezing) challenges common PEFT heuristics and could influence practice in TSFM adaptation and deployment.
+The normalization–routing tension is broadly relevant wherever instance-level normalization precedes routing or gating decisions.
+Weaknesses
+Technical limitations or concerns
+The “Frozen Paradox” could partially reflect training protocol or optimization budget (15 epochs) rather than an inherent limitation of unfreezing; stronger optimization for full fine-tuning may narrow or reverse the gap.
+Proposition 1 is shown for a simplified linear model; while the qualitative mechanism is plausible, a more general analysis (e.g., with nonlinear backbones and load-balancing regularizers) would strengthen the theoretical claim.
+The independence assumptions in Proposition 2 ((M,Σ) ⊥ S, and E ⊥ S | (M,Σ)) are strong; the empirical validation is suggestive but not definitive.
+Experimental gaps or methodological issues
+Full fine-tuning with only 15 epochs and limited hyperparameter search may be under-optimized compared to typical TSFM practice; this weakens the strength of the “frozen beats full FT” claim.
+TRACE is reimplemented “TRACE-style” without public code; although motivated, deviations may affect fairness of the comparison.
+While a LoRA sweep is reported, other PEFT baselines (e.g., adapters with re-injection of stats or alternative routing regularizers/aux losses) could further contextualize the gains.
+The reported Spearman correlation (ρ ≈ −0.96) across only seven datasets, while striking, is based on a very small n; confidence intervals or robustness checks (e.g., bootstrap across seeds) are not shown.
+Clarity or presentation issues
+The ubiquitous “54/54 wins” framing, while precise in context, can overshadow the fact that absolute MSE is still worse than specialized supervised baselines on some backbones (e.g., DLinear on MOMENT-small), which the paper acknowledges but could emphasize more consistently.
+Some implementation details for AdaMix/load-balancing, and the exact placement/behavior of RevIN in each backbone, could be more explicit to facilitate replication.
+Missing related work or comparisons
+Recent MoE stability approaches (e.g., uncertainty-aware or Bayesian routing like VMoER) are not compared; although conceptually different, they offer another line against collapse.
+Segment-wise MoE inside backbones (SEG-MOE) suggests alternative inductive biases; a discussion of how RR-MoA’s adapter-level routing contrasts in compute/accuracy/robustness would be useful.
+Normalization reappraisals for time series show RevIN can discard predictive instance statistics; aligning with this literature more concretely (e.g., where/when reinjection is beneficial) would further situate the findings.
+Detailed Comments
+Technical soundness evaluation
+The causal chain—RevIN strips per-window statistics that are informative for routing; unfreezing lets gradients co-adapt hidden states toward one expert; entropy collapses—is coherent and supported by targeted ablations and trajectories (entropy and per-expert gradient norms).
+Proposition 2 formalizes an intuitive DPI argument and a chain-rule decomposition; the added collider term explanation is a nice touch. However, assumptions about independence and conditional independence may not hold strictly in real data; acknowledgments are appropriate, but further stress-testing (e.g., synthetic data with controlled correlations) would strengthen the claim.
+Proposition 1 captures the positive feedback loop in a 2-expert linearized setting. While illustrative, empirical tests of standard MoE safeguards (auxiliary load-balancing loss, noise in routing, capacity factors) would help disentangle RevIN effects from generic MoE instabilities.
+Experimental evaluation assessment
+Breadth: multiple datasets (ETT*, Weather, Electricity; Traffic in correlation analysis), horizons, tasks (forecasting, imputation), and backbones (RevIN and non-RevIN). Multiple seeds and nontrivial baselines bolster credibility.
+Depth: key controls (disable RevIN; router sees RevIN-processed vs raw input) are carefully designed and strongly support the diagnosis. The “routing vs ensembling” comparison cleanly isolates the benefit of per-sample routing beyond expert diversity.
+Fairness: full fine-tuning may be undertrained (15 epochs) and minimally tuned; a stronger schedule (e.g., more epochs, warmup, layer-wise lrs) could materially change conclusions. Likewise, TRACE reproduction and AdaMix configs (load balancing, stochasticity, capacity) deserve fuller disclosure.
+Reporting: significance tests are appropriate; latency/memory overheads are small and reported; code/repro claims are positive. The small-n correlation study should be complemented by uncertainty quantification.
+Comparison with related work (using the summaries provided)
+Compared to backbone-level MoE (Moirai-MoE, SEG-MOE, Time Tracker), RR-MoA addresses a different axis: adapter-level specialization under a frozen backbone. This makes it attractive for deployment and for multi-tenant settings, consistent with the paper’s motivation.
+TRACE targets PEFT selection and head reconstruction inside a finetuning regime; RR-MoA instead focuses on conditional specialization via raw-signal routing. Given TRACE’s strengths, a more direct comparison using public code would be ideal, but the “TRACE-style” baseline is a reasonable proxy.
+RevIN reappraisals emphasize that per-instance normalization can discard useful statistics; RR-MoA’s success with raw routing aligns with those findings and concretely operationalizes “reinjecting instance statistics” for routing.
+Bayesian/stochastic routing methods (e.g., VMoER) aim to stabilize routing and improve calibration. While orthogonal, they could mitigate collapse even with hidden-state routing; a brief discussion of combining such uncertainty-aware gating with raw routing would round out the landscape.
+Discussion of broader impact and significance
+Practical: RR-MoA offers a simple, low-cost, and easily deployable template for robust per-window specialization in TSFMs, with minimal latency/memory overhead and strong accuracy gains in the frozen-backbone regime.
+Conceptual: The normalization–routing tension extends beyond TSFMs wherever instance-level normalization is applied before a gating/routing decision; the diagnosis and fix may generalize to other modalities.
+Caveats: Absolute performance can still trail strong supervised baselines on some backbones; and the “frozen beats full FT” conclusion requires cautious interpretation given possible optimization confounds.
+Questions for Authors
+How sensitive are the “Frozen Paradox” results to the full fine-tuning schedule (epochs, warmup, optimizer, layer-wise learning rates, weight decay)? Can you provide curves showing whether longer training narrows the gap?
+What load-balancing and stabilization strategies were used for AdaMix (auxiliary losses, noise, capacity factors)? Did stochastic routing or stronger balance losses reduce collapse under RevIN?
+Could you report additional details on RevIN placement and behavior in each backbone (exact layers, statistics, learned affine or not) and whether any alternative normalizers change the outcome?
+How robust are the RR-MoA gains to the router architecture and capacity (e.g., MLP-only, different kernel sizes, deeper gates), and to Top-k choices beyond k=2?
+For the TRACE baseline, can you share an ablation verifying that your “TRACE-style” implementation reproduces or approximates results from the original paper on shared backbones/datasets?
+Can you extend the correlation analysis (routing signal ratio vs. gains) with uncertainty estimates, alternative definitions of R, or synthetic data where R is controlled, to strengthen the causal link?
+Do your conclusions persist for probabilistic forecasting metrics (e.g., CRPS, NLL) and for classification/anomaly detection tasks where instance statistics might play different roles?
+On Chronos (no RevIN), RR-MoA rarely helps. Is this because hidden states already encode the relevant statistics, or because the chosen expert pool is suboptimal? Could raw routing still help with a richer expert set?
+Have you tried combining raw routing with uncertainty-aware routing (e.g., VMoER-like temperature or amortized VI on logits) to further stabilize and improve calibration?
+Can you release the verify.py and raw logs for the ablations (especially disabling RevIN) to facilitate community replication?
+Overall Assessment
+This paper delivers a compelling diagnosis of why hidden-state MoE routing can fail for TSFMs with RevIN and proposes a simple, effective remedy: route on the raw pre-normalization input while keeping the backbone frozen. The empirical evidence is broad and well-aligned with the theory, and the controls are carefully chosen to isolate the role of normalization. The main caveat is that some headline claims—particularly that frozen RR-MoA outperforms full unfreezing—may partly reflect optimization or training-budget choices (15 epochs) rather than a fundamental limitation of unfreezing. Even so, the core insight about normalization-induced routing signal loss and its practical resolution via raw routing is novel, significant, and actionable for the TSFM community. With stronger fine-tuning baselines and additional robustness checks (routing stabilization variants; larger n for correlation analysis), this work would be a clear accept; as is, it remains a strong contribution that I recommend for publication.
+
+We Value Your Feedback
+How helpful is the review?
+
+Not helpful
+
+Helpful
+
+Very helpful
+Is there any critical error (excluding minor inconsistency) in the review?
+
+Yes
+
+No
+Does the review provide actionable suggestions for improvement?
+
+Yes
+
+No
+Additional comments (optional)
+Share any other thoughts or feedback...
+0 / 500 characters
+
+Submit Feedback
+Your feedback is anonymous and helps us improve our service
+
+Note: Reviews are AI generated and may contain errors. Please use them as guidance and apply your own judgment.
+
+Questions or feedback? Contact us at aireviewer@cs.stanford.edu
+
+
+
+Update
+6
+:
+52
+
+Selected Voice
+2.05"""
+
+---
+
+let handle them carefully item by item
