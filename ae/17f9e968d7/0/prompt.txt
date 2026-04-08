@@ -145,3 +145,7 @@ Read the output file to retrieve the result: /private/tmp/claude-501/-Users-hung
 ---
 
 Check RACE VM experiment progress: SSH in, show tail of tier3_run.log and reviewer_response.log, count completed multi-horizon files, check if reviewer response batch has started, and report status to the user.
+
+---
+
+let go
