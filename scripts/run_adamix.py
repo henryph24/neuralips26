@@ -360,6 +360,9 @@ def main():
     parser.add_argument("--trajectory-max-steps", type=int, default=400)
     parser.add_argument("--disable-revin", action="store_true",
                         help="Controlled ablation: disable RevIN inside MOMENT backbone")
+    parser.add_argument("--norm-type", default="revin",
+                        choices=["revin", "batchnorm", "groupnorm"],
+                        help="Normalization type inside MOMENT (generalization test)")
     args = parser.parse_args()
 
     os.makedirs("results/adamix", exist_ok=True)
@@ -369,7 +372,8 @@ def main():
     # Load model
     print("Loading %s..." % args.backbone)
     model = load_backbone(args.backbone, args.device,
-                          disable_revin=args.disable_revin)
+                          disable_revin=args.disable_revin,
+                          norm_type=args.norm_type)
     _disable_gradient_checkpointing(model)
     blocks = _get_encoder_blocks(model)
     hdim = _get_hidden_dim(model)
@@ -483,7 +487,8 @@ def main():
         "scaler": scaler_info,
     }
     revin_suffix = "_no_revin" if args.disable_revin else ""
-    path = "results/adamix/%s_H%d_K%d_%s_%d%s.json" % (args.dataset, args.horizon, args.K, args.unfreeze, args.seed, revin_suffix)
+    norm_suffix = "_%s" % args.norm_type if args.norm_type != "revin" else ""
+    path = "results/adamix/%s_H%d_K%d_%s_%d%s%s.json" % (args.dataset, args.horizon, args.K, args.unfreeze, args.seed, revin_suffix, norm_suffix)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
