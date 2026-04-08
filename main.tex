@@ -84,9 +84,9 @@ Our contributions:
 
 \textbf{TSFM Adaptation.} Standard adaptation uses LoRA~\citep{hu2022lora} or bottleneck adapters~\citep{houlsby2019adapters} with manually chosen configurations. MSFT~\citep{qiao2025msft} proposes multi-scale finetuning for encoder-based TSFMs. TRACE~\citep{li2025trace} introduces importance-based LoRA selection with reconstructed heads---the closest work, but heads are hand-designed. Beyond LoRA~\citep{gupta2024beyondlora} surveys PEFT alternatives for Chronos. AdaPTS~\citep{benechehab2025adapts} adapts input representations. Prune-then-Finetune~\citep{zhao2025prune} applies structured pruning. In-context fine-tuning~\citep{faw2025icf} adapts at inference time. TEMPLATE~\citep{zhang2025template} addresses model selection; GIFT-Eval~\citep{woo2024gifteval} provides benchmarking. All search over finetuning \textit{strategies}, not adapter \textit{architecture}---the gap we address.
 
-\textbf{MoE in Foundation Models.} Mixture-of-experts routing~\citep{fedus2022switch} has been applied within TSFM backbones: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} scales to billions of parameters via sparse activation. These apply MoE \emph{within} the backbone architecture. In contrast, RR-MoA applies MoE at the \emph{adapter level} on a frozen backbone---an orthogonal and complementary design axis. AdaMix~\citep{wang2022adamix} introduces adapter mixtures for NLP but routes on hidden states, which we show collapses on TSFMs with RevIN. No prior work has identified normalization-induced routing collapse or proposed pre-normalization routing.
+\textbf{MoE in Foundation Models.} Mixture-of-experts routing~\citep{fedus2022switch} has been applied within TSFM backbones: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} scales to billions of parameters via sparse activation. These apply MoE \emph{within} the backbone architecture; segment-wise approaches further specialize experts by temporal segments. In contrast, RR-MoA applies MoE at the \emph{adapter level} on a frozen backbone---an orthogonal and complementary design axis. Uncertainty-aware routing methods stabilize gating via Bayesian or temperature-based mechanisms; these address generic MoE instability but do not target the normalization-specific signal loss we identify. AdaMix~\citep{wang2022adamix} introduces adapter mixtures for NLP but routes on hidden states, which we show collapses on TSFMs with RevIN. No prior work has identified normalization-induced routing collapse or proposed pre-normalization routing.
 
-\textbf{Normalization in Time Series.} RevIN~\citep{kim2021revin} applies reversible instance normalization to mitigate distribution shift. DishTS~\citep{fan2023dishts} and Non-stationary Transformers~\citep{liu2022nonstationary} address normalization from the forecasting accuracy perspective. We identify a previously unknown side effect: RevIN destroys the per-window statistics that MoE routers require for discriminative gating, creating a fundamental tension between normalization for forecasting and normalization for routing.
+\textbf{Normalization in Time Series.} RevIN~\citep{kim2021revin} applies reversible instance normalization to mitigate distribution shift. DishTS~\citep{fan2023dishts} learns distribution-specific coefficients to partially recover stripped statistics, and Non-stationary Transformers~\citep{liu2022nonstationary} re-inject series-level statistics into the attention mechanism---both recognizing that instance normalization discards predictive information. We identify a previously unknown consequence of this information loss: RevIN destroys the per-window statistics that MoE routers require for discriminative gating, creating a fundamental tension between normalization for forecasting and normalization for routing. RR-MoA can be seen as operationalizing the ``statistic re-injection'' insight specifically for routing decisions.
 
 \textbf{NAS and LLM-Guided Search.} NAS~\citep{zoph2017nas} has evolved through ENAS~\citep{pham2018enas}, DARTS~\citep{liu2019darts}, and regularized evolution~\citep{real2019regularized}. Shears~\citep{munoz2024shears} and RZ-NAS~\citep{ji2025rznas} search adapter hyperparameters for LLMs; NAS-LoRA~\citep{chen2025naslora} targets vision adapters. FunSearch~\citep{romera2024funsearch}, EvoPrompting~\citep{chen2023evoprompting}, PartEvo~\citep{hu2025partevo}, and ReEvo~\citep{ye2024reevo} demonstrate LLM-guided program synthesis. We use this paradigm for expert pool construction (Appendix~\ref{app:aas_details}).
 
@@ -1399,6 +1399,33 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section{AdaMix Implementation Details}
+\label{app:adamix_details}
+
+Our AdaMix baseline follows \citet{wang2022adamix} with $K{=}5$ expert adapter heads identical to RR-MoA's canonical pool (mean, last, max, attention, conv1d). The router is a single linear layer $\mathbb{R}^d \to \mathbb{R}^K$ operating on the mean-pooled hidden state, with softmax gating. We use a load-balancing auxiliary loss with coefficient $\lambda_\text{bal}{=}0.01$, matching AdaMix's original formulation. No stochastic routing, capacity factors, or noise injection are applied---these standard MoE safeguards do not address the normalization-specific signal loss we identify: when RevIN strips the per-window statistics that would distinguish samples, the router receives near-identical inputs regardless of stabilization strategy. This is confirmed empirically: load-balancing loss does not prevent collapse under unfreezing (Table~\ref{tab:adamix}, entropy $= 0.000$ with $\lambda_\text{bal}{=}0.01$), while disabling RevIN recovers entropy to $0.66$--$1.32$ without any routing regularization.
+
+\section{RevIN Placement Across Backbones}
+\label{app:revin_placement}
+
+\begin{table}[h]
+\centering
+\caption{Normalization architecture per backbone. RevIN position relative to the encoder determines whether routing-relevant statistics survive to the hidden states.}
+\label{tab:revin_placement}
+\small
+\begin{tabular}{@{}lllc@{}}
+\toprule
+Backbone & Normalization & Placement & Routing collapse? \\
+\midrule
+MOMENT-small & RevIN (affine=False) + LayerNorm & Pre-encoder (before patching) & Yes ($H{=}0.000$) \\
+MOMENT-large & RevIN (affine=False) + LayerNorm & Pre-encoder (before patching) & Yes ($H{=}0.000$) \\
+Moirai-1.1-R-small & LayerNorm only & Per-block (standard transformer) & No ($H{=}1.48$--$1.60$) \\
+Chronos-T5-small & T5 LayerNorm only & Per-block (T5 pre-norm) & No ($H{=}1.42$--$1.53$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+MOMENT's RevIN applies instance normalization ($\mu{=}0$, $\sigma{=}1$ per window) \emph{before} the encoder, stripping mean and scale from every input. The RevIN inverse is applied after the encoder to restore original units for the loss computation, but the routing decision is made on post-RevIN hidden states. Moirai and Chronos apply only standard LayerNorm within each transformer block, which normalizes across the feature dimension but preserves per-window temporal statistics.
 
 \section{Factorial Decomposition}
 \label{app:decomposition}
