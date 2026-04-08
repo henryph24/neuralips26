@@ -136,25 +136,29 @@ def _extract_features_batch(model, encoder_blocks, batch_x, input_mask, backbone
 
 
 def _forward_chronos(model, encoder_blocks, batch_x):
-    """Forward pass for Chronos T5 encoder."""
+    """Forward pass for Chronos T5 encoder.
+
+    Patches the raw time series into (B, n_patches, patch_size) chunks,
+    then pads to d_model — same strategy as Moirai forward.
+    The hook on encoder_blocks[-1] captures the hidden states.
+    """
     import torch
     # batch_x is (B, 1, 512) — squeeze to (B, 512)
     x = batch_x.squeeze(1)
 
-    # Chronos uses its own tokenizer — but we can bypass it and use
-    # the raw encoder with continuous embeddings via the input projection
-    # The model here is the T5 inner model (has .encoder and .shared)
     encoder = model.encoder
-
-    # Project raw values through the shared embedding as continuous input
-    # T5 encoder expects inputs_embeds: (B, seq_len, d_model)
     d_model = encoder.config.d_model
-    # Simple linear projection of scalar values to d_model
-    # Use the first layer's weight as a projection (hacky but works for feature extraction)
-    inputs_embeds = x.unsqueeze(-1).expand(-1, -1, d_model)  # (B, 512, d_model)
+    patch_size = 32
+    n_patches = x.shape[1] // patch_size  # 512 / 32 = 16
 
-    with torch.no_grad():
-        encoder(inputs_embeds=inputs_embeds)
+    # Reshape into patches: (B, n_patches, patch_size)
+    patches = x[:, :n_patches * patch_size].reshape(x.shape[0], n_patches, patch_size)
+
+    # Pad patches to d_model (same approach as Moirai forward)
+    inputs_embeds = torch.nn.functional.pad(patches, (0, d_model - patch_size))
+
+    # Forward through encoder — no torch.no_grad() so adapter gradients flow
+    encoder(inputs_embeds=inputs_embeds)
 
 
 def _forward_moirai(model, encoder_blocks, batch_x):
