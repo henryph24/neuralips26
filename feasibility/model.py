@@ -13,7 +13,7 @@ _MOMENT_MODULE_MAP = None
 
 
 def load_moment(device: str = "cpu", model_name: str = "AutonLab/MOMENT-1-small",
-                disable_revin: bool = False) -> nn.Module:
+                disable_revin: bool = False, norm_type: str = "revin") -> nn.Module:
     """Load MOMENT pretrained model (small, base, or large)."""
     from momentfm import MOMENTPipeline
 
@@ -31,6 +31,29 @@ def load_moment(device: str = "cpu", model_name: str = "AutonLab/MOMENT-1-small"
             def forward(self, x, mode="norm", mask=None):
                 return x
         model.normalizer = _IdentityNormalizer()
+
+    if norm_type == "batchnorm":
+        class _BatchNormNormalizer(nn.Module):
+            """Replace RevIN with BatchNorm1d for generalization test."""
+            def __init__(self):
+                super().__init__()
+                self.bn = nn.BatchNorm1d(1)
+            def forward(self, x, mode="norm", mask=None):
+                if mode == "norm":
+                    return self.bn(x)
+                return x  # denorm is identity (BN has no reversible inverse)
+        model.normalizer = _BatchNormNormalizer().to(device)
+    elif norm_type == "groupnorm":
+        class _GroupNormNormalizer(nn.Module):
+            """Replace RevIN with GroupNorm for generalization test."""
+            def __init__(self):
+                super().__init__()
+                self.gn = nn.GroupNorm(1, 1)  # 1 group, 1 channel
+            def forward(self, x, mode="norm", mask=None):
+                if mode == "norm":
+                    return self.gn(x)
+                return x
+        model.normalizer = _GroupNormNormalizer().to(device)
 
     return model
 
@@ -55,11 +78,11 @@ def load_moirai(device: str = "cpu", model_name: str = "Salesforce/moirai-1.1-R-
 
 
 def load_backbone(backbone_name: str, device: str = "cpu",
-                   disable_revin: bool = False) -> nn.Module:
+                   disable_revin: bool = False, norm_type: str = "revin") -> nn.Module:
     """Load any supported TSFM backbone by name."""
     if "MOMENT" in backbone_name or "moment" in backbone_name.lower():
         return load_moment(device, model_name=backbone_name,
-                           disable_revin=disable_revin)
+                           disable_revin=disable_revin, norm_type=norm_type)
     elif "chronos" in backbone_name.lower():
         return load_chronos(device, model_name=backbone_name)
     elif "moirai" in backbone_name.lower():
