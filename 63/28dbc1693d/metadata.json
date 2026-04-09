@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "6328dbc1693d",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 28,
+  "files_touched": [
+    "main.tex",
+    "scripts/knn_diagnostic.py",
+    "scripts/plot_routing_viz.py",
+    "scripts/residual_diagnostic.py",
+    "scripts/run_residual_e1.py",
+    "tasks/closing_gap_ACTION_PLAN.md",
+    "tasks/closing_gap_FINAL_VERDICT.md",
+    "tasks/closing_gap_relaxed_constraints.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/63/28dbc1693d/0/metadata.json",
+      "transcript": "/63/28dbc1693d/0/full.jsonl",
+      "content_hash": "/63/28dbc1693d/0/content_hash.txt",
+      "prompt": "/63/28dbc1693d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 249,
+    "cache_creation_tokens": 465137,
+    "cache_read_tokens": 35749382,
+    "output_tokens": 132186,
+    "api_call_count": 189
+  }
+}
