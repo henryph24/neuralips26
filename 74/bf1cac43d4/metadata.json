@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "74bf1cac43d4",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_vision_moe_collapse_v2.py",
+    "scripts/run_vision_moe_race.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/74/bf1cac43d4/0/metadata.json",
+      "transcript": "/74/bf1cac43d4/0/full.jsonl",
+      "content_hash": "/74/bf1cac43d4/0/content_hash.txt",
+      "prompt": "/74/bf1cac43d4/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 907,
+    "cache_creation_tokens": 175088,
+    "cache_read_tokens": 14040337,
+    "output_tokens": 51719,
+    "api_call_count": 123
+  }
+}
