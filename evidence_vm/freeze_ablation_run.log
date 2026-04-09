@@ -1,0 +1,553 @@
+Unfreeze=frozen, backbone trainable params=0
+ETTh1 H=96: train=5000, test=5000
+
+RR-MoA: ETTh1 K=5 top2 unfreeze=frozen seed=42
+RR-MoA: MSE=0.6671  params=426102  time=34s
+Routing: {'mean': 0.226, 'last': 0.201, 'max': 0.216, 'attention': 0.188, 'conv1d': 0.169}
+Routing entropy: 1.509 / 1.609 (max)
+Routing max weight: 0.338 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=frozen):
+  linear          MSE=1.2664
+  attention       MSE=1.1937
+  conv            MSE=1.2821
+
+>>> RR-MoA wins: RR-MoA=0.6671 vs attention=1.1937  delta=-44.1%
+Saved to results/rr_moa/ETTh1_H96_K5_top2_frozen_42.json
+Unfreeze=last2, backbone trainable params=4720640
+ETTh1 H=96: train=5000, test=5000
+
+RR-MoA: ETTh1 K=5 top2 unfreeze=last2 seed=42
+RR-MoA: MSE=0.6826  params=426102  time=44s
+Routing: {'mean': 0.213, 'last': 0.216, 'max': 0.161, 'attention': 0.202, 'conv1d': 0.208}
+Routing entropy: 1.568 / 1.609 (max)
+Routing max weight: 0.289 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=last2):
+  linear          MSE=1.1741
+  attention       MSE=1.2298
+  conv            MSE=1.1293
+
+>>> RR-MoA wins: RR-MoA=0.6826 vs conv=1.1293  delta=-39.6%
+Saved to results/rr_moa/ETTh1_H96_K5_top2_last2_42.json
+Unfreeze=last4, backbone trainable params=9441280
+ETTh1 H=96: train=5000, test=5000
+
+RR-MoA: ETTh1 K=5 top2 unfreeze=last4 seed=42
+RR-MoA: MSE=0.7032  params=426102  time=53s
+Routing: {'mean': 0.225, 'last': 0.205, 'max': 0.16, 'attention': 0.195, 'conv1d': 0.215}
+Routing entropy: 1.568 / 1.609 (max)
+Routing max weight: 0.287 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=last4):
+  linear          MSE=1.2606
+  attention       MSE=1.4000
+  conv            MSE=1.2716
+
+>>> RR-MoA wins: RR-MoA=0.7032 vs linear=1.2606  delta=-44.2%
+Saved to results/rr_moa/ETTh1_H96_K5_top2_last4_42.json
+Unfreeze=frozen, backbone trainable params=0
+ETTm1 H=96: train=5000, test=5000
+
+RR-MoA: ETTm1 K=5 top2 unfreeze=frozen seed=42
+RR-MoA: MSE=0.4965  params=426102  time=34s
+Routing: {'mean': 0.142, 'last': 0.261, 'max': 0.284, 'attention': 0.191, 'conv1d': 0.122}
+Routing entropy: 1.343 / 1.609 (max)
+Routing max weight: 0.441 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=frozen):
+  linear          MSE=1.1777
+  attention       MSE=1.2228
+  conv            MSE=1.1900
+
+>>> RR-MoA wins: RR-MoA=0.4965 vs linear=1.1777  delta=-57.8%
+Saved to results/rr_moa/ETTm1_H96_K5_top2_frozen_42.json
+Unfreeze=last2, backbone trainable params=4720640
+ETTm1 H=96: train=5000, test=5000
+
+RR-MoA: ETTm1 K=5 top2 unfreeze=last2 seed=42
+RR-MoA: MSE=0.5783  params=426102  time=43s
+Routing: {'mean': 0.205, 'last': 0.17, 'max': 0.237, 'attention': 0.226, 'conv1d': 0.162}
+Routing entropy: 1.455 / 1.609 (max)
+Routing max weight: 0.365 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=last2):
+  linear          MSE=1.0597
+  attention       MSE=1.0356
+  conv            MSE=0.9232
+
+>>> RR-MoA wins: RR-MoA=0.5783 vs conv=0.9232  delta=-37.4%
+Saved to results/rr_moa/ETTm1_H96_K5_top2_last2_42.json
+Unfreeze=last4, backbone trainable params=9441280
+ETTm1 H=96: train=5000, test=5000
+
+RR-MoA: ETTm1 K=5 top2 unfreeze=last4 seed=42
+RR-MoA: MSE=0.6029  params=426102  time=53s
+Routing: {'mean': 0.247, 'last': 0.171, 'max': 0.164, 'attention': 0.24, 'conv1d': 0.178}
+Routing entropy: 1.480 / 1.609 (max)
+Routing max weight: 0.363 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=last4):
+  linear          MSE=1.0316
+  attention       MSE=0.8588
+  conv            MSE=0.9538
+
+>>> RR-MoA wins: RR-MoA=0.6029 vs attention=0.8588  delta=-29.8%
+Saved to results/rr_moa/ETTm1_H96_K5_top2_last4_42.json
+Unfreeze=frozen, backbone trainable params=0
+Weather H=96: train=5000, test=5000
+
+RR-MoA: Weather K=5 top2 unfreeze=frozen seed=42
+RR-MoA: MSE=0.2818  params=426102  time=34s
+Routing: {'mean': 0.298, 'last': 0.184, 'max': 0.185, 'attention': 0.178, 'conv1d': 0.155}
+Routing entropy: 1.487 / 1.609 (max)
+Routing max weight: 0.360 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=frozen):
+  linear          MSE=0.5213
+  attention       MSE=0.6389
+  conv            MSE=0.5692
+
+>>> RR-MoA wins: RR-MoA=0.2818 vs linear=0.5213  delta=-45.9%
+Saved to results/rr_moa/Weather_H96_K5_top2_frozen_42.json
+Unfreeze=last2, backbone trainable params=4720640
+Weather H=96: train=5000, test=5000
+
+RR-MoA: Weather K=5 top2 unfreeze=last2 seed=42
+RR-MoA: MSE=0.2564  params=426102  time=43s
+Routing: {'mean': 0.266, 'last': 0.169, 'max': 0.242, 'attention': 0.183, 'conv1d': 0.141}
+Routing entropy: 1.481 / 1.609 (max)
+Routing max weight: 0.359 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=last2):
+  linear          MSE=0.5087
+  attention       MSE=0.5452
+  conv            MSE=0.5037
+
+>>> RR-MoA wins: RR-MoA=0.2564 vs conv=0.5037  delta=-49.1%
+Saved to results/rr_moa/Weather_H96_K5_top2_last2_42.json
+Unfreeze=last4, backbone trainable params=9441280
+Weather H=96: train=5000, test=5000
+
+RR-MoA: Weather K=5 top2 unfreeze=last4 seed=42
+RR-MoA: MSE=0.2759  params=426102  time=54s
+Routing: {'mean': 0.216, 'last': 0.192, 'max': 0.248, 'attention': 0.173, 'conv1d': 0.17}
+Routing entropy: 1.426 / 1.609 (max)
+Routing max weight: 0.382 (1.0 = collapsed)
+
+Baselines (15 epochs, unfreeze=last4):
+  linear          MSE=0.6222
+  attention       MSE=0.5101
+  conv            MSE=0.4592
+
+>>> RR-MoA wins: RR-MoA=0.2759 vs conv=0.4592  delta=-39.9%
+Saved to results/rr_moa/Weather_H96_K5_top2_last4_42.json
+Unfreeze=last2, backbone trainable params=4720640
+ETTh1 H=96: train=5000, test=5000
+
+RR-MoA: ETTh1 K=5 top1 unfreeze=last2 seed=42
+RR-MoA: MSE=1.2792  params=426102  time=40s
+Routing: {'mean': 0.198, 'last': 0.202, 'max': 0.201, 'attention': 0.2, 'conv1d': 0.199}
+Routing entropy: 1.608 / 1.609 (max)
+Routing max weight: 0.211 (1.0 = collapsed)
+Saved to results/rr_moa/ETTh1_H96_K5_top1_last2_42.json
+Unfreeze=last2, backbone trainable params=4720640
+ETTh1 H=96: train=5000, test=5000
+
+RR-MoA: ETTh1 K=5 top2 unfreeze=last2 seed=42
+RR-MoA: MSE=0.6826  params=426102  time=44s
+Routing: {'mean': 0.213, 'last': 0.216, 'max': 0.161, 'attention': 0.202, 'conv1d': 0.208}
+Routing entropy: 1.568 / 1.609 (max)
+Routing max weight: 0.289 (1.0 = collapsed)
+Saved to results/rr_moa/ETTh1_H96_K5_top2_last2_42.json
+Unfreeze=last2, backbone trainable params=4720640
+ETTh1 H=96: train=5000, test=5000
+
+RR-MoA: ETTh1 K=5 top3 unfreeze=last2 seed=42
+RR-MoA: MSE=0.6704  params=426102  time=49s
+Routing: {'mean': 0.282, 'last': 0.171, 'max': 0.164, 'attention': 0.187, 'conv1d': 0.196}
+Routing entropy: 1.535 / 1.609 (max)
+Routing max weight: 0.304 (1.0 = collapsed)
+Saved to results/rr_moa/ETTh1_H96_K5_top3_last2_42.json
+Unfreeze=last2, backbone trainable params=4720640
+ETTh1 H=96: train=5000, test=5000
+
+RR-MoA: ETTh1 K=5 dense unfreeze=last2 seed=42
+RR-MoA: MSE=0.5512  params=426102  time=35s
+Routing: {'mean': 0.232, 'last': 0.175, 'max': 0.164, 'attention': 0.233, 'conv1d': 0.196}
+Routing entropy: 1.538 / 1.609 (max)
+Routing max weight: 0.302 (1.0 = collapsed)
+Saved to results/rr_moa/ETTh1_H96_K5_dense_last2_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=frozen, backbone_trainable=0
+ETTh1 H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: ETTh1 H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=1.1412  MAE=0.8241  params=441830  time=26s
+Routing: {'mean': 0.222, 'last': 0.048, 'max': 0.0, 'attention': 0.429, 'conv1d': 0.301}
+Routing entropy: 1.083 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=frozen):
+  linear          MSE=1.2904  params=49248
+  attention       MSE=1.4838  params=49761
+  conv            MSE=1.2031  params=209248
+
+============================================================
+SUMMARY: ETTh1 H=96
+============================================================
+AdaMix (K=5):  MSE=1.1412  params=441830  time=26s
+Best baseline: MSE=1.2031  (conv)
+Delta: -5.1% -> Winner: AdaMix
+Saved to results/adamix/ETTh1_H96_K5_frozen_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=last2, backbone_trainable=4720640
+ETTh1 H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: ETTh1 H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=1.1528  MAE=0.8369  params=441830  time=35s
+Routing: {'mean': 0.0, 'last': 0.0, 'max': 0.0, 'attention': 1.0, 'conv1d': 0.0}
+Routing entropy: 0.000 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=last2):
+  linear          MSE=1.0304  params=49248
+  attention       MSE=1.2270  params=49761
+  conv            MSE=1.1160  params=209248
+
+============================================================
+SUMMARY: ETTh1 H=96
+============================================================
+AdaMix (K=5):  MSE=1.1528  params=441830  time=35s
+Best baseline: MSE=1.0304  (linear)
+Delta: +11.9% -> Winner: BASELINE
+Saved to results/adamix/ETTh1_H96_K5_last2_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=last4, backbone_trainable=9441280
+ETTh1 H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: ETTh1 H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=1.1544  MAE=0.8389  params=441830  time=45s
+Routing: {'mean': 0.0, 'last': 0.0, 'max': 0.0, 'attention': 1.0, 'conv1d': 0.0}
+Routing entropy: 0.000 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=last4):
+  linear          MSE=1.1014  params=49248
+  attention       MSE=1.0954  params=49761
+  conv            MSE=1.0972  params=209248
+
+============================================================
+SUMMARY: ETTh1 H=96
+============================================================
+AdaMix (K=5):  MSE=1.1544  params=441830  time=45s
+Best baseline: MSE=1.0954  (attention)
+Delta: +5.4% -> Winner: BASELINE
+Saved to results/adamix/ETTh1_H96_K5_last4_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=frozen, backbone_trainable=0
+ETTm1 H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: ETTm1 H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=1.0242  MAE=0.8001  params=441830  time=26s
+Routing: {'mean': 0.384, 'last': 0.0, 'max': 0.0, 'attention': 0.27, 'conv1d': 0.345}
+Routing entropy: 1.009 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=frozen):
+  linear          MSE=1.1601  params=49248
+  attention       MSE=1.1564  params=49761
+  conv            MSE=1.2478  params=209248
+
+============================================================
+SUMMARY: ETTm1 H=96
+============================================================
+AdaMix (K=5):  MSE=1.0242  params=441830  time=26s
+Best baseline: MSE=1.1564  (attention)
+Delta: -11.4% -> Winner: AdaMix
+Saved to results/adamix/ETTm1_H96_K5_frozen_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=last2, backbone_trainable=4720640
+ETTm1 H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: ETTm1 H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=1.1226  MAE=0.8036  params=441830  time=35s
+Routing: {'mean': 0.0, 'last': 0.0, 'max': 0.0, 'attention': 1.0, 'conv1d': 0.0}
+Routing entropy: 0.000 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=last2):
+  linear          MSE=1.0612  params=49248
+  attention       MSE=0.9420  params=49761
+  conv            MSE=0.8412  params=209248
+
+============================================================
+SUMMARY: ETTm1 H=96
+============================================================
+AdaMix (K=5):  MSE=1.1226  params=441830  time=35s
+Best baseline: MSE=0.8412  (conv)
+Delta: +33.4% -> Winner: BASELINE
+Saved to results/adamix/ETTm1_H96_K5_last2_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=last4, backbone_trainable=9441280
+ETTm1 H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: ETTm1 H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=1.1227  MAE=0.8042  params=441830  time=45s
+Routing: {'mean': 0.0, 'last': 0.0, 'max': 0.0, 'attention': 1.0, 'conv1d': 0.0}
+Routing entropy: 0.000 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=last4):
+  linear          MSE=1.0495  params=49248
+  attention       MSE=0.9535  params=49761
+  conv            MSE=0.9887  params=209248
+
+============================================================
+SUMMARY: ETTm1 H=96
+============================================================
+AdaMix (K=5):  MSE=1.1227  params=441830  time=45s
+Best baseline: MSE=0.9535  (attention)
+Delta: +17.8% -> Winner: BASELINE
+Saved to results/adamix/ETTm1_H96_K5_last4_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=frozen, backbone_trainable=0
+Weather H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: Weather H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=0.4482  MAE=0.4690  params=441830  time=26s
+Routing: {'mean': 0.499, 'last': 0.023, 'max': 0.005, 'attention': 0.401, 'conv1d': 0.072}
+Routing entropy: 0.921 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=frozen):
+  linear          MSE=0.5237  params=49248
+  attention       MSE=0.5749  params=49761
+  conv            MSE=0.5964  params=209248
+
+============================================================
+SUMMARY: Weather H=96
+============================================================
+AdaMix (K=5):  MSE=0.4482  params=441830  time=26s
+Best baseline: MSE=0.5237  (linear)
+Delta: -14.4% -> Winner: AdaMix
+Saved to results/adamix/Weather_H96_K5_frozen_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=last2, backbone_trainable=4720640
+Weather H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: Weather H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=0.6062  MAE=0.5873  params=441830  time=35s
+Routing: {'mean': 0.0, 'last': 0.0, 'max': 0.0, 'attention': 1.0, 'conv1d': 0.0}
+Routing entropy: 0.000 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=last2):
+  linear          MSE=0.5114  params=49248
+  attention       MSE=0.5876  params=49761
+  conv            MSE=0.4499  params=209248
+
+============================================================
+SUMMARY: Weather H=96
+============================================================
+AdaMix (K=5):  MSE=0.6062  params=441830  time=35s
+Best baseline: MSE=0.4499  (conv)
+Delta: +34.7% -> Winner: BASELINE
+Saved to results/adamix/Weather_H96_K5_last2_42.json
+Loading AutonLab/MOMENT-1-small...
+d_model=512, K=5, hidden=64, unfreeze=last4, backbone_trainable=9441280
+Weather H=96: train=5000, val=5000, test=5000
+
+============================================================
+AdaMix: Weather H=96 K=5 seed=42
+============================================================
+AdaMix: MSE=0.6057  MAE=0.5868  params=441830  time=45s
+Routing: {'mean': 0.0, 'last': 0.0, 'max': 0.0, 'attention': 1.0, 'conv1d': 0.0}
+Routing entropy: 0.000 (max=1.609 for K=5)
+
+Fixed baselines (15 epochs, unfreeze=last4):
+  linear          MSE=0.5419  params=49248
+  attention       MSE=0.5067  params=49761
+  conv            MSE=0.5610  params=209248
+
+============================================================
+SUMMARY: Weather H=96
+============================================================
+AdaMix (K=5):  MSE=0.6057  params=441830  time=45s
+Best baseline: MSE=0.5067  (attention)
+Delta: +19.5% -> Winner: BASELINE
+Saved to results/adamix/Weather_H96_K5_last4_42.json
+
+### FREEZE-LEVEL ABLATION ###
+
+======================================================================
+RUNNING: RR-MoA ETTh1 unfreeze=frozen seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTh1 --unfreeze frozen --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA ETTh1 unfreeze=frozen seed=42  (113s)
+
+======================================================================
+RUNNING: RR-MoA ETTh1 unfreeze=last2 seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTh1 --unfreeze last2 --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA ETTh1 unfreeze=last2 seed=42  (150s)
+
+======================================================================
+RUNNING: RR-MoA ETTh1 unfreeze=last4 seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTh1 --unfreeze last4 --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA ETTh1 unfreeze=last4 seed=42  (187s)
+
+======================================================================
+RUNNING: RR-MoA ETTm1 unfreeze=frozen seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTm1 --unfreeze frozen --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA ETTm1 unfreeze=frozen seed=42  (116s)
+
+======================================================================
+RUNNING: RR-MoA ETTm1 unfreeze=last2 seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTm1 --unfreeze last2 --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA ETTm1 unfreeze=last2 seed=42  (151s)
+
+======================================================================
+RUNNING: RR-MoA ETTm1 unfreeze=last4 seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTm1 --unfreeze last4 --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA ETTm1 unfreeze=last4 seed=42  (187s)
+
+======================================================================
+RUNNING: RR-MoA Weather unfreeze=frozen seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset Weather --unfreeze frozen --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA Weather unfreeze=frozen seed=42  (115s)
+
+======================================================================
+RUNNING: RR-MoA Weather unfreeze=last2 seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset Weather --unfreeze last2 --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA Weather unfreeze=last2 seed=42  (150s)
+
+======================================================================
+RUNNING: RR-MoA Weather unfreeze=last4 seed=42
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset Weather --unfreeze last4 --top-k 2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] RR-MoA Weather unfreeze=last4 seed=42  (189s)
+
+### TOP-K SPARSITY ABLATION ###
+
+======================================================================
+RUNNING: RR-MoA ETTh1 top1 unfreeze=last2
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTh1 --unfreeze last2 --seed 42 --epochs 15 --device cuda --no-baselines --top-k 1
+======================================================================
+[OK] RR-MoA ETTh1 top1 unfreeze=last2  (46s)
+
+======================================================================
+RUNNING: RR-MoA ETTh1 top2 unfreeze=last2
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTh1 --unfreeze last2 --seed 42 --epochs 15 --device cuda --no-baselines --top-k 2
+======================================================================
+[OK] RR-MoA ETTh1 top2 unfreeze=last2  (49s)
+
+======================================================================
+RUNNING: RR-MoA ETTh1 top3 unfreeze=last2
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTh1 --unfreeze last2 --seed 42 --epochs 15 --device cuda --no-baselines --top-k 3
+======================================================================
+[OK] RR-MoA ETTh1 top3 unfreeze=last2  (54s)
+
+======================================================================
+RUNNING: RR-MoA ETTh1 dense unfreeze=last2
+CMD: /usr/bin/python3 scripts/run_rr_moa.py --dataset ETTh1 --unfreeze last2 --seed 42 --epochs 15 --device cuda --no-baselines
+======================================================================
+[OK] RR-MoA ETTh1 dense unfreeze=last2  (41s)
+
+### ADAMIX ROUTING COLLAPSE CONTROL ###
+
+======================================================================
+RUNNING: AdaMix ETTh1 unfreeze=frozen seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset ETTh1 --unfreeze frozen --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix ETTh1 unfreeze=frozen seed=42  (105s)
+
+======================================================================
+RUNNING: AdaMix ETTh1 unfreeze=last2 seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset ETTh1 --unfreeze last2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix ETTh1 unfreeze=last2 seed=42  (141s)
+
+======================================================================
+RUNNING: AdaMix ETTh1 unfreeze=last4 seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset ETTh1 --unfreeze last4 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix ETTh1 unfreeze=last4 seed=42  (179s)
+
+======================================================================
+RUNNING: AdaMix ETTm1 unfreeze=frozen seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset ETTm1 --unfreeze frozen --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix ETTm1 unfreeze=frozen seed=42  (105s)
+
+======================================================================
+RUNNING: AdaMix ETTm1 unfreeze=last2 seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset ETTm1 --unfreeze last2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix ETTm1 unfreeze=last2 seed=42  (142s)
+
+======================================================================
+RUNNING: AdaMix ETTm1 unfreeze=last4 seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset ETTm1 --unfreeze last4 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix ETTm1 unfreeze=last4 seed=42  (178s)
+
+======================================================================
+RUNNING: AdaMix Weather unfreeze=frozen seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset Weather --unfreeze frozen --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix Weather unfreeze=frozen seed=42  (106s)
+
+======================================================================
+RUNNING: AdaMix Weather unfreeze=last2 seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset Weather --unfreeze last2 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix Weather unfreeze=last2 seed=42  (143s)
+
+======================================================================
+RUNNING: AdaMix Weather unfreeze=last4 seed=42
+CMD: /usr/bin/python3 scripts/run_adamix.py --dataset Weather --unfreeze last4 --seed 42 --epochs 15 --device cuda
+======================================================================
+[OK] AdaMix Weather unfreeze=last4 seed=42  (180s)
+
+======================================================================
+ABLATION COMPLETE: 22/22 succeeded in 2826s (47.1 min)
+======================================================================
+  [OK] RR-MoA ETTh1 unfreeze=frozen seed=42
+  [OK] RR-MoA ETTh1 unfreeze=last2 seed=42
+  [OK] RR-MoA ETTh1 unfreeze=last4 seed=42
+  [OK] RR-MoA ETTm1 unfreeze=frozen seed=42
+  [OK] RR-MoA ETTm1 unfreeze=last2 seed=42
+  [OK] RR-MoA ETTm1 unfreeze=last4 seed=42
+  [OK] RR-MoA Weather unfreeze=frozen seed=42
+  [OK] RR-MoA Weather unfreeze=last2 seed=42
+  [OK] RR-MoA Weather unfreeze=last4 seed=42
+  [OK] RR-MoA ETTh1 top1 unfreeze=last2
+  [OK] RR-MoA ETTh1 top2 unfreeze=last2
+  [OK] RR-MoA ETTh1 top3 unfreeze=last2
+  [OK] RR-MoA ETTh1 dense unfreeze=last2
+  [OK] AdaMix ETTh1 unfreeze=frozen seed=42
+  [OK] AdaMix ETTh1 unfreeze=last2 seed=42
+  [OK] AdaMix ETTh1 unfreeze=last4 seed=42
+  [OK] AdaMix ETTm1 unfreeze=frozen seed=42
+  [OK] AdaMix ETTm1 unfreeze=last2 seed=42
+  [OK] AdaMix ETTm1 unfreeze=last4 seed=42
+  [OK] AdaMix Weather unfreeze=frozen seed=42
+  [OK] AdaMix Weather unfreeze=last2 seed=42
+  [OK] AdaMix Weather unfreeze=last4 seed=42
+
+Summary: results/freeze_ablation_summary_42.json

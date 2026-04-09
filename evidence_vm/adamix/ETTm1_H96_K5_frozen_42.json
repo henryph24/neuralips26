@@ -1,0 +1,42 @@
+{
+  "dataset": "ETTm1",
+  "horizon": 96,
+  "seed": 42,
+  "K": 5,
+  "hidden": 64,
+  "unfreeze": "frozen",
+  "backbone_trainable_params": 0,
+  "adamix": {
+    "mse": 1.0242429971694946,
+    "mae": 0.8000543117523193,
+    "param_count": 441830,
+    "mean_routing_weights": {
+      "mean": 0.384,
+      "last": 0.0,
+      "max": 0.0,
+      "attention": 0.27,
+      "conv1d": 0.345
+    },
+    "routing_entropy": 1.0088167190551758
+  },
+  "elapsed": 25.745750427246094,
+  "baselines": {
+    "linear": {
+      "mse": 1.1600735187530518,
+      "mae": 0.8575974106788635,
+      "param_count": 49248
+    },
+    "attention": {
+      "mse": 1.1563732624053955,
+      "mae": 0.8580958247184753,
+      "param_count": 49761
+    },
+    "conv": {
+      "mse": 1.2477883100509644,
+      "mae": 0.885627806186676,
+      "param_count": 209248
+    }
+  },
+  "winner": "AdaMix",
+  "delta_pct": -11.426264298177738
+}

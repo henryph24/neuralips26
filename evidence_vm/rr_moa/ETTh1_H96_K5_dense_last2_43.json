@@ -1,0 +1,28 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "seed": 43,
+  "K": 5,
+  "top_k": 5,
+  "unfreeze": "last2",
+  "backbone_trainable_params": 4720640,
+  "rr_moa": {
+    "mse": 0.5845075249671936,
+    "mae": 0.5339317321777344,
+    "param_count": 426102,
+    "top_k": 5,
+    "routing": {
+      "mean": 0.236,
+      "last": 0.189,
+      "max": 0.205,
+      "attention": 0.19,
+      "conv1d": 0.179
+    },
+    "routing_entropy": 1.5411542654037476,
+    "routing_max_weight": 0.30636170506477356
+  },
+  "elapsed": 35.278908252716064,
+  "baselines": {},
+  "winner": "N/A",
+  "delta_pct": 0.0
+}
