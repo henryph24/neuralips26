@@ -1,0 +1,115 @@
+{
+  "seed": 43,
+  "epochs": 20,
+  "K": 5,
+  "conditions": {
+    "A_unfrozen_instancenorm": {
+      "frozen": false,
+      "norm_type": "instancenorm",
+      "test_acc": 0.9178,
+      "test_entropy": 1.4513,
+      "entropy_step0": 1.609,
+      "entropy_step50": 1.6085,
+      "entropy_step200": 1.6065,
+      "entropy_final": 1.4513,
+      "final_weights": [
+        0.3428,
+        0.039239,
+        0.15342,
+        0.276704,
+        0.187837
+      ],
+      "final_usage": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collapsed": false,
+      "elapsed_sec": 401.6,
+      "n_trainable_params": 11259384
+    },
+    "B_frozen_instancenorm": {
+      "frozen": true,
+      "norm_type": "instancenorm",
+      "test_acc": 0.5642,
+      "test_entropy": 0.9641,
+      "entropy_step0": 1.609,
+      "entropy_step50": 1.6075,
+      "entropy_step200": 1.592,
+      "entropy_final": 0.9642,
+      "final_weights": [
+        0.014549,
+        0.041148,
+        0.11426,
+        0.694867,
+        0.135176
+      ],
+      "final_usage": [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      "collapsed": false,
+      "elapsed_sec": 160.0,
+      "n_trainable_params": 90552
+    },
+    "C_unfrozen_nonorm": {
+      "frozen": false,
+      "norm_type": "none",
+      "test_acc": 0.9127,
+      "test_entropy": 0.0042,
+      "entropy_step0": 1.225,
+      "entropy_step50": 1.0786,
+      "entropy_step200": 0.3424,
+      "entropy_final": 0.003,
+      "final_weights": [
+        0.000201,
+        4e-06,
+        0.999701,
+        4.3e-05,
+        5.1e-05
+      ],
+      "final_usage": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "collapsed": true,
+      "elapsed_sec": 349.3,
+      "n_trainable_params": 11259384
+    },
+    "D_unfrozen_batchnorm": {
+      "frozen": false,
+      "norm_type": "batchnorm",
+      "test_acc": 0.9217,
+      "test_entropy": 1.3831,
+      "entropy_step0": 1.6087,
+      "entropy_step50": 1.5993,
+      "entropy_step200": 1.5917,
+      "entropy_final": 1.4422,
+      "final_weights": [
+        0.409361,
+        0.139085,
+        0.255949,
+        0.086343,
+        0.109262
+      ],
+      "final_usage": [
+        0.5375,
+        0.0125,
+        0.45,
+        0.0,
+        0.0
+      ],
+      "collapsed": false,
+      "elapsed_sec": 350.9,
+      "n_trainable_params": 11260408
+    }
+  }
+}
