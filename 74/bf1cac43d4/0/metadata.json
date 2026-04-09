@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "74bf1cac43d4",
+  "session_id": "9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-09T13:04:00.072135Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_vision_moe_collapse_v2.py",
+    "scripts/run_vision_moe_race.sh"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-4-6[1m]",
+  "turn_id": "753885e8930a",
+  "token_usage": {
+    "input_tokens": 907,
+    "cache_creation_tokens": 175088,
+    "cache_read_tokens": 14040337,
+    "output_tokens": 51719,
+    "api_call_count": 123
+  },
+  "session_metrics": {
+    "turn_count": 6
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-09T13:03:58.312147Z",
+    "agent_lines": 532,
+    "human_added": 345,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 877,
+    "agent_percentage": 60.66134549600912
+  }
+}
