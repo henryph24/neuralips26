@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "6328dbc1693d",
+  "session_id": "582b8944-aace-48ed-853a-155dd9b5ff68",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-09T09:02:11.634084Z",
+  "branch": "main",
+  "checkpoints_count": 28,
+  "files_touched": [
+    "main.tex",
+    "scripts/knn_diagnostic.py",
+    "scripts/plot_routing_viz.py",
+    "scripts/residual_diagnostic.py",
+    "scripts/run_residual_e1.py",
+    "tasks/closing_gap_ACTION_PLAN.md",
+    "tasks/closing_gap_FINAL_VERDICT.md",
+    "tasks/closing_gap_relaxed_constraints.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f18200857760",
+  "token_usage": {
+    "input_tokens": 249,
+    "cache_creation_tokens": 465137,
+    "cache_read_tokens": 35749382,
+    "output_tokens": 132186,
+    "api_call_count": 189
+  },
+  "session_metrics": {
+    "turn_count": 28
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-09T09:02:09.012041Z",
+    "agent_lines": 3679,
+    "human_added": 2298,
+    "human_modified": 384,
+    "human_removed": 0,
+    "total_committed": 6361,
+    "agent_percentage": 57.836818110360014
+  }
+}
