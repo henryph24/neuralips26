@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "01102edc34ed",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 42,
+  "files_touched": [
+    "april09.md",
+    "main.tex",
+    "scripts/run_gap_closing.py",
+    "scripts/run_gap_closing_race.sh",
+    "tasks/experiment_opportunities.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/01/102edc34ed/0/metadata.json",
+      "transcript": "/01/102edc34ed/0/full.jsonl",
+      "content_hash": "/01/102edc34ed/0/content_hash.txt",
+      "prompt": "/01/102edc34ed/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 901,
+    "cache_creation_tokens": 793694,
+    "cache_read_tokens": 39994576,
+    "output_tokens": 92652,
+    "api_call_count": 227
+  }
+}
