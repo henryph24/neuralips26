@@ -1,0 +1,42 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 42,
+  "K": 5,
+  "hidden": 64,
+  "unfreeze": "last2",
+  "backbone_trainable_params": 4720640,
+  "adamix": {
+    "mse": 0.6062108278274536,
+    "mae": 0.5872986912727356,
+    "param_count": 441830,
+    "mean_routing_weights": {
+      "mean": 0.0,
+      "last": 0.0,
+      "max": 0.0,
+      "attention": 1.0,
+      "conv1d": 0.0
+    },
+    "routing_entropy": 8.786573246766238e-09
+  },
+  "elapsed": 35.54877710342407,
+  "baselines": {
+    "linear": {
+      "mse": 0.5114048719406128,
+      "mae": 0.5251758098602295,
+      "param_count": 49248
+    },
+    "attention": {
+      "mse": 0.5876277089118958,
+      "mae": 0.5576332211494446,
+      "param_count": 49761
+    },
+    "conv": {
+      "mse": 0.4499053359031677,
+      "mae": 0.4725913405418396,
+      "param_count": 209248
+    }
+  },
+  "winner": "BASELINE",
+  "delta_pct": 34.74186222097335
+}

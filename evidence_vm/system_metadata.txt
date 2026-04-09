@@ -1,0 +1,29 @@
+=== HOSTNAME ===
+ip-10-110-161-2
+
+=== UNAME ===
+Linux ip-10-110-161-2 6.8.0-1044-aws #46~22.04.1-Ubuntu SMP Tue Dec  2 12:52:18 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+=== GPU ===
+name, memory.total [MiB], driver_version, compute_cap, temperature.gpu
+NVIDIA A10G, 23028 MiB, 550.144.03, 8.6, 22
+
+=== TORCH ===
+torch 2.4.0+cu124
+cuda 12.4
+device NVIDIA A10G
+
+=== GIT (code version) ===
+
+=== RESULTS DIR SIZE ===
+220K	results/rr_moa
+fatal: not a git repository (or any of the parent directories): .git
+184K	results/adamix
+
+=== FIRST 3 LINES OF A SAMPLE JSON (in-situ, proves authorship) ===
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+
+=== CURRENT DATE ===
+Sun Apr  5 17:45:50 AEST 2026
