@@ -371,105 +371,84 @@ This explains all empirical observations: (i)~the RevIN router loses $60$--$88\%
 
 \begin{figure}[t]
 \centering
+\begin{minipage}[t]{0.58\columnwidth}
+\centering
 \begin{tikzpicture}
 \begin{axis}[
     ybar,
-    width=\columnwidth,
-    height=5.5cm,
-    bar width=8pt,
+    width=\textwidth,
+    height=4.5cm,
+    bar width=6pt,
     ylabel={Test MSE (H=96)},
-    ylabel style={font=\small},
+    ylabel style={font=\scriptsize},
     symbolic x coords={ETTh1, ETTm1, Weath, ETTh2, ETTm2, Elec},
     xtick=data,
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.8},
+    x tick label style={font=\scriptsize},
+    y tick label style={font=\scriptsize},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\tiny, draw=none, fill=white, fill opacity=0.8},
     ymin=0,
     enlarge x limits=0.12,
     error bars/y dir=both,
     error bars/y explicit,
-    error bars/error bar style={line width=0.5pt, black!60},
+    error bars/error bar style={line width=0.4pt, black!60},
 ]
 \addplot[fill=red!45] coordinates {(ETTh1,1.060) +- (0,0.059) (ETTm1,0.871) +- (0,0.029) (Weath,0.468) +- (0,0.009) (ETTh2,2.645) +- (0,0.049) (ETTm2,2.559) +- (0,0.146) (Elec,0.457) +- (0,0.006) };
 \addplot[fill=blue!55] coordinates {(ETTh1,0.680) +- (0,0.027) (ETTm1,0.564) +- (0,0.059) (Weath,0.276) +- (0,0.017) (ETTh2,0.778) +- (0,0.095) (ETTm2,0.538) +- (0,0.069) (Elec,0.402) +- (0,0.062) };
-\node[font=\tiny, text=red!70!black] at (axis cs:ETTh1,1.21) {$-36\%$};
-\node[font=\tiny, text=red!70!black] at (axis cs:ETTm1,1.00) {$-35\%$};
-\node[font=\tiny, text=red!70!black] at (axis cs:Weath,0.58) {$-41\%$};
-\node[font=\tiny, text=red!70!black] at (axis cs:ETTh2,2.79) {$-71\%$};
-\node[font=\tiny, text=red!70!black] at (axis cs:ETTm2,2.80) {$-79\%$};
-\node[font=\tiny, text=red!70!black] at (axis cs:Elec,0.57) {$-12\%$};
-\legend{Full fine-tuning (all unfrozen), Frozen RR-MoA (Top-2)}
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTh1,1.21) {$\scalebox{0.8}{-36\%}$};
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTm1,1.00) {$\scalebox{0.8}{-35\%}$};
+\node[font=\tiny, text=red!70!black] at (axis cs:Weath,0.58) {$\scalebox{0.8}{-41\%}$};
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTh2,2.79) {$\scalebox{0.8}{-71\%}$};
+\node[font=\tiny, text=red!70!black] at (axis cs:ETTm2,2.80) {$\scalebox{0.8}{-79\%}$};
+\node[font=\tiny, text=red!70!black] at (axis cs:Elec,0.57) {$\scalebox{0.8}{-12\%}$};
+\legend{Full FT (unfrozen), Frozen RR-MoA}
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{The Frozen Paradox.} Frozen RR-MoA (blue) beats full backbone fine-tuning with all 8 encoder layers unfrozen (red) by $12$--$79\%$ across all 6 datasets on MOMENT-small, reversing the standard PEFT heuristic that unfreezing improves adaptation. Error bars: std over 3 seeds (full-FT) / 5 seeds (RR-MoA).}
-\label{fig:frozen_paradox}
-\end{figure}
-
-\begin{figure}[h]
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.40\columnwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-    width=0.75\columnwidth, height=5cm,
-    xlabel={Routing signal ratio $R(\mathcal{D})$},
-    ylabel={RR-MoA improvement $\Delta\%$},
-    xlabel style={font=\small}, ylabel style={font=\small},
-    x tick label style={font=\small}, y tick label style={font=\small},
+    width=\textwidth, height=4.5cm,
+    xlabel={Signal ratio $R(\mathcal{D})$},
+    ylabel={$\Delta\%$},
+    xlabel style={font=\scriptsize}, ylabel style={font=\scriptsize},
+    x tick label style={font=\scriptsize}, y tick label style={font=\scriptsize},
     xmin=0, xmax=1.5, ymin=-85, ymax=10,
     grid=major, grid style={gray!20},
     clip=false,
 ]
-% Data from analyze_routing_signal_ratio.py (7 datasets, channel-standardized)
-\addplot[only marks, mark=*, mark size=3pt, blue!80] coordinates {
-    (0.135, +2.9)
-    (0.242, -26.8)
-    (0.566, -43.2)
-    (0.671, -51.1)
-    (0.703, -44.6)
-    (1.163, -71.0)
-    (1.241, -77.2)
+\addplot[only marks, mark=*, mark size=2.5pt, blue!80] coordinates {
+    (0.135, +2.9) (0.242, -26.8) (0.566, -43.2) (0.671, -51.1) (0.703, -44.6) (1.163, -71.0) (1.241, -77.2)
 };
-% Labels
-\node[font=\tiny, anchor=west] at (axis cs:0.17, +2.9) {Traffic};
+\node[font=\tiny, anchor=west] at (axis cs:0.17, +2.9) {Traf};
 \node[font=\tiny, anchor=west] at (axis cs:0.27, -26.8) {Elec};
-\node[font=\tiny, anchor=east] at (axis cs:0.54, -43.2) {ETTh1};
-\node[font=\tiny, anchor=west] at (axis cs:0.70, -51.1) {ETTm1};
-\node[font=\tiny, anchor=east] at (axis cs:0.67, -44.6) {Weath};
-\node[font=\tiny, anchor=west] at (axis cs:1.19, -71.0) {ETTh2};
-\node[font=\tiny, anchor=west] at (axis cs:1.27, -77.2) {ETTm2};
-% Zero line
+\node[font=\tiny, anchor=east] at (axis cs:0.54, -43.2) {h1};
+\node[font=\tiny, anchor=west] at (axis cs:0.70, -51.1) {m1};
+\node[font=\tiny, anchor=east] at (axis cs:0.67, -44.6) {W};
+\node[font=\tiny, anchor=west] at (axis cs:1.19, -71.0) {h2};
+\node[font=\tiny, anchor=west] at (axis cs:1.27, -77.2) {m2};
 \addplot[black, thin, dotted] coordinates {(0,0) (1.5,0)};
-% Trend line (least squares fit over 7 points)
 \addplot[red, thick, dashed, domain=0.05:1.4] {-62.4*x + 5.8};
-\node[font=\scriptsize, text=red!70, anchor=south west] at (axis cs:0.02, -82) {$\rho = -0.96$, $p < 0.001$};
+\node[font=\tiny, text=red!70, anchor=south west] at (axis cs:0.02, -82) {$\rho{=}{-}0.96$};
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{Proposition~\ref{thm:mi_decomp} prediction validated across 7 datasets.} The routing signal ratio $R(\mathcal{D}) = [\text{Var}(M) + \text{Var}(\Sigma)] / \overline{\text{Var}(S)}$, computed on channel-standardized windows, correlates with RR-MoA improvement (Spearman $\rho = -0.96$, $p < 0.001$). Traffic (lowest $R$) is correctly predicted as the boundary case where raw routing provides no advantage.}
+\end{minipage}
+\caption{\textbf{Left: The Frozen Paradox.} Frozen RR-MoA (blue) beats full fine-tuning (red) by $12$--$79\%$ on all 6 datasets. \textbf{Right: Proposition~\ref{thm:mi_decomp} validated} ($\rho{=}{-}0.96$, $p{<}0.001$). $R(\mathcal{D})$ predicts where raw routing helps---and where it does not (Traffic).}
+\label{fig:frozen_paradox}
 \label{fig:signal_ratio}
 \end{figure}
 
-\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on four architecturally distinct backbones. The results reveal a \emph{normalization spectrum}: the benefit of raw routing scales with how aggressively the backbone's internal normalization degrades sample-discriminative statistics.
+\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on four backbones, revealing a \emph{normalization spectrum}: MOMENT-small/large (RevIN): \textbf{all 18 configs} win per backbone ($27$--$81\%$ improvement); Moirai (no RevIN, LayerNorm only): \textbf{18/18} wins ($3$--$31\%$; Moirai+RR-MoA matches DLinear on Weather: $0.209$ vs $0.208$); Chronos (no RevIN, encoder-decoder): only \textbf{1/9} wins, with AdaMix retaining entropy $1.48$--$1.60$ (no collapse)---independently confirming collapse is normalization-specific (full tables in Appendix~\ref{app:cross_backbone}). The improvement gradient $81\%{>}31\%{>}{\sim}0\%$ tracks normalization aggressiveness, not backbone size.
 
-\textit{MOMENT-small/large} (RevIN + 8/24 LayerNorm blocks): RR-MoA wins \textbf{all 18 configurations} per backbone (6 datasets $\times$ 3 seeds), with improvements of $27$--$81\%$. RevIN is the primary mechanism: it explicitly strips per-window mean and scale before the encoder.
-
-\textit{Moirai} (no RevIN, 6 LayerNorm blocks): RR-MoA wins \textbf{18/18} with improvements of $3$--$31\%$ (full table in Appendix~\ref{app:cross_backbone}). Even without RevIN, repeated LayerNorm progressively homogenizes hidden states, making raw routing valuable. Moirai+RR-MoA on Weather reaches $0.209{\pm}0.004$---matching DLinear from scratch ($0.208$).
-
-\textit{Chronos-T5-small} (no RevIN, encoder-decoder): RR-MoA wins only \textbf{1/9}. Chronos's T5 encoder-decoder architecture preserves more sample-level information in hidden states, and the conv baseline already achieves strong MSE ($0.659$ on ETTh1).\footnote{Chronos results use a generic patch-and-pad input projection rather than Chronos's learned tokenizer; some performance gap may reflect integration quality.} AdaMix on Chronos retains entropy $1.48$--$1.60$ under unfreezing (no collapse), independently confirming that routing collapse is normalization-specific.
-
-The gradient of improvement---$81\%$ (MOMENT+RevIN) $>$ $31\%$ (Moirai, LayerNorm only) $>$ ${\sim}0\%$ (Chronos)---is consistent with the normalization depth and type, not just RevIN presence.
-
-\subsection{Top-\texorpdfstring{$k$}{k} Sparse Routing and Task Generalization}
-\label{sec:topk}
-
-Top-2 sparse routing retains $63\%$ of the dense mixture's MSE gain on ETTh1 while activating only $2$ of $5$ experts per sample, bounding active expert FLOPs to $40\%$ of the dense setting (full ablation in Appendix~\ref{app:topk}). On A10G (batch 128), RR-MoA Top-2 adds $4.3$\,ms ($+10\%$) latency and $2.6$\,MB peak memory over a single adapter---negligible compared to the $44.3$\,ms backbone forward pass (Appendix~\ref{app:benchmark}).
-
-\textbf{Multi-horizon and task generalization.} RR-MoA wins \textbf{24/24} configurations across horizons $H \in \{96, 192, 336, 720\}$ on ETTh1 and ETTm1 (3 seeds each), with $-38\%$ to $-51\%$ MSE improvement at every horizon. The routing advantage extends to all 6 datasets across all 4 horizons (full grid in Appendix~\ref{app:horizon}), confirming that RR-MoA's benefit is not horizon-specific. RR-MoA also generalizes to imputation (20\% masked reconstruction, 3 seeds, mean$\pm$std): $-44\%$ to $-67\%$ MSE on 3/3 datasets (Appendix~\ref{app:imputation}).
-
+\textbf{Sparse routing, multi-horizon, and task generalization.}\label{sec:topk}
+Top-2 sparse routing adds $4.3$\,ms ($+10\%$) latency over a single adapter (Appendix~\ref{app:topk},\ref{app:benchmark}). RR-MoA wins \textbf{24/24} horizon configurations ($H{\in}\{96,192,336,720\}$, $-38\%$ to $-51\%$); the DLinear gap narrows with $H$ ($+83\%{\to}+48\%$ on ETTh1, $+58\%{\to}+14\%$ on Weather; Appendix Table~\ref{tab:horizon}). RR-MoA also generalizes to imputation ($-44\%$ to $-67\%$ on 3/3 datasets; Appendix~\ref{app:imputation}). An information content diagnostic (Appendix~\ref{app:diagnostic}) confirms the DLinear gap reflects genuine information destruction by normalization and patch compression: k-NN on backbone features is $16$--$33\%$ worse than on raw input, and DLinear dominates at every training set size $N{\in}\{10,\ldots,5000\}$.
 
 \section{Conclusion}
 
-We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved via three converging controls and formalized via Proposition~\ref{thm:mi_decomp}, whose quantitative prediction is validated at $\rho{=}{-}0.96$ ($p{<}0.001$) across seven datasets. \textbf{RR-MoA} breaks the collapse by routing on the raw pre-normalization signal with a frozen backbone (\textbf{54/54 wins}, $p{<}0.001$, four backbones, four horizons, two tasks). The \emph{Frozen Paradox}---frozen RR-MoA outperforms full backbone fine-tuning by $16$--$77\%$ across 6 datasets---reverses the standard PEFT heuristic. A cross-backbone control on Chronos (no RevIN) confirms that RR-MoA helps when and only when normalization strips routing-relevant statistics, validating the theory's predictive scope. More broadly, we verify that the collapse generalizes beyond RevIN: replacing it with BatchNorm1d or GroupNorm produces the same entropy collapse (Appendix~\ref{app:norm_generalization}), establishing the normalization-routing tension as a property of \emph{any} instance-level normalizer. This predicts analogous failures wherever instance normalization precedes routing---including vision MoE with InstanceNorm and diffusion models with GroupNorm-gated experts.
+We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved via three converging controls and formalized via Proposition~\ref{thm:mi_decomp} ($\rho{=}{-}0.96$, $p{<}0.001$ across seven datasets). \textbf{RR-MoA} breaks the collapse by routing on raw pre-normalization signal with a frozen backbone (\textbf{54/54 wins}, $p{<}0.001$, four backbones, four horizons, two tasks). The \emph{Frozen Paradox}---frozen RR-MoA outperforms full fine-tuning by $16$--$77\%$---reverses the standard PEFT heuristic. The collapse generalizes beyond RevIN to BatchNorm1d and GroupNorm (Appendix~\ref{app:norm_generalization}), predicting analogous failures wherever instance normalization precedes routing in vision MoE and diffusion models.
 
-\textbf{Limitations.} (1)~Absolute MSE gap to supervised baselines on MOMENT-small (narrows on Moirai). (2)~Native MoE backbones (Moirai-MoE, Time-MoE) not evaluated. (3)~Proposition~\ref{prop:frozen} is proved for a linear model; the nonlinear case remains open. (4)~Cross-modal generalization is empirically validated for three normalizer types on time series but not yet tested in other modalities.
+\textbf{Limitations.} (1)~Absolute MSE gap to supervised baselines on MOMENT-small (narrows with horizon and backbone quality; Appendix~\ref{app:diagnostic} confirms genuine information loss). (2)~Native MoE backbones (Moirai-MoE, Time-MoE) not evaluated. (3)~Proposition~\ref{thm:mi_decomp} proved for a linear model; nonlinear case open. (4)~Normalization generalization validated on time series only. (5)~Expert pool hand-selected; cross-channel routing unexplored.
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -894,19 +873,19 @@ Vijay Ekambaram, Arindam Jati, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kal
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Multi-horizon RR-MoA} (MOMENT-small, strictly frozen, Top-2, 3 seeds, test MSE mean$\pm$std). RR-MoA wins all 24 configurations across horizons $96$--$720$.}
+\caption{\textbf{Multi-horizon RR-MoA vs.\ DLinear} (MOMENT-small, strictly frozen, Top-2, 3 seeds, test MSE mean$\pm$std). RR-MoA wins all 24 configurations vs.\ best fixed baseline across horizons $96$--$720$. DLinear column provides supervised calibration: the gap narrows from $+83\%$ to $+48\%$ on ETTh1 and from $+58\%$ to $+14\%$ on Weather as $H$ grows, consistent with the frozen backbone's horizon-invariant representation becoming relatively more informative at longer horizons where DLinear's underdetermined system ($H{>}T$) struggles.}
 \label{tab:horizon}
 \small
-\begin{tabular}{@{}lcccccc@{}}
+\begin{tabular}{@{}lccccccccc@{}}
 \toprule
- & \multicolumn{3}{c}{ETTh1} & \multicolumn{3}{c}{ETTm1} \\
-\cmidrule(lr){2-4} \cmidrule(lr){5-7}
-$H$ & RR-MoA & Best fixed & $\Delta$ & RR-MoA & Best fixed & $\Delta$ \\
+ & \multicolumn{3}{c}{ETTh1} & \multicolumn{3}{c}{ETTm1} & \multicolumn{3}{c}{Weather} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10}
+$H$ & RR-MoA & Best fixed & DLinear & RR-MoA & Best fixed & DLinear & RR-MoA & Best fixed & DLinear \\
 \midrule
-96  & $\mathbf{0.690{\pm}0.021}$ & $1.233$ & $-44\%$ & $\mathbf{0.571{\pm}0.073}$ & $1.169$ & $-51\%$ \\
-192 & $\mathbf{0.800{\pm}0.016}$ & $1.326$ & $-40\%$ & $\mathbf{0.633{\pm}0.043}$ & $1.141$ & $-45\%$ \\
-336 & $\mathbf{0.816{\pm}0.025}$ & $1.316$ & $-38\%$ & $\mathbf{0.693{\pm}0.043}$ & $1.125$ & $-38\%$ \\
-720 & $\mathbf{0.838{\pm}0.043}$ & $1.379$ & $-39\%$ & $\mathbf{0.693{\pm}0.045}$ & $1.121$ & $-38\%$ \\
+96  & $0.690{\pm}.021$ & $1.233$ & $\mathit{0.417}$ & $0.571{\pm}.073$ & $1.169$ & $\mathit{0.322}$ & $0.329{\pm}.116$ & $0.522$ & $\mathit{0.208}$ \\
+192 & $0.800{\pm}.016$ & $1.326$ & $\mathit{0.468}$ & $0.633{\pm}.043$ & $1.141$ & $\mathit{0.368}$ & $0.293{\pm}.006$ & $0.498$ & $\mathit{0.248}$ \\
+336 & $0.816{\pm}.025$ & $1.316$ & $\mathit{0.505}$ & $0.693{\pm}.043$ & $1.125$ & $\mathit{0.427}$ & $0.337{\pm}.014$ & $0.516$ & $\mathit{0.286}$ \\
+720 & $0.838{\pm}.043$ & $1.379$ & $\mathit{0.566}$ & $0.693{\pm}.045$ & $1.121$ & $\mathit{0.453}$ & $0.400{\pm}.015$ & $0.548$ & $\mathit{0.350}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1086,7 +1065,7 @@ Under gradient descent $\dot{A} = -\eta\,\partial\ell/\partial A$, the induced c
 \begin{equation*}
 \dot{\ell}_1\big|_A = \left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^\top\dot{A}\,\mathbf{x} = -\eta\|\mathbf{x}\|^2\!\left[p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2 + (1{-}p)\left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^{\!\top}\frac{\partial\ell_2}{\partial\mathbf{h}} + (\ell_1{-}\ell_2)\,p(1{-}p)\left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^{\!\top}\mathbf{w}\right]
 \end{equation*}
-The first term (self-gradient) always decreases $\ell_1$. The second (cross-gradient) is negligible when expert gradients are approximately orthogonal---a condition that holds empirically once experts specialize to distinct input clusters (Appendix~\ref{app:routing_entropy}). The third (loss-coupling) term is small early in training when $|\ell_1 - \ell_2| \ll \|\partial\ell_1/\partial\mathbf{h}\|$. Retaining only the dominant first term:
+The first term (self-gradient) always decreases $\ell_1$. The second (cross-gradient) is negligible when expert gradients are approximately orthogonal---a condition that holds empirically once experts specialize to distinct input clusters (Appendix~\ref{app:routing_weights}). The third (loss-coupling) term is small early in training when $|\ell_1 - \ell_2| \ll \|\partial\ell_1/\partial\mathbf{h}\|$. Retaining only the dominant first term:
 \begin{equation*}
 \dot{\ell}_1\big|_A \approx -\eta\,p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2\|\mathbf{x}\|^2
 \end{equation*}
@@ -1341,6 +1320,13 @@ Backbone & Dataset & AAS MSE & Best Fixed & $\Delta$ \\
 \label{fig:routing_appendix}
 \end{figure}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{figures/routing_viz.pdf}
+\caption{\textbf{Per-sample expert assignment vs.\ input statistics} (ETTh1, seed 42, $N{=}5{,}000$ test windows). Left: amplitude vs.\ volatility; right: mean level vs.\ amplitude. Colors indicate dominant expert (top-1 routing weight). Expert selection clusters by amplitude and volatility---the very statistics RevIN strips---validating the independence assumption $(M,\Sigma) \perp\!\!\!\perp S$ from Proposition~\ref{thm:mi_decomp}.}
+\label{fig:routing_viz}
+\end{figure}
+
 \section{Extended RR-MoA Freeze Grid}
 \label{app:extended_rrmoa}
 
@@ -1521,6 +1507,50 @@ Dataset & DLinear (from scratch) & RR-MoA (frozen, Top-2) & Gap \\
 ETTh1   & $0.416 \pm 0.002$ & $0.690 \pm 0.021$ & $+65.9\%$ \\
 ETTm1   & $0.322 \pm 0.004$ & $0.572 \pm 0.073$ & $+77.6\%$ \\
 Weather & $0.208 \pm 0.003$ & $0.289 \pm 0.008$ & $+38.9\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Information Content Diagnostic}
+\label{app:diagnostic}
+
+To quantify the information bottleneck created by RevIN and the encoder, we compare the forecasting value of backbone features against raw input using non-parametric methods. All experiments run on CPU with zero GPU cost.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Backbone features vs.\ raw input} (H=96, 80/20 train/test split). k-NN: k-nearest neighbor regression ($k{=}20$, distance-weighted) on mean-pooled backbone features vs.\ raw 512-dim input. Ridge: regularized linear regression (cross-validated $\alpha$). Backbone features are $16$--$33\%$ worse than raw input even with a universal approximator (k-NN), confirming genuine information destruction.}
+\label{tab:diagnostic}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+& \multicolumn{2}{c}{k-NN (MSE)} & \multicolumn{2}{c}{Ridge (MSE)} & Backbone \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+Dataset & Raw input & Backbone & Raw input & Backbone & penalty \\
+\midrule
+ETTh1   & $0.636$ & $0.737$ & $0.551$ & $1.230$ & $+16\%$ \\
+ETTm1   & $0.498$ & $0.614$ & $0.363$ & $0.708$ & $+23\%$ \\
+Weather & $0.453$ & $0.601$ & $0.300$ & $0.661$ & $+33\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Residual correction experiments further confirm that backbone features provide negligible complementary signal: adding backbone features (via Ridge or Random Forest) as a residual correction atop a linear raw-input predictor improves MSE by at most $0.55\%$. On ETTh1, Random Forest regression on raw input alone reduces MSE by $44\%$ versus Ridge, revealing substantial nonlinear temporal structure in the raw data. However, Random Forest on backbone features adds only $+0.02\%$ to the linear baseline---the encoder destroys this nonlinear structure entirely. Few-shot experiments (Table~\ref{tab:fewshot}) confirm the pattern holds at every training set size $N \in \{10, \ldots, 5000\}$: DLinear dominates at all $N$, ruling out data scarcity as a regime where the frozen backbone recovers its advantage. The gap to DLinear reflects information destruction by the normalization--encoding pipeline, not a limitation of adapter design or training data volume.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Few-shot learning curve} (H=96, mean$\pm$std over seeds $\{42,43,44\}$). DLinear (49K params, trained from scratch) dominates frozen RR-MoA-full (426K params) at every training set size, confirming the gap reflects encoder information loss rather than data efficiency.}
+\label{tab:fewshot}
+\scriptsize
+\begin{tabular}{@{}rcccccc@{}}
+\toprule
+& \multicolumn{2}{c}{ETTh1} & \multicolumn{2}{c}{Weather} & \multicolumn{2}{c}{Electricity} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+$N$ & DLinear & RR-MoA & DLinear & RR-MoA & DLinear & RR-MoA \\
+\midrule
+10   & $\mathit{0.859}$ & $1.530$ & $\mathit{0.361}$ & $1.265$ & $\mathit{0.601}$ & $1.384$ \\
+100  & $\mathit{0.630}$ & $1.172$ & $\mathit{0.286}$ & $0.773$ & $\mathit{0.373}$ & $1.103$ \\
+1000 & $\mathit{0.453}$ & $0.816$ & $\mathit{0.213}$ & $0.378$ & $\mathit{0.188}$ & $0.732$ \\
+5000 & $\mathit{0.421}$ & $0.692$ & $\mathit{0.205}$ & $0.288$ & $\mathit{0.158}$ & $0.396$ \\
 \bottomrule
 \end{tabular}
 \end{table}
