@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "151b4b67ece7",
+  "session_id": "4df34b53-9a00-4833-b743-861a1f104931",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T16:02:42.549534Z",
+  "branch": "main",
+  "checkpoints_count": 18,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_10seed_race.sh",
+    "scripts/run_raw_mlp_moe.py",
+    "scripts/run_raw_mlp_moe_race.sh"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "76862f423f30",
+  "checkpoint_transcript_start": 785,
+  "transcript_lines_at_start": 785,
+  "token_usage": {
+    "input_tokens": 232,
+    "cache_creation_tokens": 193594,
+    "cache_read_tokens": 70916709,
+    "output_tokens": 111078,
+    "api_call_count": 113
+  },
+  "session_metrics": {
+    "turn_count": 32
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T16:02:37.680564Z",
+    "agent_lines": 547,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 547,
+    "agent_percentage": 100
+  }
+}

@@ -1,0 +1,148 @@
+/loop monitor the experiments running at RACE every 30 minutes
+
+---
+
+create a .doc replica of the main tex
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+in the meantime, audit this review to see if they are valid: "Based on a deep, hyper-critical analysis of the provided manuscript, this paper is conceptually a **Top-5% submission** for its scientific diagnosis, but procedurally it borders on a **Desk Reject**. 
+
+If the authors fix a glaring procedural violation and correct their logical contradictions during the rebuttal, this is a **Highly Likely Accept** for NeurIPS 2026. The paper demonstrates an exceptional level of scientific hygiene in its causal controls, but a strict NeurIPS Reviewer or Area Chair (AC) will immediately attack its marketing claims.
+
+Here is a rigorous, NeurIPS-style critical review, breaking down why the paper is brilliant, where it is highly vulnerable, and what its ultimate fate will be.
+
+---
+
+### 1. The Masterclass (Why the AC will want to accept it)
+Most machine learning papers propose a new architecture, run it on benchmarks, and claim SOTA. This paper does something much rarer: it identifies a pathological failure mode (MoE routing collapse on Time Series Foundation Models), mathematically diagnoses the root cause (RevIN stripping location-scale routing signals), and proves the diagnosis through a gauntlet of causal controls. 
+
+*   **The Vision Cross-Modality Control (App 21.1):** This is a stroke of scientific genius. The authors demonstrate that `InstanceNorm` *prevents* MoE collapse in Vision models, whereas it *causes* it in Time Series. Why? Because routing information in vision is spatial (which IN preserves), while routing info in time series relies on amplitude/volatility (which IN destroys). This perfectly validates the modality-specific nature of Proposition 2.
+*   **Predictive Theory:** Proposition 2 isn't "math-washing." It derives a computable metric (the routing signal ratio $R(D)$) that correlates at an astounding $\rho = -0.96$ with empirical gains. Crucially, it successfully predicts its own failure case: the `Traffic` dataset boundary case.
+*   **Actionable Honesty:** The authors openly admit their massive 35M-parameter foundation model loses to a tiny 49K-parameter `DLinear`. They then use their mechanistic diagnosis to construct "Dual-Stream" experts that successfully target and close this gap.
+
+---
+
+### 2. The Hyper-Critical Flaws (Where Reviewers will tear it apart)
+
+A sharp reviewer will absolutely crucify this paper on four specific fronts:
+
+#### A. The Procedural Fatal Flaw: "Running" Experiments
+*   **The Attack:** In the Abstract and Section 4, the authors confidently claim: *"Crucially, standard MoE rescue mechanisms... all fail to rescue hidden-state routing."* Yet, looking at **Table 3**, 8 out of the 11 mechanisms are explicitly marked as `"partial*"` or `"running"`.
+*   **The Reality:** Submitting incomplete primary tables is an egregious violation of top-tier peer-review standards. You cannot assert a definitive negative result when 75% of your SLURM jobs haven't finished. If Expert-Choice routing or Z-loss *does* fix the collapse in the pending runs, the paper’s central premise is threatened. This is grounds for an automatic rejection if not instantly resolved in the rebuttal.
+
+#### B. The "Frozen Paradox" is a Fabricated Fallacy
+The authors heavily market the "Frozen Paradox," claiming that freezing the backbone improves performance because *"unfreezing buys routing collapse, not expressivity—reversing the standard PEFT heuristic."* A critical reviewer will easily dismantle this logic:
+1.  **Factually Contradicted by their own Tables:** On the `Weather` dataset (Table 1), Frozen RR-MoA scores **0.289**, while Unfrozen (Last-2) RR-MoA scores **0.251** (a 13% *improvement*). Unfreezing explicitly buys expressivity here, completely invalidating the claim that frozen is always better.
+2.  **Logically Contradictory:** The authors state that RR-MoA routes on raw inputs, making it *"immune to gradient co-adaptation."* If RR-MoA is immune to collapse, then Unfrozen RR-MoA cannot be suffering from routing collapse. The performance drop on ETTh1 is just standard small-dataset overfitting.
+3.  **Apples-to-Oranges Fallacy:** The authors claim "Frozen RR-MoA beats full fine-tuning... reversing the standard PEFT heuristic." But Full Fine-Tuning is a *single-head* adapter. Frozen RR-MoA is a *Mixture of Experts*. Comparing a Frozen MoE to an Unfrozen Single-Head and concluding "unfreezing is bad" is false logic. For single heads, unfreezing *improves* MSE (1.254 down to 1.060, Table 4). The paradox is entirely manufactured.
+
+#### C. The System-Level Motivation is Mathematically Backwards
+*   **The Attack:** To justify using a frozen TSFM over `DLinear` (which beats them from scratch), the authors argue that for N=100 tenants, per-tenant `DLinear` requires too many training pipelines, whereas adapter-swapping a TSFM uses *"45x less memory than per-tenant model copies."*
+*   **The Reality:** `DLinear` has 49K parameters. The RR-MoA adapter has 426K parameters, plus the 35M parameter TSFM backbone. Assuming float32 (4 bytes):
+    *   100 tenants * 49K `DLinear` = **~19.6 MB**.
+    *   1 shared TSFM + 100 RR-MoA adapters = 140 MB + (100 * 1.7 MB) = **~310 MB**.
+    `DLinear` is 15x *smaller* in memory, trains in seconds, and gets better MSE. The multi-tenant efficiency argument for TSFMs over `DLinear` is mathematically absurd. The only valid motivation remaining for the TSFM is cross-task reuse (imputation/zero-shot).
+
+#### D. The "Dual-Stream" Trojan Horse (Is the TSFM dead weight?)
+*   **The Attack:** To finally beat `DLinear`, the authors introduce "Dual-Stream" experts that blend the TSFM backbone features with an MLP operating directly on the raw input $X_{raw}$. 
+*   **The Missing Baseline:** In Appendix 26, the authors explicitly prove that the TSFM encoder *destroys* non-linear temporal structure. If the TSFM destroys the signal, and the dual-stream fix requires raw data to recover it, isn't the raw-data MLP doing 99% of the heavy lifting? The paper desperately needs an ablation showing a Mixture of Adapters operating **ONLY on raw MLPs** (deleting the 35M-parameter TSFM entirely). If a pure Raw-MLP MoE matches the Dual-Stream performance, then the massive Foundation Model is exposed as nothing more than a computationally expensive, redundant ensemble member.
+
+---
+
+### 3. Final Verdict for NeurIPS 2026
+**Prediction: Borderline Accept $\rightarrow$ Weak Accept.**
+
+The review cycle for this paper will be brutal. Reviewers will rightly attack the incomplete Table 3, tear apart the "Frozen Paradox" logic, and question the TSFM's actual utility against DLinear. 
+
+**However**, NeurIPS Area Chairs ultimately look for papers that advance our fundamental understanding of neural networks. The causal diagnosis of normalization-induced routing collapse, supported by Proposition 2 and the brilliant Vision control experiment, is an outstanding piece of ML science that provides deep mechanistic interpretability to the PEFT community. 
+
+If the authors use the rebuttal phase to provide the completed Table 3 runs, dial back the over-marketed "Frozen Paradox," and address the pure raw-MLP baseline, the underlying science is simply too strong to reject."
+
+---
+
+let do what does not need new experiments now, then recite the next steps
+
+---
+
+Let write out new experiments and queue them at our Race VM
+
+---
+
+<task-notification>
+<task-id>byazzads8</task-id>
+<tool-use-id>toolu_01CVUqdye3tzgWekQyeQXh5W</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/byazzads8.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait 2 min + check E1/E2 progress" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+How's everything?
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+<task-notification>
+<task-id>bw96ajjq1</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/bw96ajjq1.output</output-file>
+<status>failed</status>
+<summary>Background command "Monitor snapshot" failed with exit code 144</summary>
+</task-notification>
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+monitor the experiments running at RACE
+
+---
+
+try to reach the vm one more time
+
+---
+
+recall our memory on how to access again
+
+---
+
+i guess because recently we turned off surfshark (with the dedicated ip already being whitelisted), then we turn it on again, while the VM is at full utilisation ? Maybe we should just wait ultrathink ?
+
+---
+
+yes let's spend it productively on the paper
