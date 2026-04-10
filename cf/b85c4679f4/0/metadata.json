@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "cfb85c4679f4",
+  "session_id": "4df34b53-9a00-4833-b743-861a1f104931",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:26:13.139817Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "evidence_vm/verify.py",
+    "feasibility/model.py",
+    "main.tex",
+    "scripts/analyze_rescue_sweep.py",
+    "scripts/run_adamix.py",
+    "scripts/run_moirai_moe_race.sh",
+    "scripts/run_rescue_baseline_race.sh",
+    "scripts/run_rr_moa.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2ca0a4fc8348",
+  "token_usage": {
+    "input_tokens": 849,
+    "cache_creation_tokens": 575286,
+    "cache_read_tokens": 57341391,
+    "output_tokens": 223971,
+    "api_call_count": 198
+  },
+  "session_metrics": {
+    "turn_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:26:10.65127Z",
+    "agent_lines": 990,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 990,
+    "agent_percentage": 100
+  }
+}
