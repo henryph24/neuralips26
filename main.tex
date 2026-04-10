@@ -444,13 +444,13 @@ This explains all empirical observations: (i)~the RevIN router loses $60$--$88\%
 \textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on three backbones with instance normalization and one \emph{negative control} without it, revealing a \emph{normalization spectrum}. MOMENT-small/large (RevIN): \textbf{all 18 configs} win per backbone ($27$--$81\%$ improvement). Moirai (no RevIN, LayerNorm only): \textbf{18/18} wins ($3$--$31\%$; Moirai+RR-MoA matches DLinear on Weather: $0.209$ vs $0.208$). \textbf{Negative control---Chronos} (no instance normalization, encoder-decoder): standard AdaMix routing retains high entropy ($1.48$--$1.60$) with \emph{no collapse}, and RR-MoA provides no advantage (only \textbf{1/9} wins). This is exactly as Proposition~\ref{thm:mi_decomp} predicts: without instance normalization, temporal statistics are preserved in the hidden states and pre-normalization routing is unnecessary. The improvement gradient $81\%{>}31\%{>}{\sim}0\%$ tracks normalization aggressiveness, not backbone size (full tables in Appendix~\ref{app:cross_backbone}).
 
 \textbf{Sparse routing, multi-horizon, and task generalization.}\label{sec:topk}
-Top-2 sparse routing adds $4.3$\,ms ($+10\%$) latency over a single adapter (Appendix~\ref{app:topk},\ref{app:benchmark}). RR-MoA wins \textbf{24/24} horizon configurations ($H{\in}\{96,192,336,720\}$, $-38\%$ to $-51\%$); the DLinear gap narrows with $H$ ($+83\%{\to}+48\%$ on ETTh1, $+58\%{\to}+14\%$ on Weather; Appendix Table~\ref{tab:horizon}). RR-MoA also generalizes to imputation ($-44\%$ to $-67\%$ on 3/3 datasets; Appendix~\ref{app:imputation}). An information content diagnostic (Appendix~\ref{app:diagnostic}) confirms the DLinear gap reflects genuine information destruction by normalization and patch compression: k-NN on backbone features is $16$--$33\%$ worse than on raw input, and DLinear dominates at every training set size $N{\in}\{10,\ldots,5000\}$.
+Top-2 sparse routing adds $4.3$\,ms ($+10\%$) latency over a single adapter (Appendix~\ref{app:topk},\ref{app:benchmark}). RR-MoA wins \textbf{24/24} horizon configurations ($H{\in}\{96,192,336,720\}$, $-38\%$ to $-51\%$); the DLinear gap narrows with $H$ ($+83\%{\to}+48\%$ on ETTh1, $+58\%{\to}+14\%$ on Weather). RR-MoA also generalizes to imputation ($-44\%$ to $-67\%$; Appendix~\ref{app:imputation}). An information diagnostic (Appendix~\ref{app:diagnostic}) confirms the residual gap reflects genuine information loss: k-NN on backbone features is $16$--$33\%$ worse than on raw input.
 
 \section{Conclusion}
 
-We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved via three converging controls and formalized via Proposition~\ref{thm:mi_decomp} ($\rho{=}{-}0.96$, $p{<}0.001$ across seven datasets). \textbf{RR-MoA} breaks the collapse by routing on raw pre-normalization signal with a frozen backbone (\textbf{54/54 wins}, $p{<}0.001$, three backbones, four horizons, two tasks). The \emph{Frozen Paradox}---frozen RR-MoA outperforms full fine-tuning by $12$--$79\%$---reverses the standard PEFT heuristic. The collapse generalizes beyond RevIN to BatchNorm1d and GroupNorm (Appendix~\ref{app:norm_generalization}). A cross-modality control on ResNet-18 + CIFAR-10 (Appendix~\ref{app:vision_moe}) confirms that gradient co-adaptation is modality-general but the normalization trigger is modality-specific: in vision, normalization \emph{prevents} collapse because per-channel spatial statistics carry negligible routing signal---exactly as Proposition~\ref{thm:mi_decomp} predicts.
+We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved via three converging controls and formalized via Proposition~\ref{thm:mi_decomp} ($\rho{=}{-}0.96$, $p{<}0.001$). \textbf{RR-MoA} breaks the collapse by routing on raw pre-normalization signal with a frozen backbone (\textbf{54/54 wins}, three backbones, four horizons, two tasks). The \emph{Frozen Paradox}---frozen RR-MoA beats full fine-tuning by $12$--$79\%$---reverses standard PEFT. Collapse generalizes to BatchNorm1d/GroupNorm; a vision control (Appendix~\ref{app:vision_moe}) shows the normalization trigger is modality-specific, as Proposition~\ref{thm:mi_decomp} predicts.
 
-\textbf{Limitations.} (1)~Absolute MSE gap to supervised baselines on MOMENT-small (narrows with horizon and backbone quality; Appendix~\ref{app:diagnostic} confirms genuine information loss; preliminary dual-stream experts that access both hidden states and raw input close the gap to $+9\%$ on ETTh1 and beat DLinear on Weather; Appendix~\ref{app:gap_closing}). (2)~Native MoE backbones (Moirai-MoE, Time-MoE) not evaluated. (3)~Proposition~\ref{thm:mi_decomp} proved for a linear model; nonlinear case open. (4)~Cross-modality control confirms gradient co-adaptation in vision but normalization effect is reversed (Appendix~\ref{app:vision_moe}); the collapse trigger depends on routing signal overlap with stripped statistics. (5)~Expert pool hand-selected; cross-channel routing unexplored.
+\textbf{Limitations.} (1)~MSE gap to DLinear on MOMENT-small (narrows with horizon/backbone; dual-stream experts close it to $+9\%$ on ETTh1 and beat DLinear on Weather; Appendix~\ref{app:gap_closing}). (2)~Native MoE backbones (Moirai-MoE, Time-MoE) not evaluated. (3)~Proposition~\ref{thm:mi_decomp} linear only; nonlinear open. (4)~Vision control: collapse trigger is modality-specific. (5)~Expert pool hand-selected; cross-channel routing unexplored.
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -1395,7 +1395,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \end{tabular}
 \end{table}
 
-\section{AdaMix Implementation Details}
+\subsection{AdaMix Implementation Details}
 \label{app:adamix_details}
 
 Our AdaMix baseline follows \citet{wang2022adamix} with $K{=}5$ expert adapter heads identical to RR-MoA's canonical pool (mean, last, max, attention, conv1d). The router is a single linear layer $\mathbb{R}^d \to \mathbb{R}^K$ operating on the mean-pooled hidden state, with softmax gating. We use a load-balancing auxiliary loss with coefficient $\lambda_\text{bal}{=}0.01$, matching AdaMix's original formulation. No stochastic routing, capacity factors, or noise injection are applied---these standard MoE safeguards do not address the normalization-specific signal loss we identify: when RevIN strips the per-window statistics that would distinguish samples, the router receives near-identical inputs regardless of stabilization strategy. This is confirmed empirically: load-balancing loss does not prevent collapse under unfreezing (Table~\ref{tab:adamix}, entropy $= 0.000$ with $\lambda_\text{bal}{=}0.01$), while disabling RevIN recovers entropy to $0.66$--$1.32$ without any routing regularization.
@@ -1714,7 +1714,32 @@ Multi-Resolution & $0.460 \pm 0.007$ {\scriptsize($+11\%$)} & $0.365 \pm 0.008$ 
 
 \textbf{Result.} Dual-stream experts reduce the average DLinear gap from $+57\%$ to $+5\%$---an $11\times$ reduction---and \emph{beat} DLinear on Weather ($0.198$ vs $0.208$, $p{=}0.03$, paired $t$-test). The learned blend parameters $\alpha_k \approx 0.49$ across all five experts confirm that the backbone provides complementary information when experts can also access the raw signal: neither branch alone suffices.
 
+\textbf{Extension to ETTh2, ETTm2, Electricity.} Running all four variants on the three remaining forecasting datasets yields consistent gap closure (Table~\ref{tab:gap_closing_ext}). Dual-stream wins on Electricity at $+8\%$ and matches well on ETTm2 ($+26\%$), while \textbf{multi-resolution wins on ETTh2 at $+7.7\%$}---the tightest new gap-closing result on any dataset we did not originally study. Multi-resolution also performs competitively on ETTm2 ($+12\%$) and Electricity ($+13\%$), indicating the optimal architecture is dataset-dependent. FiLM remains consistently worst ($+48$--$147\%$), confirming that re-injecting only $(\mu,\sigma)$ is insufficient---the experts need access to the full raw signal, not just the stripped statistics.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Gap-closing extended to ETTh2, ETTm2, Electricity} (MOMENT-small, strictly frozen, Top-2, 3 seeds, H=96, 15 epochs). Bold: best gap-closing variant per dataset. \textbf{Multi-resolution wins on ETTh2 at $+7.7\%$}---the closest new gap-closing result.}
+\label{tab:gap_closing_ext}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Method & ETTh2 & ETTm2 & Electricity \\
+\midrule
+DLinear (from scratch) & $\mathit{0.341}$ & $\mathit{0.200}$ & $\mathit{0.158}$ \\
+\midrule
+Dual-Stream & $0.452 \pm 0.043$ {\scriptsize($+32\%$)} & $0.252 \pm 0.070$ {\scriptsize($+26\%$)} & $\mathbf{0.171 \pm 0.002}$ {\scriptsize$\mathbf{(+8\%)}$} \\
+Raw-Input Expert & $0.525 \pm 0.112$ {\scriptsize($+54\%$)} & $0.227 \pm 0.013$ {\scriptsize($+13\%$)} & $0.203 \pm 0.027$ {\scriptsize($+28\%$)} \\
+Multi-Resolution & $\mathbf{0.367 \pm 0.003}$ {\scriptsize$\mathbf{(+7.7\%)}$} & $\mathbf{0.223 \pm 0.016}$ {\scriptsize$\mathbf{(+12\%)}$} & $0.179 \pm 0.003$ {\scriptsize($+13\%$)} \\
+FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.013$ {\scriptsize($+48\%$)} & $0.305 \pm 0.014$ {\scriptsize($+94\%$)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \textbf{Why this matters for the diagnosis.} The fact that the gap closes precisely when experts recover the information our diagnosis identified as destroyed---and remains open when they cannot (FiLM re-injects only $\mu,\sigma$, yielding $+48\%$ on ETTh1 vs.\ $+9\%$ for dual-stream)---is direct evidence that the diagnosis is both \emph{correct} and \emph{actionable}. The normalization--encoding bottleneck is not merely an observation; it is the causal mechanism whose resolution closes the gap. Importantly, the frozen backbone and raw-routed paradigm remain unchanged---these variants extend the \emph{expert architecture}, not the routing mechanism, confirming that the routing diagnosis (the core contribution of this paper) is orthogonal to expert design.
+
+\textbf{Expert pool ablation: canonical vs.\ macro pool.} To test whether RR-MoA's benefits depend on the specific choice of 5 canonical pooling heads, we replace the canonical pool with 5 AAS-discovered \emph{macro motifs} (Appendix~\ref{app:aas_details}) and rerun RR-MoA across all 6 forecasting datasets. Routing entropy is preserved under the macro pool (no collapse under frozen backbone; entropy $>1.3$ across all configurations), confirming that the collapse-prevention mechanism is \emph{pool-independent}. Absolute MSEs (frozen, Top-2, 3 seeds): ETTh1 $0.764{\pm}0.015$, ETTh2 $0.667{\pm}0.069$, ETTm1 $0.583{\pm}0.075$, ETTm2 $0.844{\pm}0.241$, Weather $0.274{\pm}0.024$, Electricity $0.401{\pm}0.039$. The canonical pool is stronger by $8$--$24\%$ on the three datasets where we have both numbers, indicating that while RR-MoA generalizes across diverse pool designs, the canonical heads are better tuned for the forecasting benchmark---the routing architecture is the orthogonal contribution.
+
+\textbf{Training-length ablation.} We additionally ran dual-stream at 50 epochs (vs.\ 15 in Table~\ref{tab:gap_closing}). Extended training \emph{overfits} on 5/6 datasets (ETTh1: $0.453{\to}0.556$; Weather: $0.198{\to}0.237$), confirming that dual-stream converges by 15 epochs and that the original training schedule is already near-optimal; additional adapter-only optimization past convergence degrades generalization due to the small effective parameter count ($\sim$718K trainable, frozen backbone).
 
 \input{checklist}
 

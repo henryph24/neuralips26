@@ -503,7 +503,15 @@ def main():
 
     # Save
     os.makedirs("results/gap_closing", exist_ok=True)
-    out_path = f"results/gap_closing/{args.variant}_{args.dataset}_H{args.horizon}_{args.seed}.json"
+    bb_lower = args.backbone.lower()
+    bb_suffix = ""
+    if "moirai" in bb_lower:
+        bb_suffix = "_bb-moirai"
+    elif "chronos" in bb_lower:
+        bb_suffix = "_bb-chronos"
+    elif "moment" in bb_lower and "large" in bb_lower:
+        bb_suffix = "_bb-moment-large"
+    out_path = f"results/gap_closing/{args.variant}_{args.dataset}_H{args.horizon}_{args.seed}{bb_suffix}.json"
     with open(out_path, "w") as f:
         json.dump(result, f, indent=2)
     print(f"  Saved: {out_path}")
