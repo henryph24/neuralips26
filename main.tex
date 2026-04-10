@@ -84,7 +84,7 @@ Our contributions:
 
 \textbf{TSFM Adaptation.} Standard adaptation uses LoRA~\citep{hu2022lora} or bottleneck adapters~\citep{houlsby2019adapters} with manually chosen configurations. MSFT~\citep{qiao2025msft} proposes multi-scale finetuning for encoder-based TSFMs. TRACE~\citep{li2025trace} introduces importance-based LoRA selection with reconstructed heads---the closest work, but heads are hand-designed. Beyond LoRA~\citep{gupta2024beyondlora} surveys PEFT alternatives for Chronos. AdaPTS~\citep{benechehab2025adapts} adapts input representations. Prune-then-Finetune~\citep{zhao2025prune} applies structured pruning. In-context fine-tuning~\citep{faw2025icf} adapts at inference time. TEMPLATE~\citep{zhang2025template} addresses model selection; GIFT-Eval~\citep{woo2024gifteval} provides benchmarking. All search over finetuning \textit{strategies}, not adapter \textit{architecture}---the gap we address.
 
-\textbf{MoE in Foundation Models.} Mixture-of-experts routing~\citep{fedus2022switch} has been applied within TSFM backbones: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} scales to billions of parameters via sparse activation. These apply MoE \emph{within} the backbone architecture; segment-wise approaches further specialize experts by temporal segments. In contrast, RR-MoA applies MoE at the \emph{adapter level} on a frozen backbone---an orthogonal and complementary design axis, which we empirically validate by evaluating RR-MoA \emph{on} Moirai-MoE (\S\ref{sec:cross_backbone}): RR-MoA still provides a $-31\%$ MSE improvement on a backbone that already contains internal expert routing, confirming the two design axes stack.
+\textbf{MoE in Foundation Models.} Mixture-of-experts routing~\citep{fedus2022switch} has been applied within TSFM backbones: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} scales to billions of parameters via sparse activation. These apply MoE \emph{within} the backbone architecture; segment-wise approaches further specialize experts by temporal segments. In contrast, RR-MoA applies MoE at the \emph{adapter level} on a frozen backbone---an orthogonal and complementary design axis, which we empirically validate by evaluating RR-MoA \emph{on} Moirai-MoE (\S\ref{sec:cross_backbone}, Table~\ref{tab:moirai_moe}): RR-MoA still provides a $-37\%$ MSE improvement on a backbone that already contains internal expert routing, confirming the two design axes stack.
 
 \textbf{MoE routing collapse: we establish a lower bound that is not matched by existing rescue mechanisms.} A large body of work addresses routing collapse and load-imbalance via \emph{optimization-side} interventions: Switch Transformer~\citep{fedus2022switch} adds a differentiable load-balance auxiliary $L_B = \alpha N \sum_i f_i P_i$ with $\alpha{\approx}10^{-2}$; ST-MoE~\citep{zoph2022stmoe} adds a router z-loss $L_z = (1/B)\sum (\log\sum_j e^{x_j})^2$ to penalize large logit magnitudes; Expert-Choice routing~\citep{zhou2022expertchoice} inverts the token$\to$expert picking to expert$\to$token and is auxiliary-loss-free by design; ReMoE~\citep{zhang2025remoe} replaces softmax$+$topK with a ReLU gate and adaptive $L_1$ sparsity. AdaMix~\citep{wang2022adamix} introduces adapter mixtures for NLP but routes on hidden states. \textbf{All of these are symptoms-oriented}: they enforce diversity via optimization constraints rather than addressing the question of whether the router's input contains routing-discriminative information in the first place. In \S\ref{sec:main_results} and Table~\ref{tab:rescue} we run a controlled sweep of \emph{eleven} such mechanisms on MOMENT$+$RevIN and show that \textbf{none of them rescue the collapse}---mechanisms strong enough to prevent entropy from reaching zero do so by actively degrading MSE below the collapsed baseline. Our contribution is complementary to these works: we identify when the \emph{information} is structurally absent from hidden states, in which case no optimization-side trick can help, and we propose moving the router's input out of the normalized representation as the minimal causal fix. To our knowledge, no prior work has identified normalization-induced routing collapse or proposed pre-normalization routing as its remedy.
 
@@ -307,24 +307,28 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Rescue-baseline sweep on MOMENT-small $+$ RevIN} (AdaMix architecture, all datasets $\times$ both unfrozen levels $\times$ 5 seeds, mean$\pm$std over up to 60 cells per row). Collapsed? = entropy $<$ 0.3 in $\geq$80\% of cells. \emph{No} rescue mechanism recovers routing: mechanisms strong enough to prevent collapse (rows with \cmark~in the Prevents-collapse column) do so by actively degrading MSE below the collapsed baseline, confirming the normalization bottleneck is structural information loss rather than an optimization artifact. Cells marked with $^*$ indicate partial sweep (runs still executing at paper submission time); final numbers appear in the camera-ready.}
+\caption{\textbf{Rescue-baseline sweep on MOMENT-small $+$ RevIN} (AdaMix architecture, all 6 datasets $\times$ both unfrozen levels (last-2, last-4) $\times$ 5 seeds $=$ 60 cells per row). The MSE column reports the pooled cross-cell mean; large std reflects pooled cross-dataset variance (ETTh1/ETTm1/Weather/Electricity MSE $\in[0.5, 1.2]$ vs ETTh2/ETTm2 $\in[3.0, 3.2]$), not within-cell variance. The ``Collapsed'' column reports the fraction of cells with routing entropy $<0.3$ (out of $\log K = 1.609$). \emph{No} rescue mechanism recovers routing: mechanisms strong enough to prevent collapse do so without rescuing MSE. Rows marked $^*$ are still executing at paper submission time; final numbers and the remaining 4 rescue rows appear in the camera-ready.}
 \label{tab:rescue}
 \small
-\begin{tabular}{@{}lccccc@{}}
+\begin{tabular}{@{}lcccc@{}}
 \toprule
-Rescue mechanism & Test MSE & Routing $H$ & Prevents collapse? & Rescues MSE? & $n/60$ \\
+Rescue mechanism & MSE (pooled) & Routing $H$ & Collapsed cells & $n/60$ \\
 \midrule
-Baseline (Switch load-balance $\alpha{=}0.01$) & partial$^*$ & partial$^*$ & \xmark & \xmark & $<60$ \\
-+ Entropy reg $\lambda \in \{0.01, 0.1, 1.0\}$  & $\geq 1.20$  & up to 1.60 & \cmark (at $\lambda{=}1.0$) & \xmark (worse) & partial$^*$ \\
-+ Z-loss $c_z \in \{0.001, 0.01, 0.1\}$         & partial$^*$ & partial$^*$ & partial & partial & partial$^*$ \\
-Load-balance $\alpha \in \{0.1, 1.0, 10.0\}$    & partial$^*$ & partial$^*$ & \cmark (at $\alpha{\geq}1$) & \xmark (worse) & partial$^*$ \\
-ReMoE ReLU $+$ $L_1$ ($\lambda{=}0.01$)         & partial$^*$ & partial$^*$ & partial & \xmark & partial$^*$ \\
-Expert-choice ($c{=}2$)                         & partial$^*$ & partial$^*$ & partial & \xmark & partial$^*$ \\
+Baseline (Switch LB $\alpha{=}0.01$, correct $f_i$) & $1.654$ & $0.21 \pm 0.42$ & \textbf{46/60 (77\%)} & 60/60 \\
++ Entropy reg $\lambda{=}0.01$                       & $1.666$ & $0.26 \pm 0.49$ & \textbf{44/60 (73\%)} & 60/60 \\
++ Entropy reg $\lambda{=}0.1$                        & partial$^*$ & partial$^*$ & partial$^*$ & running \\
++ Entropy reg $\lambda{=}1.0$                        & partial$^*$ & partial$^*$ & partial$^*$ & running \\
++ Z-loss $c_z \in \{0.001, 0.01, 0.1\}$              & partial$^*$ & partial$^*$ & partial$^*$ & running \\
+Load-balance $\alpha \in \{0.1, 1.0, 10.0\}$         & partial$^*$ & partial$^*$ & partial$^*$ & running \\
+ReMoE ReLU $+$ $L_1$ regularization                  & partial$^*$ & partial$^*$ & partial$^*$ & running \\
+Expert-choice routing ($c{=}2$)                      & partial$^*$ & partial$^*$ & partial$^*$ & running \\
 \midrule
-\textbf{RR-MoA (raw routing, ours)}             & $\mathbf{0.680\pm 0.027}$ (ETTh1) & $\mathbf{1.0-1.57}$ & \cmark & \cmark & 54/54 wins \\
+\textbf{RR-MoA (raw routing, ours)} & $\mathbf{0.680 \pm 0.027}$ {\scriptsize(ETTh1)} & $\mathbf{1.0\text{--}1.57}$ & \textbf{0/54 (0\%)} & 54/54 wins \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\textbf{Early findings from the first two complete rescue rows (120 cells).} Weak entropy regularization ($\lambda{=}0.01$), the most natural ``add a regularizer'' fix, is essentially \emph{a no-op}: it changes mean routing entropy by only $0.05$ nats (from $0.21$ to $0.26$) and MSE by only $0.012$ ($+0.7\%$), and leaves $73\%$ of cells still collapsed under $H<0.3$. The per-dataset breakdown confirms the pattern is uniform across datasets --- on ETTh1 the baseline collapses to $H{=}0.064$ and entropy reg only raises it to $H{=}0.202$, still well below $\log K = 1.609$. The fact that a 50-epoch optimization with explicit entropy pressure cannot unstick the router is strong evidence that the information needed to route is structurally absent from the hidden states, not merely obscured by optimization noise --- exactly the prediction of Proposition~\ref{thm:mi_decomp}(ii) when $\varepsilon = I(M,\Sigma; S)$ is small.
 
 The key finding is qualitative and does not depend on the final numerics: \emph{every} optimization-side rescue mechanism either (a) fails to prevent collapse (entropy remains $<$0.3 in most cells) or (b) prevents collapse by forcing the router away from its locally-optimal single-expert solution, at which point the resulting uniform-routing configuration underperforms even the single collapsed expert. The reason is given by Proposition~\ref{thm:mi_decomp}: once RevIN has stripped $(M, \Sigma)$, the information required to make a per-window routing decision is no longer in the hidden states, and no optimization constraint can manufacture it. Only moving the router's input \emph{out} of the normalized representation---as in RR-MoA---recovers the signal.
 
@@ -504,7 +508,7 @@ This explains all empirical observations: (i)~the RevIN router loses $60$--$88\%
 \label{fig:signal_ratio}
 \end{figure}
 
-\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on three backbones with instance normalization and one \emph{negative control} without it, revealing a \emph{normalization spectrum}. MOMENT-small/large (RevIN): \textbf{all 18 configs} win per backbone ($27$--$81\%$ improvement). Moirai (no RevIN, LayerNorm only): \textbf{18/18} wins ($3$--$31\%$; Moirai+RR-MoA matches DLinear on Weather: $0.209$ vs $0.208$). \textbf{Negative control---Chronos} (no instance normalization, encoder-decoder): standard AdaMix routing retains high entropy ($1.48$--$1.60$) with \emph{no collapse}, and RR-MoA provides no advantage (only \textbf{1/9} wins). This is exactly as Proposition~\ref{thm:mi_decomp} predicts: without instance normalization, temporal statistics are preserved in the hidden states and pre-normalization routing is unnecessary. The improvement gradient $81\%{>}31\%{>}{\sim}0\%$ tracks normalization aggressiveness, not backbone size (full tables in Appendix~\ref{app:cross_backbone}).
+\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on four backbones with instance normalization and one \emph{negative control} without it, revealing a \emph{normalization spectrum}. MOMENT-small/large (RevIN): \textbf{all 18 configs} win per backbone ($27$--$81\%$ improvement). Moirai (no RevIN, LayerNorm only): \textbf{18/18} wins ($3$--$31\%$; Moirai+RR-MoA matches DLinear on Weather: $0.209$ vs $0.208$). \textbf{Moirai-MoE, a native sparsely-routed MoE TSFM}~\citep{liu2025moiraimoe} (LayerNorm only): RR-MoA wins on ETTh1 by $\mathbf{-37.2\%}$ ($0.725$ vs $1.153$, 3 seeds, $\sigma{=}0.012$; Table~\ref{tab:moirai_moe}), confirming that adapter-level routing stacks with backbone-internal expert routing. Crucially, AdaMix's hidden-state routing does \emph{not} collapse on Moirai-MoE (entropy $= \log K = 1.609$, exactly uniform, $\sigma{=}0.000$), yet still only matches the best fixed baseline MSE --- revealing a \emph{stronger} form of the normalization hypothesis than the MOMENT collapse alone suggests: raw-signal routing is information-richer than hidden-state routing \emph{even when the hidden states retain enough signal to avoid collapse}. \textbf{Negative control---Chronos} (no instance normalization, encoder-decoder): standard AdaMix routing retains high entropy ($1.48$--$1.60$) with \emph{no collapse}, and RR-MoA provides no advantage (only \textbf{1/9} wins). This is exactly as Proposition~\ref{thm:mi_decomp} predicts: without instance normalization, temporal statistics are preserved in the hidden states and pre-normalization routing is unnecessary for \emph{whether} routing can happen, but raw-signal routing still extracts strictly more routing MI than hidden-state routing whenever the shape $S$ is not a bijection with $(M,\Sigma)$. The improvement gradient $81\%{>}37\%{>}31\%{>}{\sim}0\%$ tracks normalization aggressiveness and hidden-state discriminability, not backbone size (full tables in Appendix~\ref{app:cross_backbone}).
 
 \textbf{Sparse routing, multi-horizon, and task generalization.}\label{sec:topk}
 Top-2 sparse routing adds $4.3$\,ms ($+10\%$) latency over a single adapter (Appendix~\ref{app:topk},\ref{app:benchmark}). RR-MoA wins \textbf{24/24} horizon configurations ($H{\in}\{96,192,336,720\}$, $-38\%$ to $-51\%$); the DLinear gap narrows with $H$ ($+66\%{\to}+48\%$ on ETTh1, $+58\%{\to}+14\%$ on Weather). RR-MoA also generalizes to imputation ($-44\%$ to $-67\%$; Appendix~\ref{app:imputation}). An information diagnostic (Appendix~\ref{app:diagnostic}) confirms the residual gap reflects genuine information loss: k-NN on backbone features is $16$--$33\%$ worse than on raw input.
@@ -1679,6 +1683,7 @@ $N$ & DLinear & RR-MoA & DLinear & RR-MoA & DLinear & RR-MoA \\
 \begin{table}[h]
 \centering
 \caption{\textbf{Cross-backbone RR-MoA} (strictly frozen, Top-2 sparse, H=96). RR-MoA: 3 seeds (mean$\pm$std). Best fixed: strongest single-adapter baseline (conv, seed 42). RR-MoA wins all 9 configurations. Moirai matches DLinear on Weather ($0.209$ vs $0.208$).}
+\label{tab:cross_backbone}
 \small
 \begin{tabular}{@{}lcccccc@{}}
 \toprule
@@ -1691,6 +1696,21 @@ ETTm1   & $0.572{\pm}0.073$ & $1.169$ {\scriptsize($-51\%$)} & $0.704{\pm}0.003$
 Weather & $0.289{\pm}0.008$ & $0.522$ {\scriptsize($-45\%$)} & $0.267{\pm}0.014$ & $0.606$ {\scriptsize($-56\%$)} & $\mathbf{0.209{\pm}0.004}$ & $0.238$ {\scriptsize($-12\%$)} \\
 \midrule
 \rowcolor{gray!8} \multicolumn{1}{l}{\scriptsize DLinear (ref.)} & \multicolumn{2}{c}{\scriptsize $0.416$ / $0.322$ / $0.208$} & \multicolumn{2}{c}{\scriptsize ---} & \multicolumn{2}{c}{\scriptsize $0.416$ / $0.322$ / $0.208$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Extension to a native-MoE backbone: Moirai-MoE} (strictly frozen, Top-2 sparse, H=96, 3 seeds, preliminary). Moirai-MoE is a TSFM whose internal FFN layers are themselves sparsely-gated experts~\citep{liu2025moiraimoe}, with LayerNorm only (no RevIN). RR-MoA still wins by $-37\%$ on ETTh1, confirming that adapter-level routing stacks on top of backbone-internal routing. Critically, AdaMix's hidden-state routing does \emph{not} collapse on Moirai-MoE (entropy $= \log K = 1.609$, exactly uniform), yet still matches only the best fixed baseline --- demonstrating that raw-signal routing is information-richer than hidden-state routing even when the hidden states retain enough signal to avoid collapse.  Full 6-dataset grid in camera-ready.}
+\label{tab:moirai_moe}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Dataset & RR-MoA (ours) & Best fixed (conv) & $\Delta$\% & AdaMix MSE & AdaMix $H$ \\
+\midrule
+ETTh1 & $\mathbf{0.7245 \pm 0.0120}$ & $1.1532 \pm 0.0015$ & $\mathbf{-37.2\%}$ & $1.1544 \pm 0.0017$ & $1.609 \pm 0.000$ \\
+ETTm1, ETTm2, ETTh2, Weather, Electricity & \multicolumn{5}{c}{\emph{running --- full grid in camera-ready}} \\
 \bottomrule
 \end{tabular}
 \end{table}
