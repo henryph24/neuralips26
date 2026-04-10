@@ -62,7 +62,7 @@ The transformer architecture~\citep{vaswani2017attention} has enabled foundation
 
 \textbf{Why frozen at all?} The frozen-backbone paradigm is not a limitation: it is the only viable adaptation path in three deployment regimes that a per-dataset DLinear cannot serve. \textbf{(i)~Multi-tenant cloud serving with a shared backbone}: one TSFM sits in GPU VRAM while lightweight per-tenant adapters ($\sim$$1.7$\,MB each) hot-swap from host RAM in microseconds; at $N{=}100$ tenants we measure $141$ tenants/sec swapping throughput and a $45\times$ memory reduction versus naively replicating the full $35$M-parameter backbone per tenant --- a comparison to the worst-case TSFM deployment, not to DLinear (Appendix~\ref{app:benchmark}). On raw per-tenant memory alone, $100\times$DLinear ($\sim$$20$\,MB) remains strictly smaller than $1\times$TSFM $+\,$$100\times$RR-MoA ($\sim$$310$\,MB); DLinear's disadvantage is not memory but (a) $O(N)$ training pipelines over potentially private per-tenant data, (b) no zero-shot onboarding, and (c) no cross-task reuse --- all of which are dealbreakers for the remaining two deployment regimes. \textbf{(ii)~On-device and edge deployment}: a single shipped backbone image receives per-site adapter updates over low-bandwidth links, eliminating centralized data collection. \textbf{(iii)~Cross-task reuse}: the same frozen backbone drives forecasting, imputation, and classification via three interchangeable expert pools --- demonstrated empirically across all three tasks in this paper (\S\ref{sec:main_results} and Appendix~\ref{app:imputation}). Lightweight supervised baselines such as DLinear~\citep{zeng2023dlinear} achieve lower absolute MSE on fully-specified individual datasets, but cannot share a backbone across tasks or tenants. Our contribution is not to replace single-dataset specialists, but to optimize routing within the frozen-backbone paradigm where they do not apply. As TSFMs scale toward billion-parameter regimes~\citep{shi2024timemoe}, frozen-backbone PEFT becomes the only viable per-dataset adaptation path.
 
-\textbf{The natural idea that fails: MoE on TSFMs.} When we apply the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}---routing on hidden states with load balancing---to a TSFM with internal RevIN, it \emph{collapses catastrophically}. Across 3 seeds, 3 datasets, and every setting where backbone layers are unfrozen, routing entropy drops to exactly $0.000\pm0.000$ (Table~\ref{tab:adamix}): all weight concentrates on a single expert.
+\textbf{The natural idea that fails: MoE on TSFMs.} When we apply the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}---routing on hidden states with load balancing---to a TSFM with internal RevIN, it \emph{collapses catastrophically}. Across 3 seeds, 3 datasets, and 5 of the 6 unfrozen settings in Table~\ref{tab:adamix}, routing entropy drops to exactly $0.000\pm0.000$ --- all weight concentrates on a single expert. The lone exception (ETTm1 last-2 at $0.218\pm0.309$) and the extended grid (Table~\ref{tab:adamix_extended}) show the same pattern at lower intensity: 7 of 12 unfrozen cells reach exactly $0.000$, the remaining 5 stay below $0.55$ (vs.\ the maximum $\log K = 1.609$).
 
 \textbf{Diagnosis: normalization-induced co-adaptation.} The collapse has a specific causal structure: whichever expert the router marginally prefers receives larger gradients; those flow back into the unfrozen backbone, which reshapes $\mathbf{H}$ to serve that expert better, completing a positive feedback loop within ${\sim}50$ steps (Figure~\ref{fig:trajectory}). Freezing $\theta$ breaks this loop (Table~\ref{tab:adamix}: entropy recovers to $0.5$--$0.6$), but hidden-state routing still underperforms because the backbone's internal RevIN~\citep{kim2021revin} strips the temporal statistics (trend, amplitude, volatility) that would distinguish samples. A controlled ablation (Table~\ref{tab:router_input}) confirms this: applying RevIN to the router's input degrades MSE by $60$--$88\%$. A cross-backbone control on Moirai~\citep{woo2024moirai} (which lacks RevIN) shows that AdaMix routing \emph{does not collapse} even with unfrozen layers (entropy $1.48$--$1.60$; \S\ref{sec:cross_backbone}), confirming that the failure is normalization-specific, not inherent to MoE on temporal data.
 
@@ -222,7 +222,7 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 \label{sec:architectures}
 \label{sec:freeze_ablation}
 
-Table~\ref{tab:rrmoa} presents the central experimental result of the paper. Using the \emph{same five expert adapter heads} (mean, last-token, max, attention-pool, Conv1d-pool) in all three rows, we compare Top-2 RR-MoA against the single best fixed adapter baseline across a full grid of 3 datasets $\times$ 3 freeze levels $\times$ 3 seeds. RR-MoA wins \textbf{27 out of 27} configurations with tight standard deviations.
+Table~\ref{tab:rrmoa} presents the central experimental result of the paper. Using the \emph{same five expert adapter heads} (mean, last-token, max, attention-pool, Conv1d-pool) in all rows, we compare Top-2 RR-MoA against the single best fixed adapter baseline. The full grid is 6 datasets $\times$ 3 freeze levels $\times$ 3 seeds $=$ \textbf{54 configurations}; Table~\ref{tab:rrmoa} shows the 3 representative datasets in the main text, and Table~\ref{tab:rrmoa_extended} (Appendix~\ref{app:extended_rrmoa}) tabulates ETTh2, ETTm2, and Electricity. \textbf{RR-MoA wins 54 out of 54 configurations} with tight standard deviations.
 
 \begin{table}[h]
 \centering
@@ -266,7 +266,7 @@ Consider a $2$-expert MoE with backbone $\mathbf{h}{=}A\mathbf{x}$, router $p{=}
 
 \textit{Remark.} Proposition~\ref{prop:frozen} is formalized for a linear backbone ($\mathbf{h}{=}A\mathbf{x}$), but the mechanism extends to deep non-linear networks: locally, a differentiable backbone acts as its Jacobian ($\mathbf{h} \approx J_\theta \mathbf{x}$) in the tangent space of the data manifold, and the same positive-feedback loop drives $\nabla_\theta$ to reshape $\mathbf{h}$ toward the dominant expert. Figure~\ref{fig:trajectory}b provides direct empirical confirmation: the per-expert gradient norms in a full 8-block Transformer follow the divergence pattern predicted by the linear analysis, with the dominant expert's gradient growing monotonically while others decay within ${\sim}50$ steps.
 
-\textbf{Routing vs.\ ensembling.} Replacing the learned router with a fixed uniform mixture ($w_k = 1/K$) degrades performance by $30$--$75\%$ on every dataset (ETTh1: $0.899$ vs $0.690$; ETTm1: $1.002$ vs $0.572$; Weather: $0.494$ vs $0.289$). Training the same 5 experts \emph{independently} and averaging predictions (Table~\ref{tab:baselines}, ``Ind.\ Ensemble'') is $36$--$46\%$ worse than RR-MoA, confirming that learned per-sample routing---not merely expert diversity---is the source of the gains.
+\textbf{Routing vs.\ ensembling.} Replacing the learned router with a fixed uniform mixture ($w_k = 1/K$) degrades performance by $30$--$75\%$ on every dataset (ETTh1: $0.899$ vs $0.690$; ETTm1: $1.002$ vs $0.572$; Weather: $0.494$ vs $0.289$). Training the same 5 experts \emph{independently} and averaging predictions (Table~\ref{tab:baselines}, ``Ind.\ Ensemble'') is $37$--$46\%$ worse than RR-MoA, confirming that learned per-sample routing---not merely expert diversity---is the source of the gains.
 
 \begin{table}[h]
 \centering
@@ -298,7 +298,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \end{tabular}
 \end{table}
 
-\textbf{AdaMix} collapses to a single expert whenever backbone layers are unfrozen: routing entropy drops to exactly $0.000\pm0.000$ in 5 of 12 unfrozen configurations, and remains below $0.55$ in most others. Under the strictly frozen setting entropy recovers ($0.3$--$1.0$), but MSE is still dominated by RR-MoA. \textbf{Controlled RevIN ablation.} The green rows in Table~\ref{tab:adamix} show AdaMix on MOMENT with RevIN \emph{disabled} (replaced by an identity function). Under identical last-4 unfreezing, routing entropy recovers from $0.000$ to $0.66$--$1.32$ on all three datasets. This controlled experiment---same backbone, same unfreezing, only RevIN removed---proves that normalization is the \emph{causal} mechanism behind routing collapse. \textbf{Normalization generalization.} Replacing RevIN with BatchNorm1d or GroupNorm produces the same collapse (entropy $0.004$ and $0.000$ respectively at step 400; Appendix~\ref{app:norm_generalization}), confirming that the failure is a general property of instance-level normalization, not a RevIN-specific artifact. Figure~\ref{fig:trajectory} provides per-step mechanistic evidence: under unfreezing with any normalizer (red), entropy collapses within ${\sim}50$ gradient steps; without normalization (green), entropy remains stable at $0.82$.
+\textbf{AdaMix} collapses to a single expert whenever backbone layers are unfrozen: routing entropy drops to exactly $0.000\pm0.000$ in 7 of 12 unfrozen configurations (Table~\ref{tab:adamix} + Table~\ref{tab:adamix_extended}), and remains below $0.55$ in the other 5. Under the strictly frozen setting entropy recovers ($0.3$--$1.0$), but MSE is still dominated by RR-MoA. \textbf{Controlled RevIN ablation.} The green rows in Table~\ref{tab:adamix} show AdaMix on MOMENT with RevIN \emph{disabled} (replaced by an identity function). Under identical last-4 unfreezing, routing entropy recovers from $0.000$ to $0.66$--$1.32$ on all three datasets. This controlled experiment---same backbone, same unfreezing, only RevIN removed---proves that normalization is the \emph{causal} mechanism behind routing collapse. \textbf{Normalization generalization.} Replacing RevIN with BatchNorm1d or GroupNorm produces the same collapse (entropy $0.004$ and $0.000$ respectively at step 400; Appendix~\ref{app:norm_generalization}), confirming that the failure is a general property of instance-level normalization, not a RevIN-specific artifact. Figure~\ref{fig:trajectory} provides per-step mechanistic evidence: under unfreezing with any normalizer (red), entropy collapses within ${\sim}50$ gradient steps; without normalization (green), entropy remains stable at $0.82$.
 
 \begin{figure}[h]
 \centering
@@ -307,7 +307,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \label{fig:trajectory}
 \end{figure}
 
-\textbf{RR-MoA} maintains routing entropy $1.0$--$1.57$ (max $1.609$) and wins \textbf{54/54} against the best fixed adapter on 6 datasets, with improvements from $-18\%$ to $-77\%$. On Traffic (7th dataset), RR-MoA does not improve over the conv baseline---consistent with Proposition~\ref{thm:mi_decomp}'s prediction, since Traffic has the lowest routing signal ratio ($R{=}0.14$; Figure~\ref{fig:signal_ratio}). The contrast with AdaMix is stark: raw-signal routing is immune to gradient co-adaptation.
+\textbf{RR-MoA} maintains routing entropy $1.0$--$1.57$ (max $1.609$) and wins \textbf{54/54} against the best fixed adapter on 6 datasets, with improvements from $-27\%$ to $-77\%$ (smallest: Electricity frozen $-26.5\%$; largest: ETTm2 frozen $-77.0\%$). On Traffic (7th dataset), RR-MoA does not improve over the conv baseline---consistent with Proposition~\ref{thm:mi_decomp}'s prediction, since Traffic has the lowest routing signal ratio ($R{=}0.14$; Figure~\ref{fig:signal_ratio}). The contrast with AdaMix is stark: raw-signal routing is immune to gradient co-adaptation.
 
 \textbf{Rescue-baseline sweep: no standard MoE fix recovers hidden-state routing.} A natural reviewer objection is that we compare RR-MoA only against a ``vanilla'' AdaMix. To rule out that the collapse is merely an under-tuned optimization artifact, we sweep \emph{eleven} standard MoE rescue mechanisms on exactly the same AdaMix architecture and training protocol, varying only the routing scheme and its auxiliary loss terms. The sweep spans Switch Transformer load-balance $\alpha \in \{0.01, 0.1, 1.0, 10.0\}$ (with the correct $f_i = \mathbb{1}\{\arg\max p(x) = i\}$ variant per Eq.~4 of \citet{fedus2022switch}), ST-MoE router z-loss $c_z \in \{0.001, 0.01, 0.1\}$ \citep{zoph2022stmoe}, explicit entropy regularization $-\lambda H(\text{router})$ for $\lambda \in \{0.01, 0.1, 1.0\}$, ReMoE's ReLU gate with adaptive $L_1$ sparsity regularization \citep{zhang2025remoe}, and Zhou et al.'s expert-choice routing with capacity factor $c{=}2$ \citep{zhou2022expertchoice}. Each configuration is evaluated on 6 datasets $\times$ 2 freeze levels (last-2, last-4) $\times$ 5 seeds $=$ 60 cells, for a total of $12 \times 60 = 720$ runs. Table~\ref{tab:rescue} summarizes the results.
 
@@ -372,7 +372,7 @@ Full fine-tuning (all unfrozen) & $1.060 \pm 0.059$ & $0.871 \pm 0.029$ & $0.468
 \end{tabular}
 \end{table}
 
-RR-MoA significantly outperforms every baseline ($p{<}0.001$ for 5 of 6, $p{<}0.01$ for LoRA; Wilcoxon signed-rank, Bonferroni-corrected across 6 datasets$\times$5 seeds). Most strikingly, \textbf{frozen RR-MoA beats full fine-tuning} (all layers unfrozen) by $12$--$79\%$ across all 6 datasets (Table~\ref{tab:baselines}), decisively confirming the Frozen Paradox: unfreezing the backbone destroys routing diversity via gradient co-adaptation (Proposition~\ref{prop:frozen}), making the additional expressivity counterproductive. The independent ensemble---same experts, no router---is $36$--$46\%$ worse, confirming that learned per-sample routing adds substantial value beyond expert diversity alone. LoRA with last-4 unfreezing (Appendix~\ref{app:lora_sweep}) shows no improvement over frozen LoRA ($1.154$ vs $1.154$ on ETTh1), confirming that LoRA operates in the same normalized representation space where the signal is already degraded.
+RR-MoA significantly outperforms every baseline ($p{<}0.001$ for 5 of 6, $p{<}0.01$ for LoRA; Wilcoxon signed-rank, Bonferroni-corrected across 6 datasets$\times$5 seeds). Most strikingly, \textbf{frozen RR-MoA beats full fine-tuning} (all layers unfrozen) by $12$--$79\%$ across all 6 datasets (Table~\ref{tab:baselines}), decisively confirming the Frozen Paradox: unfreezing the backbone destroys routing diversity via gradient co-adaptation (Proposition~\ref{prop:frozen}), making the additional expressivity counterproductive. The independent ensemble---same experts, no router---is $36$--$46\%$ worse, confirming that learned per-sample routing adds substantial value beyond expert diversity alone. LoRA with last-4 unfreezing (Table~\ref{tab:lora_sweep}, Appendix~\ref{app:lora_sweep}) shows no improvement over frozen LoRA ($1.154$ vs $1.154$ on ETTh1), confirming that LoRA operates in the same normalized representation space where the signal is already degraded.
 
 \textbf{Supervised calibration anchor.} DLinear~\citep{zeng2023dlinear} trained from scratch achieves $0.416$ (ETTh1), $0.322$ (ETTm1), $0.208$ (Weather). On single-stream RR-MoA with MOMENT-small, this gap is $33$--$78\%$; it narrows dramatically on Moirai (Weather: $0.209$ vs $0.208$; \S\ref{sec:cross_backbone}) and closes entirely when experts can access the raw signal.
 
@@ -397,6 +397,8 @@ Multi-Resolution                  & $0.460$ {\scriptsize($+11\%$)} & $0.365$ {\s
 \end{table}
 
 Learned blend parameters $\alpha_k{\approx}0.49$ across all five dual-stream experts confirm that \emph{neither} branch alone is sufficient---the backbone and the raw signal contribute complementary information. Crucially, the frozen-backbone and raw-routed paradigms are \emph{unchanged}: the dual-stream fix extends the expert architecture (an orthogonal axis) without touching the routing mechanism, confirming that the routing diagnosis is the load-bearing contribution.
+
+\textbf{Honest disclosure: how much does the TSFM contribute?} A pure raw-MLP MoE ablation (Appendix~\ref{app:raw_mlp_moe}, Table~\ref{tab:raw_mlp_moe}) replaces the TSFM with 5 size-diverse MLPs operating directly on the raw input, matching RR-MoA's $426$K parameter budget. Across 6 datasets, the pure raw-MLP MoE is essentially indistinguishable from Dual-Stream on average ($+0.4\%$ mean delta), losing by $1$--$6\%$ on the four datasets with complex temporal dynamics (ETTh1, ETTh2, ETTm1, Weather) but \emph{beating} Dual-Stream outright on ETTm2 ($-16.6\%$) and Electricity ($-1.5\%$). The TSFM's contribution to the gap-closing result is therefore dataset-dependent: substantial where forecasting requires non-linear temporal modeling, negligible on the linear-dominated datasets where DLinear is already near-optimal. This does not weaken the central diagnosis of the paper (normalization-induced routing collapse, which is independent of which backbone is used), but it does mean the dual-stream story should be read as ``the TSFM contributes complementary signal where complex dynamics exist'' rather than ``the TSFM is universally needed.''
 
 \textbf{Rawness vs.\ bypass.} To isolate whether RR-MoA's advantage comes from bypassing the backbone or specifically from reading the raw pre-normalization signal, we replace the router's input with the same signal after per-window RevIN (zero mean, unit variance). Everything else is identical.
 
@@ -522,7 +524,7 @@ This explains all empirical observations: (i)~the RevIN router loses $60$--$88\%
 \label{fig:signal_ratio}
 \end{figure}
 
-\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on four backbones with instance normalization and one \emph{negative control} without it, revealing a \emph{normalization spectrum}. MOMENT-small/large (RevIN): \textbf{all 18 configs} win per backbone ($27$--$81\%$ improvement). Moirai (no RevIN, LayerNorm only): \textbf{18/18} wins ($3$--$31\%$; Moirai+RR-MoA matches DLinear on Weather: $0.209$ vs $0.208$). \textbf{Moirai-MoE, a native sparsely-routed MoE TSFM}~\citep{liu2025moiraimoe} (LayerNorm only): RR-MoA wins on ETTh1 by $\mathbf{-37.3\%}$ ($0.723$ vs $1.154$, 5 seeds, $\sigma{=}0.009$) and on ETTh2 by $\mathbf{-84.0\%}$ ($0.487$ vs $3.046$, 5 seeds, $\sigma{=}0.046$; Table~\ref{tab:moirai_moe}), confirming that adapter-level routing stacks with backbone-internal expert routing. Crucially, AdaMix's hidden-state routing does \emph{not} collapse on Moirai-MoE --- the routing entropy is exactly $\log K = 1.6094$ (the maximum) to four decimal places across all $10$ completed cells ($\sigma{=}0.0000$), indicating mathematically uniform routing rather than near-uniform --- yet AdaMix still only matches the best fixed baseline MSE. This reveals a \emph{stronger} form of the normalization hypothesis than the MOMENT collapse alone suggests: raw-signal routing is information-richer than hidden-state routing \emph{even when the hidden states retain enough signal that the router cannot collapse to a single expert}. \textbf{Negative control---Chronos} (no instance normalization, encoder-decoder): standard AdaMix routing retains high entropy ($1.48$--$1.60$) with \emph{no collapse}, and RR-MoA provides no advantage (only \textbf{1/9} wins). This is exactly as Proposition~\ref{thm:mi_decomp} predicts: without instance normalization, temporal statistics are preserved in the hidden states and pre-normalization routing is unnecessary for \emph{whether} routing can happen, but raw-signal routing still extracts strictly more routing MI than hidden-state routing whenever the shape $S$ is not a bijection with $(M,\Sigma)$. The improvement gradient $81\%{>}37\%{>}31\%{>}{\sim}0\%$ tracks normalization aggressiveness and hidden-state discriminability, not backbone size (full tables in Appendix~\ref{app:cross_backbone}).
+\textbf{Cross-backbone generalization.}\label{sec:cross_backbone} We evaluate RR-MoA on four backbones with instance normalization and one \emph{negative control} without it, revealing a \emph{normalization spectrum}. MOMENT-small/large (RevIN): \textbf{all 18 configs} win per backbone ($27$--$81\%$ improvement). Moirai (no RevIN, LayerNorm only): \textbf{18/18} wins ($3$--$31\%$; Moirai+RR-MoA matches DLinear on Weather: $0.209$ vs $0.208$). \textbf{Moirai-MoE, a native sparsely-routed MoE TSFM}~\citep{liu2025moiraimoe} (LayerNorm only): RR-MoA wins on ETTh1 by $\mathbf{-37.3\%}$ ($0.723$ vs $1.154$, 5 seeds, $\sigma{=}0.009$) and on ETTh2 by $\mathbf{-84.0\%}$ ($0.487$ vs $3.046$, 5 seeds, $\sigma{=}0.046$; Table~\ref{tab:moirai_moe}), confirming that adapter-level routing stacks with backbone-internal expert routing. Crucially, AdaMix's hidden-state routing does \emph{not} collapse on Moirai-MoE --- the routing entropy is exactly $\log K = 1.6094$ (the maximum) to four decimal places across all $10$ completed cells ($\sigma{=}0.0000$), indicating mathematically uniform routing rather than near-uniform --- yet AdaMix still only matches the best fixed baseline MSE. This reveals a \emph{stronger} form of the normalization hypothesis than the MOMENT collapse alone suggests: raw-signal routing is information-richer than hidden-state routing \emph{even when the hidden states retain enough signal that the router cannot collapse to a single expert}. \textbf{Negative control---Chronos} (no instance normalization, encoder-decoder): standard AdaMix routing retains high entropy ($1.48$--$1.60$) with \emph{no collapse}, and RR-MoA provides no advantage (only \textbf{1/9} wins). This is exactly as Proposition~\ref{thm:mi_decomp} predicts: without instance normalization, temporal statistics are preserved in the hidden states and pre-normalization routing is unnecessary for \emph{whether} routing can happen, but raw-signal routing still extracts strictly more routing MI than hidden-state routing whenever the shape $S$ is not a bijection with $(M,\Sigma)$. The improvement gradient $81\%{>}37\%{>}31\%{>}{\sim}0\%$ tracks normalization aggressiveness and hidden-state discriminability, not backbone size (full grids in Table~\ref{tab:cross_backbone} and Table~\ref{tab:moirai_moe}, Appendix~\ref{app:cross_backbone}).
 
 \textbf{Sparse routing, multi-horizon, and task generalization.}\label{sec:topk}
 Top-2 sparse routing adds $4.3$\,ms ($+10\%$) latency over a single adapter (Appendix~\ref{app:topk},\ref{app:benchmark}). RR-MoA wins \textbf{24/24} horizon configurations ($H{\in}\{96,192,336,720\}$, $-38\%$ to $-51\%$); the DLinear gap narrows with $H$ ($+66\%{\to}+48\%$ on ETTh1, $+58\%{\to}+14\%$ on Weather). RR-MoA also generalizes to imputation ($-44\%$ to $-67\%$; Appendix~\ref{app:imputation}). An information diagnostic (Appendix~\ref{app:diagnostic}) confirms the residual gap reflects genuine information loss: k-NN on backbone features is $16$--$33\%$ worse than on raw input.
@@ -537,11 +539,6 @@ We identified \emph{normalization-induced co-adaptation} as the cause of MoE rou
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
 
-\bibitem[Ioffe and Szegedy(2015)]{ioffe2015batchnorm}
-Sergey Ioffe and Christian Szegedy.
-\newblock Batch normalization: Accelerating deep network training by reducing internal covariate shift.
-\newblock In \textit{Proceedings of the 32nd International Conference on Machine Learning (ICML)}, pages 448--456, 2015.
-
 \bibitem[He et~al.(2016)]{he2016resnet}
 Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
 \newblock Deep residual learning for image recognition.
@@ -552,20 +549,10 @@ Jie Hu, Li Shen, and Gang Sun.
 \newblock Squeeze-and-excitation networks.
 \newblock In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 7132--7141, 2018.
 
-\bibitem[Shen et~al.(2025)]{shen2025visionts}
-Lefei Shen, Mouxiang Chen, Xu Liu, Han Fu, Xiaoxue Ren, Jianling Sun, Zhuo Li, and Chenghao Liu.
-\newblock {VisionTS++}: Cross-modal time series foundation model with continual pre-trained vision backbones.
-\newblock \textit{arXiv preprint arXiv:2508.04379}, 2025.
-
 \bibitem[Chen et~al.(2025b)]{chen2025naslora}
 Renqi Chen, Haoyang Su, and Shixiang Tang.
 \newblock {NAS-LoRA}: Empowering parameter-efficient fine-tuning for visual foundation models with searchable adaptation.
 \newblock \textit{arXiv preprint arXiv:2512.03499}, 2025.
-
-\bibitem[Li et~al.(2025b)]{li2025tsfmbench}
-Zhe Li, Xiangfei Qiu, Peng Chen, Yihang Wang, Hanyin Cheng, Yang Shu, Jilin Hu, Chenjuan Guo, Aoying Zhou, Christian~S. Jensen, and Bin Yang.
-\newblock {TSFM-Bench}: A comprehensive and unified benchmarking of foundation models for time series forecasting.
-\newblock In \textit{Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)}, 2025.
 
 \bibitem[Li and Zhu(2025)]{li2025trace}
 Yuze Li and Wei Zhu.
@@ -627,11 +614,6 @@ J.~Pablo Munoz, Jinjie Yuan, and Nilesh Jain.
 \newblock Shears: Unstructured sparsity with neural low-rank adapter search.
 \newblock \textit{arXiv preprint arXiv:2404.10934}, 2024.
 
-\bibitem[Li et~al.(2022)]{li2022onenas}
-Yonggang Li et~al.
-\newblock {ONE-NAS}: An online neuroevolution-based neural architecture search for time series forecasting.
-\newblock \textit{Applied Soft Computing}, 2022.
-
 \bibitem[Romera-Paredes et~al.(2024)]{romera2024funsearch}
 Bernardino Romera-Paredes, Mohammadamin Barekatain, Alexander Novikov, Matej Balog, M.~Pawan Kumar, Emilien Dupont, Francisco~J.R. Ruiz, Jordan~S. Ellenberg, Pengming Wang, Omar Fawzi, Pushmeet Kohli, and Alhussein Fawzi.
 \newblock Mathematical discoveries from program search with large language models.
@@ -641,21 +623,6 @@ Bernardino Romera-Paredes, Mohammadamin Barekatain, Alexander Novikov, Matej Bal
 Qinglong Hu and Qingfu Zhang.
 \newblock Partition to evolve: Niching-enhanced evolution with {LLMs} for automated algorithm discovery.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
-
-\bibitem[Pourcel et~al.(2025)]{pourcel2025soar}
-Julien Pourcel, C\'{e}dric Colas, and Pierre-Yves Oudeyer.
-\newblock Self-improving language models for evolutionary program synthesis: A case study on {ARC-AGI}.
-\newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, volume 267 of \textit{PMLR}, pages 49659--49688, 2025.
-
-\bibitem[Surina et~al.(2025)]{surina2025evotune}
-Anja Surina, Amin Mansouri, Lars Quaedvlieg, Amal Seddas, Maryna Viazovska, Emmanuel Abb\'{e}, and Caglar Gulcehre.
-\newblock Algorithm discovery with {LLMs}: Evolutionary search meets reinforcement learning.
-\newblock In \textit{Conference on Language Modeling (COLM)}, 2025.
-
-\bibitem[Xu et~al.(2026)]{xu2026seats}
-Longkun Xu, Xiaochun Zhang, Qiantu Tuo, and Rui Li.
-\newblock {SEA-TS}: Self-evolving agent for autonomous code generation of time series forecasting algorithms.
-\newblock \textit{arXiv preprint arXiv:2603.04873}, 2026.
 
 \bibitem[Zhou et~al.(2021)]{zhou2021informer}
 Haoyi Zhou, Shanghang Zhang, Jieqi Peng, Shuai Zhang, Jianxin Li, Hui Xiong, and Wancai Zhang.
@@ -677,11 +644,6 @@ Yuqi Nie, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam.
 \newblock A time series is worth 64 words: Long-term forecasting with transformers.
 \newblock In \textit{International Conference on Learning Representations (ICLR)}, 2023.
 
-\bibitem[Liu et~al.(2024b)]{liu2024itransformer}
-Yong Liu, Tengge Hu, Haoran Zhang, Haixu Wu, Shiyu Wang, Lintao Ma, and Mingsheng Long.
-\newblock {iTransformer}: Inverted transformers are effective for time series forecasting.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2024.
-
 \bibitem[Wu et~al.(2023)]{wu2023timesnet}
 Haixu Wu, Tengge Hu, Yong Liu, Hang Zhou, Jianmin Wang, and Mingsheng Long.
 \newblock {TimesNet}: Temporal 2{D}-variation modeling for general time series analysis.
@@ -702,25 +664,10 @@ Yong Liu, Haixu Wu, Jianmin Wang, and Mingsheng Long.
 \newblock Non-stationary transformers: Exploring the stationarity in time series forecasting.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
 
-\bibitem[Wu et~al.(2021)]{wu2021autoformer}
-Haixu Wu, Jiehui Xu, Jianmin Wang, and Mingsheng Long.
-\newblock Autoformer: Decomposition transformers with auto-correlation for long-term series forecasting.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2021.
-
 \bibitem[Lee et~al.(2024)]{lee2024units}
 Gerald Lee, Chenghao Liu, and Doyen Sahoo.
 \newblock {UniTS}: A unified multi-task time series model.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2024.
-
-\bibitem[Lehman et~al.(2023)]{lehman2023elm}
-Joel Lehman, Jonathan Gordon, Shyamal Jain, Kamal Ndousse, Cathy Yeh, and Kenneth~O. Stanley.
-\newblock Evolution through large models.
-\newblock \textit{arXiv preprint arXiv:2206.08896}, 2023.
-
-\bibitem[Nasir et~al.(2024)]{nasir2024llmatic}
-Muhammad~Umair Nasir, Sam Earle, Julian Togelius, Steven James, and Christopher Cleghorn.
-\newblock {LLMatic}: Neural architecture search via large language models and quality diversity optimization.
-\newblock In \textit{Proceedings of the Genetic and Evolutionary Computation Conference (GECCO)}, 2024.
 
 \bibitem[Chen et~al.(2023)]{chen2023evoprompting}
 Angelica Chen, David~M. Dohan, and David~R. So.
@@ -767,25 +714,10 @@ Gerald Woo et~al.
 \newblock {GIFT-Eval}: A benchmark for general time series forecasting model evaluation.
 \newblock \textit{arXiv preprint arXiv:2410.10393}, 2024.
 
-\bibitem[Toledo et~al.(2025)]{toledo2025aiagents}
-Edan Toledo et~al.
-\newblock {AI} research agents for machine learning: Search, exploration, and generalization in {MLE}-bench.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
-
 \bibitem[Zhang et~al.(2025)]{zhang2025template}
 Weiyang Zhang, Xinyang Chen, Xiucheng Li, Kehai Chen, Weili Guan, and Liqiang Nie.
 \newblock Unified transferability metrics for time series foundation models.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
-
-\bibitem[Koza(1994)]{koza1994genetic}
-John~R. Koza.
-\newblock \textit{Genetic Programming {II}: Automatic Discovery of Reusable Programs}.
-\newblock MIT Press, 1994.
-
-\bibitem[McKay et~al.(2010)]{mckay2010grammar}
-Robert~I. McKay, Nguyen~Xuan Hoai, Peter~Alexander Whigham, Yin Shan, and Michael O'Neill.
-\newblock Grammar-based genetic programming: A survey.
-\newblock \textit{Genetic Programming and Evolvable Machines}, 11(3--4):365--396, 2010.
 
 \bibitem[Ji et~al.(2025)]{ji2025rznas}
 Zipeng Ji, Guanghui Zhu, Chunfeng Yuan, and Yihua Huang.
@@ -810,18 +742,6 @@ Kashif Rasul, Arjun Ashok, Andrew~Robert Williams, Arian Khorasani, George Adamo
 \newblock \textit{arXiv preprint arXiv:2310.08278}, 2024.
 
 % --- Classic TS forecasting ---
-
-\bibitem[Zhou et~al.(2022)]{zhou2022fedformer}
-Tian Zhou, Ziqing Ma, Qingsong Wen, Xue Wang, Liang Sun, and Rong Jin.
-\newblock {FEDformer}: Frequency enhanced decomposed transformer for long-term series forecasting.
-\newblock In \textit{Proceedings of the 39th International Conference on Machine Learning (ICML)}, 2022.
-
-\bibitem[Zhang and Yan(2023)]{zhang2023crossformer}
-Yunhao Zhang and Junchi Yan.
-\newblock Crossformer: Transformer utilizing cross-dimension dependency for multivariate time series forecasting.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2023.
-
-% --- Foundational ML ---
 
 \bibitem[Vaswani et~al.(2017)]{vaswani2017attention}
 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan~N. Gomez, Lukasz Kaiser, and Illia Polosukhin.
@@ -857,11 +777,6 @@ Barret Zoph and Quoc~V. Le.
 
 % --- Evolutionary computation ---
 
-\bibitem[Hansen(2016)]{hansen2016cmaes}
-Nikolaus Hansen.
-\newblock The {CMA} evolution strategy: A tutorial.
-\newblock \textit{arXiv preprint arXiv:1604.00772}, 2016.
-
 \bibitem[Real et~al.(2019)]{real2019regularized}
 Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc~V. Le.
 \newblock Regularized evolution for image classifier architecture search.
@@ -869,52 +784,15 @@ Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc~V. Le.
 
 % --- More TS forecasting methods ---
 
-\bibitem[Wang et~al.(2024)]{wang2024timemixer}
-Shiyu Wang, Haixu Wu, Xiaoming Shi, Tengge Hu, Huakun Luo, Lintao Ma, James~Y. Zhang, and Jun Zhou.
-\newblock {TimeMixer}: Decomposable multiscale mixing for time series forecasting.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2024.
-
-\bibitem[Xu et~al.(2025)]{xu2025fmstruggle}
-Zongzhe Xu, Ritvik Gupta, Wenduo Cheng, Alexander Shen, Junhong Shen, Ameet Talwalkar, and Mikhail Khodak.
-\newblock Specialized foundation models struggle to beat supervised baselines.
-\newblock \textit{arXiv preprint arXiv:2411.02796}, 2025.
-
-\bibitem[Kottapalli et~al.(2025)]{kottapalli2025tssurvey}
-Siva Rama~Krishna Kottapalli, Karthik Hubli, Sandeep Chandrashekhara, Garima Jain, Sunayana Hubli, Gayathri Botla, and Ramesh Doddaiah.
-\newblock Foundation models for time series: A survey.
-\newblock \textit{arXiv preprint arXiv:2504.04011}, 2025.
-
 \bibitem[Ye et~al.(2024)]{ye2024reevo}
 Haoran Ye, Jiarui Wang, Zhiguang Cao, Federico Berto, Chuanbo Hua, Haeyeon Kim, Jinkyoo Park, and Guojie Song.
 \newblock {ReEvo}: Large language models as hyper-heuristics with reflective evolution.
 \newblock \textit{arXiv preprint arXiv:2402.01145}, 2024.
 
-\bibitem[Sobania et~al.(2023)]{sobania2023program}
-Dominik Sobania, Dirk Schweim, and Franz Rothlauf.
-\newblock A comprehensive survey on program synthesis with evolutionary algorithms.
-\newblock \textit{IEEE Transactions on Evolutionary Computation}, 27(1):82--97, 2023.
-
-\bibitem[Zhang et~al.(2025b)]{zhang2025llm4opt}
-Yisong Zhang, Ran Cheng, Guoxing Yi, and Kay~Chen Tan.
-\newblock A systematic survey on large language models for evolutionary optimization.
-\newblock \textit{arXiv preprint arXiv:2509.08269}, 2025.
-
 \bibitem[Bommasani et~al.(2021)]{bommasani2021foundation}
 Rishi Bommasani, Drew~A. Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von~Arx, et~al.
 \newblock On the opportunities and risks of foundation models.
 \newblock \textit{arXiv preprint arXiv:2108.07258}, 2021.
-
-\bibitem[Liang et~al.(2024)]{liang2024tsnas}
-Zhen Liang and Jiale Sun.
-\newblock Evolutionary neural architecture search for multivariate time series forecasting.
-\newblock In \textit{Asian Conference on Machine Learning (ACML)}, 2024.
-
-\bibitem[Cheng et~al.(2025)]{cheng2025genesys}
-Junyan Cheng, Peter Clark, and Kyle Richardson.
-\newblock {Genesys}: Language modeling by language models.
-\newblock \textit{arXiv preprint arXiv:2506.20249}, 2025.
-
-% --- Time series surveys and benchmarks ---
 
 \bibitem[Godahewa et~al.(2021)]{godahewa2021monash}
 Rakshitha Godahewa, Christoph Bergmeir, Geoffrey~I. Webb, Rob~J. Hyndman, and Pablo Montero-Manso.
@@ -927,20 +805,6 @@ Qingsong Wen, Tian Zhou, Chaoli Zhang, Weiqi Chen, Ziqing Ma, Junchi Yan, and Li
 \newblock In \textit{Proceedings of the International Joint Conference on Artificial Intelligence (IJCAI)}, 2023.
 
 % --- Pre-norm transformer ---
-
-\bibitem[Xiong et~al.(2020)]{xiong2020prenorm}
-Ruibin Xiong, Yunchang Yang, Di He, Kai Zheng, Shuxin Zheng, Chen Xing, Huishuai Zhang, Yanyan Lan, Liwei Wang, and Tie-Yan Liu.
-\newblock On layer normalization in the transformer architecture.
-\newblock In \textit{Proceedings of the 37th International Conference on Machine Learning (ICML)}, pages 10524--10533, 2020.
-
-% --- LLM for code ---
-
-\bibitem[Chen et~al.(2021)]{chen2021codex}
-Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique~Ponde de~Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et~al.
-\newblock Evaluating large language models trained on code.
-\newblock \textit{arXiv preprint arXiv:2107.03374}, 2021.
-
-% --- Time-MoE ---
 
 \bibitem[Shi et~al.(2024)]{shi2024timemoe}
 Xiaoming Shi, Shiyu Wang, Yuqi Nie, Dianqi Li, Zhou Ye, Qingsong Wen, and Ming Jin.
