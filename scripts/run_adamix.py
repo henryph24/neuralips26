@@ -111,11 +111,37 @@ class AdaMix(nn.Module):
 
     The router produces instance-level weights over K adapter heads.
     Different time series windows get different adapter combinations.
+
+    Supports four MoE-rescue variants evaluated in the RR-MoA rescue sub-table:
+      - router_type="softmax": standard Switch Transformer softmax gating
+      - router_type="relu":     ReMoE ReLU gating (Wang et al. ICLR 2025)
+      - router_type="expert-choice": Zhou et al. 2022 per-expert top-k
+      - load_balance_variant="mean-prob": legacy AdaMix (f_i = P_i; preserved
+        for reproducibility of prior paper Table 2 numbers)
+      - load_balance_variant="argmax":    correct Switch Transformer Eq. 4-6
+        (f_i uses argmax indicator, P_i the mean softmax probability)
     """
-    def __init__(self, d_model, output_dim, K=5, hidden=64, router_hidden=32):
+    def __init__(self, d_model, output_dim, K=5, hidden=64, router_hidden=32,
+                 router_type="softmax",
+                 load_balance_coef=0.01,
+                 load_balance_variant="mean-prob",
+                 entropy_reg_coef=0.0,
+                 z_loss_coef=0.0,
+                 relu_l1_coef=0.0,
+                 capacity_factor=2.0):
         super().__init__()
         self.K = K
         self.d_model = d_model
+        self.router_type = router_type
+        self.load_balance_coef = load_balance_coef
+        self.load_balance_variant = load_balance_variant
+        self.entropy_reg_coef = entropy_reg_coef
+        self.z_loss_coef = z_loss_coef
+        self.relu_l1_coef = relu_l1_coef
+        self.capacity_factor = capacity_factor
+
+        # Back-compat attribute (older scripts reference .load_balance_coeff)
+        self.load_balance_coeff = load_balance_coef
 
         # K adapter heads
         self.adapters = nn.ModuleList([
@@ -130,43 +156,159 @@ class AdaMix(nn.Module):
             nn.Linear(router_hidden, K),
         )
 
-        # Optional: load balancing loss coefficient
-        self.load_balance_coeff = 0.01
+    # ------------------------------------------------------------------ #
+    #  Routing primitives                                                #
+    # ------------------------------------------------------------------ #
+
+    def _compute_logits(self, hidden_states):
+        """Shared: mean-pool to (B, d_model) and project to (B, K)."""
+        h_summary = hidden_states.mean(dim=1)
+        return self.router(h_summary)  # (B, K)
+
+    def _compute_weights(self, logits):
+        """Dispatch to the requested routing scheme.  Returns (B, K) per-sample
+        mixture weights that sum to 1 along dim=-1 (or close to it, for
+        expert-choice fallback samples)."""
+        if self.router_type == "softmax":
+            return F.softmax(logits, dim=-1)
+
+        if self.router_type == "relu":
+            # ReMoE: unnormalized ReLU gate.  For a mixture-of-adapters we
+            # renormalize per sample so the output magnitude matches softmax;
+            # L1 sparsity pressure is applied on the raw ReLU values via
+            # relu_l1_loss() below.
+            raw = F.relu(logits)
+            denom = raw.sum(dim=-1, keepdim=True)
+            # Fallback to softmax for any sample where all logits are <=0.
+            fallback = F.softmax(logits, dim=-1)
+            weights = torch.where(
+                denom > 1e-8,
+                raw / denom.clamp_min(1e-8),
+                fallback,
+            )
+            return weights
+
+        if self.router_type == "expert-choice":
+            # Zhou et al. 2022 expert-choice: each expert picks top-k samples,
+            # with k = B * c / K (c = capacity factor).  Simplified for the
+            # mixture-of-adapters context where we cannot drop samples.
+            B = logits.shape[0]
+            S = F.softmax(logits, dim=-1)           # (B, K) token->expert probs
+            k = max(1, min(B, int(round(B * self.capacity_factor / self.K))))
+            S_T = S.transpose(0, 1)                 # (K, B)
+            _, top_idx = torch.topk(S_T, k, dim=-1)  # (K, k)
+            mask = torch.zeros_like(S_T)
+            mask.scatter_(1, top_idx, 1.0)          # (K, B) 1 where expert picked
+            gate = S_T * mask                       # (K, B)
+            weights = gate.transpose(0, 1)          # (B, K)
+            denom = weights.sum(dim=-1, keepdim=True)
+            # Samples not selected by any expert fall back to softmax (very
+            # rare when capacity_factor>=1).
+            weights = torch.where(
+                denom > 1e-8,
+                weights / denom.clamp_min(1e-8),
+                S,
+            )
+            return weights
+
+        raise ValueError("Unknown router_type: %s" % self.router_type)
 
     def forward(self, hidden_states):
-        # Router: produce per-sample weights based on mean-pooled representation
-        h_summary = hidden_states.mean(dim=1)  # (B, d_model)
-        logits = self.router(h_summary)  # (B, K)
-        weights = F.softmax(logits, dim=-1)  # (B, K)
+        logits = self._compute_logits(hidden_states)
+        weights = self._compute_weights(logits)  # (B, K)
 
-        # Compute all adapter outputs
-        outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)  # (B, K, output_dim)
-
-        # Weighted combination
-        mixed = (weights.unsqueeze(-1) * outputs).sum(dim=1)  # (B, output_dim)
-
+        outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)  # (B, K, H)
+        mixed = (weights.unsqueeze(-1) * outputs).sum(dim=1)  # (B, H)
         return mixed
 
     def get_routing_stats(self, hidden_states):
-        """Get routing weights for analysis (no grad)."""
+        """Return (B, K) mixture weights for analysis (no grad)."""
         with torch.no_grad():
-            h_summary = hidden_states.mean(dim=1)
-            logits = self.router(h_summary)
-            weights = F.softmax(logits, dim=-1)
+            logits = self._compute_logits(hidden_states)
+            weights = self._compute_weights(logits)
         return weights
 
+    # ------------------------------------------------------------------ #
+    #  Auxiliary loss terms (all return scalars, pre-coefficient)        #
+    # ------------------------------------------------------------------ #
+
     def load_balance_loss(self, hidden_states):
-        """Auxiliary loss to prevent router collapse (standard MoE technique)."""
-        h_summary = hidden_states.mean(dim=1)
-        logits = self.router(h_summary)
-        weights = F.softmax(logits, dim=-1)
+        """Switch Transformer auxiliary loss (Fedus et al. 2022, Eq. 4-6).
 
-        # Fraction of samples routed to each expert
-        f_i = weights.mean(dim=0)  # (K,)
-        # Probability assigned to each expert
-        p_i = F.softmax(logits, dim=-1).mean(dim=0)  # (K,)
+        L_B = N * Σ_i f_i * P_i
 
-        return self.K * (f_i * p_i).sum()
+        - load_balance_variant == "mean-prob": legacy formulation where f_i = P_i
+          (equivalent to N * Σ P_i^2).  Preserved so prior Table 2 numbers in
+          the paper reproduce exactly.
+        - load_balance_variant == "argmax":    correct Switch Transformer form
+          where f_i uses the non-differentiable argmax indicator while P_i
+          remains the differentiable mean probability.
+        """
+        logits = self._compute_logits(hidden_states)
+        probs = F.softmax(logits, dim=-1)          # (B, K)
+        P_i = probs.mean(dim=0)                    # (K,)
+        if self.load_balance_variant == "argmax":
+            argmax_idx = probs.argmax(dim=-1)      # (B,)
+            f_i = F.one_hot(argmax_idx, self.K).float().mean(dim=0)  # (K,)
+        else:
+            f_i = P_i
+        return self.K * (f_i * P_i).sum()
+
+    def entropy_regularization(self, hidden_states):
+        """Negative entropy of the router distribution: −H(p).
+
+        Added with a POSITIVE coefficient, this encourages HIGH routing
+        entropy (forces diversity).  Returning −H rather than +H means the
+        training-loop combination line stays the simple pattern
+            loss = mse + coef * term.
+        """
+        logits = self._compute_logits(hidden_states)
+        probs = F.softmax(logits, dim=-1)
+        H = -(probs * torch.log(probs.clamp_min(1e-10))).sum(dim=-1).mean()
+        return -H
+
+    def z_loss(self, hidden_states):
+        """ST-MoE router z-loss (Zoph et al. 2022, Eq. 5):
+            L_z = (1/B) * Σ_i (log Σ_j exp(x_j^(i)))^2
+
+        Penalizes large router logit magnitudes; empirically stabilizes
+        bfloat16 training and the routing distribution."""
+        logits = self._compute_logits(hidden_states)
+        lse = torch.logsumexp(logits, dim=-1)      # (B,)
+        return (lse ** 2).mean()
+
+    def relu_l1_loss(self, hidden_states):
+        """ReMoE L1 sparsity regularization (Wang et al. 2025, Eq. 9).
+
+        Only meaningful when router_type == 'relu'; we return 0 otherwise so
+        the training loop can unconditionally add `relu_l1_coef * relu_l1_loss()`.
+        Uses the load-balanced variant (Eq. 10) which weights over-active
+        experts more aggressively, identical to Switch load balancing up to a
+        constant once experts are used."""
+        if self.router_type != "relu":
+            return hidden_states.new_zeros(())
+        logits = self._compute_logits(hidden_states)
+        raw = F.relu(logits)                       # (B, K)
+        # Non-differentiable f_{l,e} = (K / k*B) * count(raw > 0) [k=1 default].
+        active = (raw > 0).float()
+        f_e = active.mean(dim=0) * self.K           # (K,) (k/E normalization)
+        # Avoid zero gradient when everyone is firing
+        weight = f_e.detach().clamp_min(1.0)
+        return (weight * raw.mean(dim=0)).sum()
+
+    def total_aux_loss(self, hidden_states):
+        """Sum of all enabled auxiliary losses, each pre-multiplied by its
+        coefficient.  Called from the training loop as a single line."""
+        total = hidden_states.new_zeros(())
+        if self.load_balance_coef != 0.0:
+            total = total + self.load_balance_coef * self.load_balance_loss(hidden_states)
+        if self.entropy_reg_coef != 0.0:
+            total = total + self.entropy_reg_coef * self.entropy_regularization(hidden_states)
+        if self.z_loss_coef != 0.0:
+            total = total + self.z_loss_coef * self.z_loss(hidden_states)
+        if self.relu_l1_coef != 0.0 and self.router_type == "relu":
+            total = total + self.relu_l1_coef * self.relu_l1_loss(hidden_states)
+        return total
 
     def param_count(self):
         return sum(p.numel() for p in self.parameters())
@@ -175,7 +317,14 @@ class AdaMix(nn.Module):
 def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
                  backbone_type="moment", K=5, hidden=64, test_ch=None, scaler=None,
-                 trajectory_path=None, trajectory_max_steps=400):
+                 trajectory_path=None, trajectory_max_steps=400,
+                 router_type="softmax",
+                 load_balance_coef=0.01,
+                 load_balance_variant="mean-prob",
+                 entropy_reg_coef=0.0,
+                 z_loss_coef=0.0,
+                 relu_l1_coef=0.0,
+                 capacity_factor=2.0):
     """Train AdaMix adapter.
 
     If ``trajectory_path`` is not None, writes a JSONL file with per-step
@@ -189,7 +338,16 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
     (a)--(c) should all be absent.
     """
     hdim = _get_hidden_dim(model)
-    adapter = AdaMix(hdim, forecast_horizon, K=K, hidden=hidden).to(device)
+    adapter = AdaMix(
+        hdim, forecast_horizon, K=K, hidden=hidden,
+        router_type=router_type,
+        load_balance_coef=load_balance_coef,
+        load_balance_variant=load_balance_variant,
+        entropy_reg_coef=entropy_reg_coef,
+        z_loss_coef=z_loss_coef,
+        relu_l1_coef=relu_l1_coef,
+        capacity_factor=capacity_factor,
+    ).to(device)
 
     # Collect trainable params (adapter + unfrozen backbone)
     trainable = list(adapter.parameters())
@@ -228,7 +386,7 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
             with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
                 feat = _extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)
                 pred = adapter(feat)
-                loss = mse_fn(pred, by) + adapter.load_balance_coeff * adapter.load_balance_loss(feat)
+                loss = mse_fn(pred, by) + adapter.total_aux_loss(feat)
             optimizer.zero_grad()
             loss.backward()
 
@@ -363,9 +521,65 @@ def main():
     parser.add_argument("--norm-type", default="revin",
                         choices=["revin", "batchnorm", "groupnorm"],
                         help="Normalization type inside MOMENT (generalization test)")
+    # --- MoE rescue-baseline flags (Section 3 rescue sub-table) -----------
+    parser.add_argument("--router-type", default="softmax",
+                        choices=["softmax", "relu", "expert-choice"],
+                        help="Routing mechanism. softmax=Switch Transformer "
+                             "(default/legacy), relu=ReMoE ReLU gate (Wang et "
+                             "al. ICLR 2025), expert-choice=Zhou et al. 2022 "
+                             "per-expert top-k.")
+    parser.add_argument("--load-balance-coef", type=float, default=0.01,
+                        help="Coefficient on Switch Transformer load-balance "
+                             "auxiliary loss (alpha in Fedus et al. Eq. 4). "
+                             "Default 0.01 matches paper Table 2.")
+    parser.add_argument("--load-balance-variant", default="mean-prob",
+                        choices=["mean-prob", "argmax"],
+                        help="mean-prob: legacy AdaMix form f_i=P_i (reproduces "
+                             "existing paper numbers). argmax: correct Switch "
+                             "Transformer form where f_i is the argmax indicator.")
+    parser.add_argument("--entropy-reg-coef", type=float, default=0.0,
+                        help="Coefficient on -H(router) regularizer. Positive "
+                             "values encourage uniform routing. Rescue sweep: "
+                             "{0, 0.01, 0.1, 1.0}.")
+    parser.add_argument("--z-loss-coef", type=float, default=0.0,
+                        help="Coefficient on ST-MoE router z-loss (Zoph et al. "
+                             "2022 Eq. 5). Recommended 0.001; rescue sweep "
+                             "{0, 0.001, 0.01, 0.1}.")
+    parser.add_argument("--relu-l1-coef", type=float, default=0.0,
+                        help="Coefficient on ReMoE L1 sparsity regularizer. "
+                             "Only used when --router-type=relu. Rescue sweep "
+                             "uses fixed value {0.001, 0.01, 0.1}.")
+    parser.add_argument("--capacity-factor", type=float, default=2.0,
+                        help="Expert-choice routing capacity factor c. "
+                             "k = B*c/K tokens per expert (Zhou et al. 2022).")
+    parser.add_argument("--results-dir", default="results/adamix",
+                        help="Output directory. Rescue sweep writes to "
+                             "results/adamix_rescue/.")
+    parser.add_argument("--run-baselines", default="auto",
+                        choices=["auto", "yes", "no"],
+                        help="Whether to also run fixed-head baselines. "
+                             "'auto' skips baselines when rescue flags are set "
+                             "(to keep the rescue sweep cheap), runs them "
+                             "otherwise.")
     args = parser.parse_args()
 
-    os.makedirs("results/adamix", exist_ok=True)
+    # Detect whether we're running a rescue-sweep config (any non-default
+    # rescue flag set).  Default baseline configurations are written to
+    # results/adamix/ to avoid churning existing experiments; rescue configs
+    # go to results/adamix_rescue/ for easy analysis.
+    rescue_active = (
+        args.router_type != "softmax"
+        or args.entropy_reg_coef != 0.0
+        or args.z_loss_coef != 0.0
+        or args.relu_l1_coef != 0.0
+        or args.load_balance_variant != "mean-prob"
+        or args.load_balance_coef != 0.01
+    )
+    results_dir = args.results_dir
+    if rescue_active and results_dir == "results/adamix":
+        results_dir = "results/adamix_rescue"
+
+    os.makedirs(results_dir, exist_ok=True)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
@@ -409,6 +623,13 @@ def main():
         test_ch=test_ch, scaler=scaler,
         trajectory_path=args.trajectory,
         trajectory_max_steps=args.trajectory_max_steps,
+        router_type=args.router_type,
+        load_balance_coef=args.load_balance_coef,
+        load_balance_variant=args.load_balance_variant,
+        entropy_reg_coef=args.entropy_reg_coef,
+        z_loss_coef=args.z_loss_coef,
+        relu_l1_coef=args.relu_l1_coef,
+        capacity_factor=args.capacity_factor,
     )
     elapsed = time.time() - start
 
@@ -421,46 +642,54 @@ def main():
     print("Routing entropy: %.3f (max=%.3f for K=%d)" % (
         result["routing_entropy"], np.log(args.K), args.K))
 
-    # === Run fixed baselines ===
-    print("\nFixed baselines (%d epochs, unfreeze=%s):" % (args.epochs, args.unfreeze))
-    # Reload model for fair baseline comparison
-    model2 = load_backbone(args.backbone, args.device,
-                           disable_revin=args.disable_revin)
-    _disable_gradient_checkpointing(model2)
-    blocks2 = _get_encoder_blocks(model2)
-    for p in model2.parameters():
-        p.requires_grad = False
-    _apply_unfreeze(blocks2, args.unfreeze)
-
-    baselines = {"linear": SEED_ADAPTERS[0], "attention": SEED_ADAPTERS[3], "conv": SEED_ADAPTERS[4]}
+    # === Run fixed baselines (skipped during rescue sweeps) ===
+    run_baselines = (args.run_baselines == "yes" or
+                     (args.run_baselines == "auto" and not rescue_active))
     baseline_results = {}
-    for name, code in baselines.items():
-        try:
-            tr = train_adapter(code, model2, blocks2, X_train, Y_train, X_test, Y_test,
-                               device=args.device, n_epochs=15, forecast_horizon=args.horizon,
-                               backbone_type=bb_type, eval_ch=test_ch, scaler=scaler)
-            baseline_results[name] = tr
-            if "mse_denorm" in tr:
-                print("  %-15s MSE=%.4f  MSE_denorm=%.4f  params=%d" % (
-                    name, tr["mse"], tr["mse_denorm"], tr["param_count"]))
-            else:
-                print("  %-15s MSE=%.4f  params=%d" % (name, tr["mse"], tr["param_count"]))
-        except Exception as e:
-            print("  %-15s ERROR: %s" % (name, e))
+    if run_baselines:
+        print("\nFixed baselines (%d epochs, unfreeze=%s):" % (args.epochs, args.unfreeze))
+        # Reload model for fair baseline comparison
+        model2 = load_backbone(args.backbone, args.device,
+                               disable_revin=args.disable_revin)
+        _disable_gradient_checkpointing(model2)
+        blocks2 = _get_encoder_blocks(model2)
+        for p in model2.parameters():
+            p.requires_grad = False
+        _apply_unfreeze(blocks2, args.unfreeze)
+
+        baselines = {"linear": SEED_ADAPTERS[0], "attention": SEED_ADAPTERS[3], "conv": SEED_ADAPTERS[4]}
+        for name, code in baselines.items():
+            try:
+                tr = train_adapter(code, model2, blocks2, X_train, Y_train, X_test, Y_test,
+                                   device=args.device, n_epochs=15, forecast_horizon=args.horizon,
+                                   backbone_type=bb_type, eval_ch=test_ch, scaler=scaler)
+                baseline_results[name] = tr
+                if "mse_denorm" in tr:
+                    print("  %-15s MSE=%.4f  MSE_denorm=%.4f  params=%d" % (
+                        name, tr["mse"], tr["mse_denorm"], tr["param_count"]))
+                else:
+                    print("  %-15s MSE=%.4f  params=%d" % (name, tr["mse"], tr["param_count"]))
+            except Exception as e:
+                print("  %-15s ERROR: %s" % (name, e))
+    else:
+        print("\nFixed baselines SKIPPED (rescue sweep mode)")
 
     # Summary
-    best_bl_name = min(baseline_results, key=lambda k: baseline_results[k]["mse"])
-    best_bl_mse = baseline_results[best_bl_name]["mse"]
-    delta = (result["mse"] - best_bl_mse) / best_bl_mse * 100
-    winner = "AdaMix" if result["mse"] < best_bl_mse else "BASELINE"
-
     print("\n" + "=" * 60)
     print("SUMMARY: %s H=%d" % (args.dataset, args.horizon))
     print("=" * 60)
     print("AdaMix (K=%d):  MSE=%.4f  params=%d  time=%.0fs" % (
         args.K, result["mse"], result["param_count"], elapsed))
-    print("Best baseline: MSE=%.4f  (%s)" % (best_bl_mse, best_bl_name))
-    print("Delta: %+.1f%% -> Winner: %s" % (delta, winner))
+    if baseline_results:
+        best_bl_name = min(baseline_results, key=lambda k: baseline_results[k]["mse"])
+        best_bl_mse = baseline_results[best_bl_name]["mse"]
+        delta = (result["mse"] - best_bl_mse) / best_bl_mse * 100
+        winner = "AdaMix" if result["mse"] < best_bl_mse else "BASELINE"
+        print("Best baseline: MSE=%.4f  (%s)" % (best_bl_mse, best_bl_name))
+        print("Delta: %+.1f%% -> Winner: %s" % (delta, winner))
+    else:
+        delta = None
+        winner = None
 
     # Save
     scaler_info = None
@@ -485,10 +714,33 @@ def main():
         "winner": winner,
         "delta_pct": delta,
         "scaler": scaler_info,
+        # Rescue-baseline configuration (present on every run so the summary
+        # scripts can slice by these fields):
+        "router_type": args.router_type,
+        "load_balance_coef": args.load_balance_coef,
+        "load_balance_variant": args.load_balance_variant,
+        "entropy_reg_coef": args.entropy_reg_coef,
+        "z_loss_coef": args.z_loss_coef,
+        "relu_l1_coef": args.relu_l1_coef,
+        "capacity_factor": args.capacity_factor,
+        "rescue_active": rescue_active,
     }
     revin_suffix = "_no_revin" if args.disable_revin else ""
     norm_suffix = "_%s" % args.norm_type if args.norm_type != "revin" else ""
-    path = "results/adamix/%s_H%d_K%d_%s_%d%s%s.json" % (args.dataset, args.horizon, args.K, args.unfreeze, args.seed, revin_suffix, norm_suffix)
+    # Encode the rescue configuration in the filename so concurrent sweeps
+    # never collide on the same output file.
+    if rescue_active:
+        rescue_tag = "_rtr%s_lb%g_lv%s_ent%g_z%g_l1%g_cf%g" % (
+            args.router_type, args.load_balance_coef, args.load_balance_variant,
+            args.entropy_reg_coef, args.z_loss_coef, args.relu_l1_coef,
+            args.capacity_factor,
+        )
+    else:
+        rescue_tag = ""
+    path = "%s/%s_H%d_K%d_%s_%d%s%s%s.json" % (
+        results_dir, args.dataset, args.horizon, args.K, args.unfreeze,
+        args.seed, revin_suffix, norm_suffix, rescue_tag,
+    )
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
