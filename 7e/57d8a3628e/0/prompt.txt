@@ -1,0 +1,105 @@
+plan further experiments that would strength our paper significantly because our RACE VM is still ready for us to use and the time to conference is plenty (recall memory on how to use the Race VM). Plan broad ones and deep ones
+
+---
+
+let run them in a queued at our race vm now
+
+---
+
+we have roughly 8 hours overnight, can we add more experiments that may meaningfully improve our papers
+
+---
+
+so all queued
+
+---
+
+<task-notification>
+<task-id>bef04xmot</task-id>
+<tool-use-id>toolu_015pW4recCMqviMJjaeB1jcC</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/bef04xmot.output</output-file>
+<status>failed</status>
+<summary>Background command "Launch Phase 1 experiments on RACE VM" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b4p67kunt</task-id>
+<tool-use-id>toolu_01WZYg4gLEuXH9rHNCHewww5</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/b4p67kunt.output</output-file>
+<status>failed</status>
+<summary>Background command "Chain Phase 2 after Phase 1 on RACE VM" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+How is everything?
+
+---
+
+ETA
+
+---
+
+How is everything?
+
+---
+
+how useful is the result so far
+
+---
+
+<task-notification>
+<task-id>bg8h0n1ra</task-id>
+<tool-use-id>toolu_01HLPMrqntuaK6sE8itZZT5M</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/bg8h0n1ra.output</output-file>
+<status>failed</status>
+<summary>Background command "Launch Phase 2 with setsid to detach from SSH" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+How is everything?
+
+---
+
+let's do it, the incorprate net win results into the paper
+
+---
+
+<task-notification>
+<task-id>bqbkv3329</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/bqbkv3329.output</output-file>
+<status>completed</status>
+<summary>Background command "Launch Moirai 15ep dual-stream rerun" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>blvklf18y</task-id>
+<tool-use-id>toolu_01U79cMSiKXkJzFYLcoKM1Jx</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/blvklf18y.output</output-file>
+<status>completed</status>
+<summary>Background command "Queue MOMENT 15ep dual-stream rerun after Moirai" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>blqk4ipbd</task-id>
+<tool-use-id>toolu_01CNHLVVaCowa1TLaaKEcsM8</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/9fde1548-1a2b-4dc8-b9fa-6150f8d3d21d/tasks/blqk4ipbd.output</output-file>
+<status>completed</status>
+<summary>Background command "Copy script and launch MOMENT rerun v2" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+are we messing with Neurips 2026 formatting guideline and template ?
+
+---
+
+let's do it carefully
