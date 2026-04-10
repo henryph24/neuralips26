@@ -77,15 +77,47 @@ def load_moirai(device: str = "cpu", model_name: str = "Salesforce/moirai-1.1-R-
     return model
 
 
+def load_moirai_moe(device: str = "cpu",
+                    model_name: str = "Salesforce/moirai-moe-1.0-R-small") -> nn.Module:
+    """Load Moirai-MoE (native mixture-of-experts TSFM).
+
+    Moirai-MoE shares the same external interface as Moirai
+    (`.in_proj`, `.patch_sizes`, `.encoder` with `.layers`, `.d_model`),
+    so the existing `_forward_moirai` / `_get_encoder_blocks` /
+    `_get_hidden_dim` helpers handle it without modification.  The only
+    difference is the pre-trained weights contain internal expert routing
+    inside each encoder block's FFN.  This lets us evaluate whether RR-MoA
+    adapter-level routing is still beneficial on a backbone that already
+    contains experts (B2 of the NeurIPS push plan).
+
+    Note: Moirai-MoE d_model = 384 (same as Moirai-1.1-R-small), and
+    patch_sizes = [16] (vs [16, 32, 64, 128] for regular Moirai-1.1).  The
+    feature-extraction path handles this automatically via the model's own
+    in_proj module.
+    """
+    from uni2ts.model.moirai_moe import MoiraiMoEModule
+    model = MoiraiMoEModule.from_pretrained(model_name)
+    model = model.to(device)
+    model.eval()
+    return model
+
+
 def load_backbone(backbone_name: str, device: str = "cpu",
                    disable_revin: bool = False, norm_type: str = "revin") -> nn.Module:
-    """Load any supported TSFM backbone by name."""
-    if "MOMENT" in backbone_name or "moment" in backbone_name.lower():
+    """Load any supported TSFM backbone by name.
+
+    Dispatch order matters: "moirai-moe" must be checked BEFORE "moirai"
+    because both substrings match a Moirai-MoE model name.
+    """
+    lower = backbone_name.lower()
+    if "MOMENT" in backbone_name or "moment" in lower:
         return load_moment(device, model_name=backbone_name,
                            disable_revin=disable_revin, norm_type=norm_type)
-    elif "chronos" in backbone_name.lower():
+    elif "chronos" in lower:
         return load_chronos(device, model_name=backbone_name)
-    elif "moirai" in backbone_name.lower():
+    elif "moirai-moe" in lower or "moirai_moe" in lower or "moiraimoe" in lower:
+        return load_moirai_moe(device, model_name=backbone_name)
+    elif "moirai" in lower:
         return load_moirai(device, model_name=backbone_name)
     else:
         raise ValueError("Unknown backbone: %s" % backbone_name)

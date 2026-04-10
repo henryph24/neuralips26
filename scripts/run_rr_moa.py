@@ -488,6 +488,8 @@ def main():
     bb_lower = args.backbone.lower()
     if "moment" in bb_lower and "large" in bb_lower:
         suffixes.append("bb-moment-large")
+    elif "moirai-moe" in bb_lower or "moirai_moe" in bb_lower or "moiraimoe" in bb_lower:
+        suffixes.append("bb-moirai-moe")
     elif "moirai" in bb_lower:
         suffixes.append("bb-moirai")
     elif "chronos" in bb_lower:

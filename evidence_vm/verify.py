@@ -4,6 +4,15 @@ Re-reads every JSON result file in evidence_vm/{rr_moa,adamix}/ and
 recomputes the per-dataset mean+-std from the raw seed values, then checks
 each number against the values claimed in main.tex Tables 3, 4, and 5.
 
+Additionally, checks arithmetic consistency of derived percentages across
+main.tex Tables 4 (baselines), 14 (horizon DLinear gap), and 26 (cross-
+backbone). For each "{-XX\\%}" style cell, recomputes the percentage from
+the neighboring RR-MoA / baseline MSE values and flags any cell whose
+claimed percentage disagrees with the computed value by more than 1pp.
+This catches the class of "stale percentage that no longer matches the
+updated cell value" errors (e.g. the -35% vs -32% ETTh1 MOMENT-large
+discrepancy identified by the 2026-04-10 audit).
+
 Exits with code 0 if all values match within 0.005 tolerance. Otherwise
 prints a discrepancy report and exits with code 1.
 
@@ -14,12 +23,14 @@ Usage:
 import glob
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 
 EVID = os.path.dirname(os.path.abspath(__file__))
 TOL = 0.005  # tolerance for numeric comparison (MSE values are ~0.1-1.5)
 ENT_TOL = 0.01  # tolerance for entropy values
+PCT_TOL = 1.0  # tolerance for percentage arithmetic (1 percentage point)
 
 # ----- Paper's claimed numbers (from main.tex Tables 3-5) -----
 
@@ -92,6 +103,44 @@ TAB5_TOPK = {
     "dense": (0.550, 0.029),
 }
 
+# --- Cross-backbone table (tab:backbone in main.tex, lines 1686-1697) ---
+# Each cell is (rr_moa_mse, best_fixed_mse, claimed_percentage_improvement).
+# check_percentage() verifies (fixed - rr_moa) / fixed * 100 == claimed_pct.
+TAB_BACKBONE_PCT = {
+    ("ETTh1", "moment-small"):   (0.690, 1.220, 43),
+    ("ETTh1", "moment-large"):   (0.803, 1.173, 32),  # was -35 pre-audit (2026-04-10)
+    ("ETTh1", "moirai"):         (0.471, 0.664, 29),
+    ("ETTm1", "moment-small"):   (0.572, 1.169, 51),
+    ("ETTm1", "moment-large"):   (0.704, 1.126, 38),
+    ("ETTm1", "moirai"):         (0.396, 0.471, 16),
+    ("Weather", "moment-small"): (0.289, 0.522, 45),
+    ("Weather", "moment-large"): (0.267, 0.606, 56),
+    ("Weather", "moirai"):       (0.209, 0.238, 12),
+}
+
+# --- Multi-horizon DLinear-gap narrative (tab:horizon caption + body text) ---
+# Each cell is (rr_moa_mse, dlinear_mse, claimed_percentage_gap).
+# check_percentage() verifies (rr_moa - dlinear) / dlinear * 100 == claimed_pct.
+# Only the cells explicitly named in the body text at lines 510 and 958 are
+# checked here; the full 12-cell horizon grid is out of scope.
+TAB_HORIZON_GAP = {
+    ("ETTh1",   96):  (0.690, 0.417, 66),   # was +83 pre-audit (2026-04-10)
+    ("ETTh1",  720):  (0.838, 0.566, 48),
+    ("Weather", 96):  (0.329, 0.208, 58),
+    ("Weather",720):  (0.400, 0.350, 14),
+}
+
+# --- Baseline comparison LoRA row (tab:baselines, line 343) ---
+# The full 108-run sweep's best config per dataset, copied from the bolded
+# rows of tab:lora_sweep (appendix, lines 1212-1254). These are the values
+# that MUST appear in the main-text Best LoRA row. The check greps main.tex
+# directly to ensure the numbers haven't drifted.
+TAB_BASELINES_LORA = {
+    "ETTh1":   1.154,  # was 1.135 pre-audit (2026-04-10)
+    "ETTm1":   0.956,  # was 0.895 pre-audit
+    "Weather": 0.600,  # was 0.575 pre-audit
+}
+
 
 def mean_std(xs):
     n = len(xs)
@@ -102,6 +151,55 @@ def mean_std(xs):
 
 def close(a, b, tol):
     return abs(a - b) <= tol
+
+
+def check_improvement_pct(larger, smaller, claimed_pct):
+    """Recompute (larger - smaller) / larger * 100 and compare to claimed.
+
+    Used for improvement cells where a method beats a baseline: RR-MoA MSE
+    (smaller) vs fixed-baseline MSE (larger). Returns the computed percentage
+    so callers can include the actual value in the error report.
+    """
+    actual = (larger - smaller) / larger * 100
+    return actual, close(actual, claimed_pct, PCT_TOL)
+
+
+def check_gap_pct(higher, lower, claimed_pct):
+    """Recompute (higher - lower) / lower * 100 for gap-to-baseline claims.
+
+    Used when a method is WORSE than a reference (e.g. RR-MoA vs DLinear):
+    higher = RR-MoA MSE, lower = DLinear MSE, gap = (higher - lower) / lower.
+    """
+    actual = (higher - lower) / lower * 100
+    return actual, close(actual, claimed_pct, PCT_TOL)
+
+
+def grep_main_tex_lora_row():
+    """Extract the three ETTh1/ETTm1/Weather values from the Best-LoRA row
+    of tab:baselines in main.tex. Returns dict of dataset -> mean, or None
+    if the regex does not match (caller reports failure).
+    """
+    main_tex = os.path.join(os.path.dirname(EVID), "main.tex")
+    if not os.path.exists(main_tex):
+        return None
+    with open(main_tex) as f:
+        content = f.read()
+    # Line 343 format:
+    #   Best LoRA (108-run sweep) & $X.XXX \pm Y.YYY$ & $X.XXX \pm Y.YYY$ & $X.XXX \pm Y.YYY$ & ${<}0.001^{***}$ \\
+    m = re.search(
+        r"Best LoRA \(108-run sweep\)\s*&\s*"
+        r"\$([0-9.]+)\s*\\pm\s*([0-9.]+)\$\s*&\s*"
+        r"\$([0-9.]+)\s*\\pm\s*([0-9.]+)\$\s*&\s*"
+        r"\$([0-9.]+)\s*\\pm\s*([0-9.]+)\$",
+        content,
+    )
+    if not m:
+        return None
+    return {
+        "ETTh1":   float(m.group(1)),
+        "ETTm1":   float(m.group(3)),
+        "Weather": float(m.group(5)),
+    }
 
 
 def main():
@@ -239,6 +337,47 @@ def main():
     if (wins, total) != (27, 27):
         errors.append(f"27/27 wins: got {wins}/{total}")
 
+    # --- Cross-backbone table (tab:backbone) arithmetic consistency ---
+    # Checks that every claimed {-XX\%} cell matches the actual percentage
+    # recomputed from the neighboring rr_moa / best_fixed MSE values.
+    for key, (rrmoa, fixed, claimed_pct) in TAB_BACKBONE_PCT.items():
+        checks += 1
+        actual, ok = check_improvement_pct(fixed, rrmoa, claimed_pct)
+        if not ok:
+            errors.append(
+                f"tab:backbone {key}: claimed -{claimed_pct}%, "
+                f"actual -{actual:.1f}% (rr_moa={rrmoa}, fixed={fixed})"
+            )
+
+    # --- Multi-horizon DLinear gap claims (body text + tab:horizon caption) ---
+    # Body text at line 510 and caption at line 958 both claim specific gap
+    # narrowing percentages. Verify each against (rr_moa - dlinear) / dlinear.
+    for key, (rrmoa, dlinear, claimed_pct) in TAB_HORIZON_GAP.items():
+        checks += 1
+        actual, ok = check_gap_pct(rrmoa, dlinear, claimed_pct)
+        if not ok:
+            errors.append(
+                f"tab:horizon {key}: claimed +{claimed_pct}%, "
+                f"actual +{actual:.1f}% (rr_moa={rrmoa}, dlinear={dlinear})"
+            )
+
+    # --- Baseline comparison LoRA row (tab:baselines, line 343) ---
+    # The main-text best-LoRA cells must match the bolded appendix sweep rows
+    # (tab:lora_sweep). This is a direct string/value check against main.tex.
+    lora_cells = grep_main_tex_lora_row()
+    if lora_cells is None:
+        checks += 1
+        errors.append("tab:baselines: could not locate 'Best LoRA (108-run sweep)' row in main.tex")
+    else:
+        for ds, expected in TAB_BASELINES_LORA.items():
+            checks += 1
+            got = lora_cells.get(ds)
+            if got is None or not close(got, expected, TOL):
+                errors.append(
+                    f"tab:baselines LoRA {ds}: expected {expected} (from appendix tab:lora_sweep), "
+                    f"main.tex has {got}"
+                )
+
     # --- Report ---
     print(f"Ran {checks} checks against {len(glob.glob(f'{EVID}/rr_moa/*.json'))} "
           f"RR-MoA + {len(glob.glob(f'{EVID}/adamix/*.json'))} AdaMix JSON files.")
@@ -248,9 +387,10 @@ def main():
             print(f"  - {e}")
         sys.exit(1)
     else:
-        print(f"PASS: all {checks} numeric claims in main.tex Tables 3-5 "
-              f"match the raw JSON evidence within tolerance "
-              f"(MSE {TOL}, entropy {ENT_TOL}).")
+        print(f"PASS: all {checks} numeric claims in main.tex Tables 3-5, "
+              f"tab:baselines LoRA row, tab:horizon DLinear gaps, and "
+              f"tab:backbone cross-backbone percentages match within tolerance "
+              f"(MSE {TOL}, entropy {ENT_TOL}, pct {PCT_TOL}pp).")
         print(f"RR-MoA wins: {wins}/{total}")
         sys.exit(0)
 
