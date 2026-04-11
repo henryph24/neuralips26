@@ -1,5 +1,6 @@
 \documentclass{article}
 % Use \usepackage[final]{neurips_2026} for camera-ready
+\PassOptionsToPackage{numbers,compress,sort}{natbib}
 \usepackage[preprint]{neurips_2026}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -8,6 +9,7 @@
 \usepackage{booktabs}
 \usepackage{amsfonts}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{nicefrac}
 \usepackage{microtype}
 \usepackage{xcolor}
@@ -539,35 +541,30 @@ We identified \emph{normalization-induced co-adaptation} as the cause of MoE rou
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
 
-\bibitem[He et~al.(2016)]{he2016resnet}
-Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
-\newblock Deep residual learning for image recognition.
-\newblock In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 770--778, 2016.
+\bibitem[Vaswani et~al.(2017)]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan~N. Gomez, Lukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, volume~30, 2017.
 
-\bibitem[Hu et~al.(2018)]{hu2018senet}
-Jie Hu, Li Shen, and Gang Sun.
-\newblock Squeeze-and-excitation networks.
-\newblock In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 7132--7141, 2018.
+\bibitem[Bommasani et~al.(2021)]{bommasani2021foundation}
+Rishi Bommasani, Drew~A. Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von~Arx, et~al.
+\newblock On the opportunities and risks of foundation models.
+\newblock \textit{arXiv preprint arXiv:2108.07258}, 2021.
 
-\bibitem[Chen et~al.(2025b)]{chen2025naslora}
-Renqi Chen, Haoyang Su, and Shixiang Tang.
-\newblock {NAS-LoRA}: Empowering parameter-efficient fine-tuning for visual foundation models with searchable adaptation.
-\newblock \textit{arXiv preprint arXiv:2512.03499}, 2025.
+\bibitem[Devlin et~al.(2019)]{devlin2019bert}
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
+\newblock {BERT}: Pre-training of deep bidirectional transformers for language understanding.
+\newblock In \textit{Proceedings of the Conference of the North American Chapter of the Association for Computational Linguistics (NAACL)}, pages 4171--4186, 2019.
 
-\bibitem[Li and Zhu(2025)]{li2025trace}
-Yuze Li and Wei Zhu.
-\newblock {TRACE}: Time series parameter efficient fine-tuning.
-\newblock \textit{arXiv preprint arXiv:2503.16991}, 2025.
+\bibitem[Brown et~al.(2020)]{brown2020gpt3}
+Tom~B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et~al.
+\newblock Language models are few-shot learners.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, volume~33, pages 1877--1901, 2020.
 
-\bibitem[Gupta et~al.(2024)]{gupta2024beyondlora}
-Divij Gupta, Anubhav Bhatti, and Surajsinh Parmar.
-\newblock Beyond {LoRA}: Exploring efficient fine-tuning techniques for time series foundational models.
-\newblock \textit{arXiv preprint arXiv:2409.11302}, 2024.
-
-\bibitem[Benechehab et~al.(2025)]{benechehab2025adapts}
-Abdelhakim Benechehab, Vasilii Feofanov, Giuseppe Paolo, Albert Thomas, Maurizio Filippone, and Balazs K\'{e}gl.
-\newblock {AdaPTS}: Adapting univariate foundation models to probabilistic multivariate time series forecasting.
-\newblock \textit{arXiv preprint arXiv:2502.10235}, 2025.
+\bibitem[Dosovitskiy et~al.(2021)]{dosovitskiy2021vit}
+Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby.
+\newblock An image is worth 16x16 words: Transformers for image recognition at scale.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2021.
 
 \bibitem[Goswami et~al.(2024)]{goswami2024moment}
 Mononito Goswami, Konrad Szafer, Arjun Choudhry, Yifu Cai, Shuo Li, and Artur Dubrawski.
@@ -584,60 +581,45 @@ Abdul~Fatir Ansari, Lorenzo Stella, Caner Turkmen, Xiyuan Zhang, Pedro Mercado, 
 \newblock Chronos: Learning the language of time series.
 \newblock \textit{arXiv preprint arXiv:2403.07815}, 2024.
 
+\bibitem[Liu et~al.(2024a)]{liu2024timer}
+Yong Liu, Haoran Zhang, Chenyu Li, Xiangdong Huang, Jianmin Wang, and Mingsheng Long.
+\newblock Timer: Generative pre-trained transformers are large time series models.
+\newblock In \textit{Proceedings of the 41st International Conference on Machine Learning (ICML)}, 2024.
+
+\bibitem[Liu et~al.(2025b)]{liu2025timerxl}
+Yong Liu, Guo Qin, Xiangdong Huang, Jianmin Wang, and Mingsheng Long.
+\newblock {Timer-XL}: Long-context transformers for unified time series forecasting.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2025.
+
 \bibitem[Woo et~al.(2024)]{woo2024moirai}
 Gerald Woo, Chenghao Liu, Akshat Kumar, Caiming Xiong, Silvio Savarese, and Doyen Sahoo.
 \newblock Unified training of universal time series forecasting transformers.
 \newblock In \textit{Proceedings of the 41st International Conference on Machine Learning (ICML)}, 2024.
 
-\bibitem[Qiao et~al.(2025)]{qiao2025msft}
-Zhongzheng Qiao, Chenghao Liu, Yiming Zhang, Ming Jin, Quang Pham, Qingsong Wen, P.N.~Suganthan, Xudong Jiang, and Savitha Ramasamy.
-\newblock Multi-scale finetuning for encoder-based time series foundation models.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
-
-\bibitem[Zhao et~al.(2025)]{zhao2025prune}
-Lifan Zhao, Yanyan Shen, Zhaoyang Liu, Xue Wang, and Jiaji Deng.
-\newblock Less is more: Unlocking specialization of time series foundation models via structured pruning.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
-
-\bibitem[Faw et~al.(2025)]{faw2025icf}
-Matthew Faw, Rajat Sen, Yichen Zhou, and Abhimanyu Das.
-\newblock In-context fine-tuning for time-series foundation models.
+\bibitem[Liu et~al.(2025c)]{liu2025moiraimoe}
+Xu Liu, Juncheng Liu, Gerald Woo, Taha Aksu, Yuxuan Liang, Roger Zimmermann, Chenghao Liu, Junnan Li, Silvio Savarese, Caiming Xiong, and Doyen Sahoo.
+\newblock {Moirai-MoE}: Empowering time series foundation models with sparse mixture of experts.
 \newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
 
-\bibitem[Hu and Wallis(2022)]{hu2022lora}
-Edward~J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen.
-\newblock {LoRA}: Low-rank adaptation of large language models.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2022.
+\bibitem[Lee et~al.(2024)]{lee2024units}
+Gerald Lee, Chenghao Liu, and Doyen Sahoo.
+\newblock {UniTS}: A unified multi-task time series model.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2024.
 
-\bibitem[Munoz et~al.(2024)]{munoz2024shears}
-J.~Pablo Munoz, Jinjie Yuan, and Nilesh Jain.
-\newblock Shears: Unstructured sparsity with neural low-rank adapter search.
-\newblock \textit{arXiv preprint arXiv:2404.10934}, 2024.
+\bibitem[Rasul et~al.(2024)]{rasul2024lagllama}
+Kashif Rasul, Arjun Ashok, Andrew~Robert Williams, Arian Khorasani, George Adamopoulos, Rishika Bhagwatkar, Marin Bilos, Hena Ghonia, Nadhir~Vincent Hassen, Anderson Schneider, Sahil Garg, Alexandre Drouin, Nicolas Chapados, Yuriy Nevmyvaka, and Irina Rish.
+\newblock {Lag-Llama}: Towards foundation models for probabilistic time series forecasting.
+\newblock \textit{arXiv preprint arXiv:2310.08278}, 2024.
 
-\bibitem[Romera-Paredes et~al.(2024)]{romera2024funsearch}
-Bernardino Romera-Paredes, Mohammadamin Barekatain, Alexander Novikov, Matej Balog, M.~Pawan Kumar, Emilien Dupont, Francisco~J.R. Ruiz, Jordan~S. Ellenberg, Pengming Wang, Omar Fawzi, Pushmeet Kohli, and Alhussein Fawzi.
-\newblock Mathematical discoveries from program search with large language models.
-\newblock \textit{Nature}, 625(7995):468--475, 2024.
+\bibitem[Shi et~al.(2024)]{shi2024timemoe}
+Xiaoming Shi, Shiyu Wang, Yuqi Nie, Dianqi Li, Zhou Ye, Qingsong Wen, and Ming Jin.
+\newblock {Time-MoE}: Billion-scale time series foundation models with mixture of experts.
+\newblock \textit{arXiv preprint arXiv:2409.16040}, 2024.
 
-\bibitem[Hu and Zhang(2025)]{hu2025partevo}
-Qinglong Hu and Qingfu Zhang.
-\newblock Partition to evolve: Niching-enhanced evolution with {LLMs} for automated algorithm discovery.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
-
-\bibitem[Zhou et~al.(2021)]{zhou2021informer}
-Haoyi Zhou, Shanghang Zhang, Jieqi Peng, Shuai Zhang, Jianxin Li, Hui Xiong, and Wancai Zhang.
-\newblock Informer: Beyond efficient transformer for long sequence time-series forecasting.
-\newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~35, pages 11106--11115, 2021.
-
-\bibitem[Howard et~al.(2017)]{howard2017mobilenets}
-Andrew~G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang, Tobias Weyand, Marco Andreetto, and Hartwig Adam.
-\newblock {MobileNets}: Efficient convolutional neural networks for mobile vision applications.
-\newblock \textit{arXiv preprint arXiv:1704.04861}, 2017.
-
-\bibitem[Liu et~al.(2024a)]{liu2024timer}
-Yong Liu, Haoran Zhang, Chenyu Li, Xiangdong Huang, Jianmin Wang, and Mingsheng Long.
-\newblock Timer: Generative pre-trained transformers are large time series models.
-\newblock In \textit{Proceedings of the 41st International Conference on Machine Learning (ICML)}, 2024.
+\bibitem[Ekambaram et~al.(2024)]{ekambaram2024ttm}
+Vijay Ekambaram, Arindam Jati, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam.
+\newblock {TTMs}: Fast multi-level tiny time mixers for improved zero-shot and few-shot forecasting of multivariate time series.
+\newblock \textit{arXiv preprint arXiv:2401.03955}, 2024.
 
 \bibitem[Nie et~al.(2023)]{nie2023patchtst}
 Yuqi Nie, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam.
@@ -649,35 +631,20 @@ Haixu Wu, Tengge Hu, Yong Liu, Hang Zhou, Jianmin Wang, and Mingsheng Long.
 \newblock {TimesNet}: Temporal 2{D}-variation modeling for general time series analysis.
 \newblock In \textit{International Conference on Learning Representations (ICLR)}, 2023.
 
+\bibitem[Hu and Wallis(2022)]{hu2022lora}
+Edward~J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen.
+\newblock {LoRA}: Low-rank adaptation of large language models.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2022.
+
+\bibitem[Houlsby et~al.(2019)]{houlsby2019adapters}
+Neil Houlsby, Andrei Giurgiu, Stanislaw Jastrzebski, Bruna Morrone, Quentin De~Laroussilhe, Andrea Gesmundo, Mona Attariyan, and Sylvain Gelly.
+\newblock Parameter-efficient transfer learning for {NLP}.
+\newblock In \textit{Proceedings of the 36th International Conference on Machine Learning (ICML)}, 2019.
+
 \bibitem[Zeng et~al.(2023)]{zeng2023dlinear}
 Ailing Zeng, Muxi Chen, Lei Zhang, and Qiang Xu.
 \newblock Are transformers effective for time series forecasting?
 \newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~37, 2023.
-
-\bibitem[Fan et~al.(2023)]{fan2023dishts}
-Wei Fan, Pengyang Wang, Dongkun Wang, Dongjie Wang, Yuanchun Zhou, and Yanjie Fu.
-\newblock {DishTS}: A general paradigm for alleviating distribution shift in time series forecasting.
-\newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~37, 2023.
-
-\bibitem[Liu et~al.(2022)]{liu2022nonstationary}
-Yong Liu, Haixu Wu, Jianmin Wang, and Mingsheng Long.
-\newblock Non-stationary transformers: Exploring the stationarity in time series forecasting.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
-
-\bibitem[Lee et~al.(2024)]{lee2024units}
-Gerald Lee, Chenghao Liu, and Doyen Sahoo.
-\newblock {UniTS}: A unified multi-task time series model.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2024.
-
-\bibitem[Chen et~al.(2023)]{chen2023evoprompting}
-Angelica Chen, David~M. Dohan, and David~R. So.
-\newblock {EvoPrompting}: Language models for code-level neural architecture search.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2023.
-
-\bibitem[Liu et~al.(2019)]{liu2019darts}
-Hanxiao Liu, Karen Simonyan, and Yiming Yang.
-\newblock {DARTS}: Differentiable architecture search.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2019.
 
 \bibitem[Wang et~al.(2022)]{wang2022adamix}
 Yaqing Wang, Sahaj Agarwal, Subhabrata Mukherjee, Xiaodong Liu, Jing Gao, Ahmed~Hassan Awadallah, and Jianfeng Gao.
@@ -689,110 +656,135 @@ William Fedus, Barret Zoph, and Noam Shazeer.
 \newblock Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity.
 \newblock \textit{Journal of Machine Learning Research}, 23(120):1--39, 2022.
 
-\bibitem[Zoph et~al.(2022)]{zoph2022stmoe}
-Barret Zoph, Irwan Bello, Sameer Kumar, Nan Du, Yanping Huang, Jeff Dean, Noam Shazeer, and William Fedus.
-\newblock {ST-MoE}: Designing stable and transferable sparse expert models.
-\newblock \textit{arXiv preprint arXiv:2202.08906}, 2022.
+\bibitem[Kim et~al.(2021)]{kim2021revin}
+Taesung Kim, Jinhee Kim, Yunwon Tae, Cheonbok Park, Jang-Ho Choi, and Jaegul Choo.
+\newblock Reversible instance normalization for accurate time-series forecasting against distribution shift.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2021.
+
+\bibitem[Zhang et~al.(2025c)]{zhang2025remoe}
+Haotian Zhang, Ye~Yuan, Zhuohan Li, and Ion Stoica.
+\newblock {ReMoE}: Fully differentiable mixture-of-experts with ReLU routing.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2025.
 
 \bibitem[Zhou et~al.(2022)]{zhou2022expertchoice}
 Yanqi Zhou, Tao Lei, Hanxiao Liu, Nan Du, Yanping Huang, Vincent Zhao, Andrew Dai, Zhifeng Chen, Quoc Le, and James Laudon.
 \newblock Mixture-of-experts with expert choice routing.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
 
-\bibitem[Kim et~al.(2021)]{kim2021revin}
-Taesung Kim, Jinhee Kim, Yunwon Tae, Cheonbok Park, Jang-Ho Choi, and Jaegul Choo.
-\newblock Reversible instance normalization for accurate time-series forecasting against distribution shift.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2021.
+\bibitem[Qiao et~al.(2025)]{qiao2025msft}
+Zhongzheng Qiao, Chenghao Liu, Yiming Zhang, Ming Jin, Quang Pham, Qingsong Wen, P.N.~Suganthan, Xudong Jiang, and Savitha Ramasamy.
+\newblock Multi-scale finetuning for encoder-based time series foundation models.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
 
-\bibitem[Houlsby et~al.(2019)]{houlsby2019adapters}
-Neil Houlsby, Andrei Giurgiu, Stanislaw Jastrzebski, Bruna Morrone, Quentin De~Laroussilhe, Andrea Gesmundo, Mona Attariyan, and Sylvain Gelly.
-\newblock Parameter-efficient transfer learning for {NLP}.
-\newblock In \textit{Proceedings of the 36th International Conference on Machine Learning (ICML)}, 2019.
+\bibitem[Li and Zhu(2025)]{li2025trace}
+Yuze Li and Wei Zhu.
+\newblock {TRACE}: Time series parameter efficient fine-tuning.
+\newblock \textit{arXiv preprint arXiv:2503.16991}, 2025.
 
-\bibitem[Woo et~al.(2024b)]{woo2024gifteval}
-Gerald Woo et~al.
-\newblock {GIFT-Eval}: A benchmark for general time series forecasting model evaluation.
-\newblock \textit{arXiv preprint arXiv:2410.10393}, 2024.
+\bibitem[Gupta et~al.(2024)]{gupta2024beyondlora}
+Divij Gupta, Anubhav Bhatti, and Surajsinh Parmar.
+\newblock Beyond {LoRA}: Exploring efficient fine-tuning techniques for time series foundational models.
+\newblock \textit{arXiv preprint arXiv:2409.11302}, 2024.
+
+\bibitem[Benechehab et~al.(2025)]{benechehab2025adapts}
+Abdelhakim Benechehab, Vasilii Feofanov, Giuseppe Paolo, Albert Thomas, Maurizio Filippone, and Balazs K\'{e}gl.
+\newblock {AdaPTS}: Adapting univariate foundation models to probabilistic multivariate time series forecasting.
+\newblock \textit{arXiv preprint arXiv:2502.10235}, 2025.
+
+\bibitem[Zhao et~al.(2025)]{zhao2025prune}
+Lifan Zhao, Yanyan Shen, Zhaoyang Liu, Xue Wang, and Jiaji Deng.
+\newblock Less is more: Unlocking specialization of time series foundation models via structured pruning.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
+
+\bibitem[Faw et~al.(2025)]{faw2025icf}
+Matthew Faw, Rajat Sen, Yichen Zhou, and Abhimanyu Das.
+\newblock In-context fine-tuning for time-series foundation models.
+\newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
 
 \bibitem[Zhang et~al.(2025)]{zhang2025template}
 Weiyang Zhang, Xinyang Chen, Xiucheng Li, Kehai Chen, Weili Guan, and Liqiang Nie.
 \newblock Unified transferability metrics for time series foundation models.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
 
-\bibitem[Ji et~al.(2025)]{ji2025rznas}
-Zipeng Ji, Guanghui Zhu, Chunfeng Yuan, and Yihua Huang.
-\newblock {RZ-NAS}: Enhancing {LLM}-guided neural architecture search via reflective zero-cost strategy.
-\newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
+\bibitem[Woo et~al.(2024b)]{woo2024gifteval}
+Gerald Woo et~al.
+\newblock {GIFT-Eval}: A benchmark for general time series forecasting model evaluation.
+\newblock \textit{arXiv preprint arXiv:2410.10393}, 2024.
 
-% --- Additional TSFMs ---
+\bibitem[Zoph et~al.(2022)]{zoph2022stmoe}
+Barret Zoph, Irwan Bello, Sameer Kumar, Nan Du, Yanping Huang, Jeff Dean, Noam Shazeer, and William Fedus.
+\newblock {ST-MoE}: Designing stable and transferable sparse expert models.
+\newblock \textit{arXiv preprint arXiv:2202.08906}, 2022.
 
-\bibitem[Liu et~al.(2025b)]{liu2025timerxl}
-Yong Liu, Guo Qin, Xiangdong Huang, Jianmin Wang, and Mingsheng Long.
-\newblock {Timer-XL}: Long-context transformers for unified time series forecasting.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2025.
+\bibitem[Fan et~al.(2023)]{fan2023dishts}
+Wei Fan, Pengyang Wang, Dongkun Wang, Dongjie Wang, Yuanchun Zhou, and Yanjie Fu.
+\newblock {DishTS}: A general paradigm for alleviating distribution shift in time series forecasting.
+\newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~37, 2023.
 
-\bibitem[Liu et~al.(2025c)]{liu2025moiraimoe}
-Xu Liu, Juncheng Liu, Gerald Woo, Taha Aksu, Yuxuan Liang, Roger Zimmermann, Chenghao Liu, Junnan Li, Silvio Savarese, Caiming Xiong, and Doyen Sahoo.
-\newblock {Moirai-MoE}: Empowering time series foundation models with sparse mixture of experts.
-\newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
-
-\bibitem[Rasul et~al.(2024)]{rasul2024lagllama}
-Kashif Rasul, Arjun Ashok, Andrew~Robert Williams, Arian Khorasani, George Adamopoulos, Rishika Bhagwatkar, Marin Bilos, Hena Ghonia, Nadhir~Vincent Hassen, Anderson Schneider, Sahil Garg, Alexandre Drouin, Nicolas Chapados, Yuriy Nevmyvaka, and Irina Rish.
-\newblock {Lag-Llama}: Towards foundation models for probabilistic time series forecasting.
-\newblock \textit{arXiv preprint arXiv:2310.08278}, 2024.
-
-% --- Classic TS forecasting ---
-
-\bibitem[Vaswani et~al.(2017)]{vaswani2017attention}
-Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan~N. Gomez, Lukasz Kaiser, and Illia Polosukhin.
-\newblock Attention is all you need.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, volume~30, 2017.
-
-\bibitem[Devlin et~al.(2019)]{devlin2019bert}
-Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
-\newblock {BERT}: Pre-training of deep bidirectional transformers for language understanding.
-\newblock In \textit{Proceedings of the Conference of the North American Chapter of the Association for Computational Linguistics (NAACL)}, pages 4171--4186, 2019.
-
-\bibitem[Dosovitskiy et~al.(2021)]{dosovitskiy2021vit}
-Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby.
-\newblock An image is worth 16x16 words: Transformers for image recognition at scale.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2021.
-
-\bibitem[Brown et~al.(2020)]{brown2020gpt3}
-Tom~B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et~al.
-\newblock Language models are few-shot learners.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, volume~33, pages 1877--1901, 2020.
-
-% --- NAS classics ---
-
-\bibitem[Pham et~al.(2018)]{pham2018enas}
-Hieu Pham, Melody~Y. Guan, Barret Zoph, Quoc~V. Le, and Jeff Dean.
-\newblock Efficient neural architecture search via parameter sharing.
-\newblock In \textit{Proceedings of the 35th International Conference on Machine Learning (ICML)}, pages 4095--4104, 2018.
+\bibitem[Liu et~al.(2022)]{liu2022nonstationary}
+Yong Liu, Haixu Wu, Jianmin Wang, and Mingsheng Long.
+\newblock Non-stationary transformers: Exploring the stationarity in time series forecasting.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
 
 \bibitem[Zoph and Le(2017)]{zoph2017nas}
 Barret Zoph and Quoc~V. Le.
 \newblock Neural architecture search with reinforcement learning.
 \newblock In \textit{International Conference on Learning Representations (ICLR)}, 2017.
 
-% --- Evolutionary computation ---
+\bibitem[Pham et~al.(2018)]{pham2018enas}
+Hieu Pham, Melody~Y. Guan, Barret Zoph, Quoc~V. Le, and Jeff Dean.
+\newblock Efficient neural architecture search via parameter sharing.
+\newblock In \textit{Proceedings of the 35th International Conference on Machine Learning (ICML)}, pages 4095--4104, 2018.
+
+\bibitem[Liu et~al.(2019)]{liu2019darts}
+Hanxiao Liu, Karen Simonyan, and Yiming Yang.
+\newblock {DARTS}: Differentiable architecture search.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2019.
 
 \bibitem[Real et~al.(2019)]{real2019regularized}
 Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc~V. Le.
 \newblock Regularized evolution for image classifier architecture search.
 \newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~33, pages 4780--4789, 2019.
 
-% --- More TS forecasting methods ---
+\bibitem[Munoz et~al.(2024)]{munoz2024shears}
+J.~Pablo Munoz, Jinjie Yuan, and Nilesh Jain.
+\newblock Shears: Unstructured sparsity with neural low-rank adapter search.
+\newblock \textit{arXiv preprint arXiv:2404.10934}, 2024.
+
+\bibitem[Ji et~al.(2025)]{ji2025rznas}
+Zipeng Ji, Guanghui Zhu, Chunfeng Yuan, and Yihua Huang.
+\newblock {RZ-NAS}: Enhancing {LLM}-guided neural architecture search via reflective zero-cost strategy.
+\newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
+
+\bibitem[Chen et~al.(2025b)]{chen2025naslora}
+Renqi Chen, Haoyang Su, and Shixiang Tang.
+\newblock {NAS-LoRA}: Empowering parameter-efficient fine-tuning for visual foundation models with searchable adaptation.
+\newblock \textit{arXiv preprint arXiv:2512.03499}, 2025.
+
+\bibitem[Romera-Paredes et~al.(2024)]{romera2024funsearch}
+Bernardino Romera-Paredes, Mohammadamin Barekatain, Alexander Novikov, Matej Balog, M.~Pawan Kumar, Emilien Dupont, Francisco~J.R. Ruiz, Jordan~S. Ellenberg, Pengming Wang, Omar Fawzi, Pushmeet Kohli, and Alhussein Fawzi.
+\newblock Mathematical discoveries from program search with large language models.
+\newblock \textit{Nature}, 625(7995):468--475, 2024.
+
+\bibitem[Chen et~al.(2023)]{chen2023evoprompting}
+Angelica Chen, David~M. Dohan, and David~R. So.
+\newblock {EvoPrompting}: Language models for code-level neural architecture search.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2023.
+
+\bibitem[Hu and Zhang(2025)]{hu2025partevo}
+Qinglong Hu and Qingfu Zhang.
+\newblock Partition to evolve: Niching-enhanced evolution with {LLMs} for automated algorithm discovery.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
 
 \bibitem[Ye et~al.(2024)]{ye2024reevo}
 Haoran Ye, Jiarui Wang, Zhiguang Cao, Federico Berto, Chuanbo Hua, Haeyeon Kim, Jinkyoo Park, and Guojie Song.
 \newblock {ReEvo}: Large language models as hyper-heuristics with reflective evolution.
 \newblock \textit{arXiv preprint arXiv:2402.01145}, 2024.
 
-\bibitem[Bommasani et~al.(2021)]{bommasani2021foundation}
-Rishi Bommasani, Drew~A. Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von~Arx, et~al.
-\newblock On the opportunities and risks of foundation models.
-\newblock \textit{arXiv preprint arXiv:2108.07258}, 2021.
+\bibitem[Zhou et~al.(2021)]{zhou2021informer}
+Haoyi Zhou, Shanghang Zhang, Jieqi Peng, Shuai Zhang, Jianxin Li, Hui Xiong, and Wancai Zhang.
+\newblock Informer: Beyond efficient transformer for long sequence time-series forecasting.
+\newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~35, pages 11106--11115, 2021.
 
 \bibitem[Godahewa et~al.(2021)]{godahewa2021monash}
 Rakshitha Godahewa, Christoph Bergmeir, Geoffrey~I. Webb, Rob~J. Hyndman, and Pablo Montero-Manso.
@@ -804,26 +796,20 @@ Qingsong Wen, Tian Zhou, Chaoli Zhang, Weiqi Chen, Ziqing Ma, Junchi Yan, and Li
 \newblock Transformers in time series: A survey.
 \newblock In \textit{Proceedings of the International Joint Conference on Artificial Intelligence (IJCAI)}, 2023.
 
-% --- Pre-norm transformer ---
+\bibitem[Howard et~al.(2017)]{howard2017mobilenets}
+Andrew~G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang, Tobias Weyand, Marco Andreetto, and Hartwig Adam.
+\newblock {MobileNets}: Efficient convolutional neural networks for mobile vision applications.
+\newblock \textit{arXiv preprint arXiv:1704.04861}, 2017.
 
-\bibitem[Shi et~al.(2024)]{shi2024timemoe}
-Xiaoming Shi, Shiyu Wang, Yuqi Nie, Dianqi Li, Zhou Ye, Qingsong Wen, and Ming Jin.
-\newblock {Time-MoE}: Billion-scale time series foundation models with mixture of experts.
-\newblock \textit{arXiv preprint arXiv:2409.16040}, 2024.
+\bibitem[He et~al.(2016)]{he2016resnet}
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+\newblock Deep residual learning for image recognition.
+\newblock In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 770--778, 2016.
 
-% --- TTM ---
-
-\bibitem[Ekambaram et~al.(2024)]{ekambaram2024ttm}
-Vijay Ekambaram, Arindam Jati, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam.
-\newblock {TTMs}: Fast multi-level tiny time mixers for improved zero-shot and few-shot forecasting of multivariate time series.
-\newblock \textit{arXiv preprint arXiv:2401.03955}, 2024.
-
-% --- MoE routing stability ---
-
-\bibitem[Zhang et~al.(2025c)]{zhang2025remoe}
-Haotian Zhang, Ye~Yuan, Zhuohan Li, and Ion Stoica.
-\newblock {ReMoE}: Fully differentiable mixture-of-experts with ReLU routing.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2025.
+\bibitem[Hu et~al.(2018)]{hu2018senet}
+Jie Hu, Li Shen, and Gang Sun.
+\newblock Squeeze-and-excitation networks.
+\newblock In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 7132--7141, 2018.
 
 \end{thebibliography}
 
