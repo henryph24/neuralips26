@@ -1,0 +1,25 @@
+how good is our paper now for a solid acceptance in neuralips 2026
+
+---
+
+how good is our paper now for a solid acceptance in neuralips 2026 ultrathink
+
+---
+
+OK. Keep the above in mind. Let's now work on this: how NeurIPS 2026 specify in text citation style such as APA or IEEE ?
+
+---
+
+is IEEE style allowed ?
+
+---
+
+Let do it to facilitate easier reading for the reading, but make sure the number increments that match with bib ultrathink
+
+---
+
+recompile locally
+
+---
+
+did we fix the exsiting bug
