@@ -93,6 +93,10 @@ HEAD_NAMES = ["mean", "last", "max", "attention", "conv1d"]
 EXPERT_POOLS = {
     "canonical": (HEAD_CLASSES, HEAD_NAMES),
     "macro":     (MACRO_EXPERT_CLASSES, MACRO_EXPERT_NAMES),
+    # Diversity ablation: 5 identical experts (different init, same architecture)
+    "identical-mean":   ([MeanPoolHead],       ["mean_%d" % i for i in range(5)]),
+    "identical-conv1d": ([Conv1dPoolHead],      ["conv1d_%d" % i for i in range(5)]),
+    "identical-attn":   ([AttentionPoolHead],   ["attn_%d" % i for i in range(5)]),
 }
 
 
@@ -107,13 +111,16 @@ class RawRoutedMoA(nn.Module):
     routing probability execute per sample (top_k=K gives dense mode).
     """
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None,
-                 router_input_mode="raw", expert_pool="canonical"):
+                 router_input_mode="raw", expert_pool="canonical", entropy_reg_coef=0.0,
+                 router_temp=1.0):
         super().__init__()
         self.K = K
         self.top_k = top_k if top_k is not None else K  # default: dense
+        self.router_temp = router_temp
         self.output_dim = output_dim
         assert router_input_mode in ("raw", "revin", "uniform"), router_input_mode
         self.router_input_mode = router_input_mode
+        self.entropy_reg_coef = entropy_reg_coef
         assert expert_pool in EXPERT_POOLS, expert_pool
         self.expert_pool = expert_pool
 
@@ -169,6 +176,8 @@ class RawRoutedMoA(nn.Module):
         raw_input: (B, input_len) raw time series
         """
         logits = self._compute_logits(raw_input)  # (B, K)
+        if self.router_temp != 1.0:
+            logits = logits / self.router_temp
 
         if self.top_k >= self.K:
             # Dense mode: all experts
@@ -208,17 +217,26 @@ class RawRoutedMoA(nn.Module):
     def param_count(self):
         return sum(p.numel() for p in self.parameters())
 
+    def entropy_regularization(self, raw_input):
+        """Negative entropy of the router distribution: -H(p).
+        Minimizing this maximizes routing entropy (diversity)."""
+        logits = self._compute_logits(raw_input)
+        probs = F.softmax(logits, dim=-1)
+        H = -(probs * torch.log(probs.clamp_min(1e-10))).sum(dim=-1).mean()
+        return -H
+
 
 def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
                  backbone_type="moment", K=5, hidden=64, top_k=None,
                  router_input_mode="raw", test_ch=None, scaler=None,
-                 expert_pool="canonical"):
+                 expert_pool="canonical", entropy_reg_coef=0.0, router_temp=1.0):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
     adapter = RawRoutedMoA(
         hdim, forecast_horizon, input_len=512, K=K, hidden=hidden, top_k=top_k,
         router_input_mode=router_input_mode, expert_pool=expert_pool,
+        entropy_reg_coef=entropy_reg_coef, router_temp=router_temp,
     ).to(device)
 
     trainable = list(adapter.parameters())
@@ -248,6 +266,8 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                 feat = _extract_features_batch(model, blocks, bx_enc, mask, backbone_type=backbone_type)
                 pred = adapter(feat, bx_raw)
                 loss = mse_fn(pred, by) + adapter.load_balance_coeff * adapter.load_balance_loss(bx_raw)
+                if adapter.entropy_reg_coef > 0:
+                    loss = loss + adapter.entropy_reg_coef * adapter.entropy_regularization(bx_raw)
 
             optimizer.zero_grad()
             loss.backward()
@@ -363,6 +383,10 @@ def main():
                         help="Skip baseline evaluation (faster for ablation sweeps)")
     parser.add_argument("--disable-revin", action="store_true",
                         help="Controlled ablation: disable RevIN inside MOMENT backbone")
+    parser.add_argument("--entropy-reg", type=float, default=0.0,
+                        help="Entropy reg coefficient for the raw router (B9 symmetry test)")
+    parser.add_argument("--router-temp", type=float, default=1.0,
+                        help="Router softmax temperature (>1 softer, <1 sharper)")
     args = parser.parse_args()
 
     os.makedirs("results/rr_moa", exist_ok=True)
@@ -402,7 +426,9 @@ def main():
                           n_epochs=args.epochs, router_input_mode=args.router_input_mode,
                           test_ch=test_ch, scaler=scaler,
                           expert_pool=args.expert_pool,
-                          batch_size=args.batch_size)
+                          batch_size=args.batch_size,
+                          entropy_reg_coef=args.entropy_reg,
+                          router_temp=args.router_temp)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -484,6 +510,10 @@ def main():
         suffixes.append("router-%s" % args.router_input_mode)
     if args.expert_pool != "canonical":
         suffixes.append("pool-%s" % args.expert_pool)
+    if args.entropy_reg > 0:
+        suffixes.append("entreg-%.3g" % args.entropy_reg)
+    if args.router_temp != 1.0:
+        suffixes.append("temp-%.3g" % args.router_temp)
     # Backbone suffix for non-default backbones
     bb_lower = args.backbone.lower()
     if "moment" in bb_lower and "large" in bb_lower:
