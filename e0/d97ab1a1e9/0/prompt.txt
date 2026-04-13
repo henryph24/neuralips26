@@ -1,0 +1,187 @@
+how good is our paper now for a solid acceptance in neuralips 2026
+
+---
+
+how good is our paper now for a solid acceptance in neuralips 2026 ultrathink
+
+---
+
+OK. Keep the above in mind. Let's now work on this: how NeurIPS 2026 specify in text citation style such as APA or IEEE ?
+
+---
+
+is IEEE style allowed ?
+
+---
+
+Let do it to facilitate easier reading for the reading, but make sure the number increments that match with bib ultrathink
+
+---
+
+recompile locally
+
+---
+
+did we fix the exsiting bug
+
+---
+
+/commit-push
+
+---
+
+while we wait for VM to be reachable, let work on this: "3. Visual inspection: arrows are incorrect ? Should we add more ? How good is the chart. " ultrathink[Image #1]
+
+---
+
+will this version of the paper benefit from more visualation ultrathink
+
+---
+
+we are trying to access the VM again. Notice that once the profressor activate an ssh key we have 60 seconds to login. Prepare a script that whitelist our IP at that machine level. The desired IP is 23.27.187.5 
+
+Prepare this. I'll call the professor later
+
+---
+
+proofessor just allowed, go ahead
+
+---
+
+try again
+
+---
+
+ssh -i 'hungphanphd.pem' ec2-user@ec2-13-238-161-176.ap-southeast-2.compute.amazonaws.com
+
+---
+
+just whitelist, try again reaching the vm
+
+---
+
+we just did exactly that on port 22, earlier it work. Read the race vm tutorial again/Users/hungpq2412/Downloads/RACEHub\ User\ Guide.pdf
+
+---
+
+VM just restarted, try again
+
+---
+
+one item at a time, carefully
+
+---
+
+what's next ?
+
+---
+
+let's do it
+
+---
+
+let's do that
+
+---
+
+Let's do that
+
+---
+
+let's go
+
+---
+
+ok good so what experiments are still running at our RACE VM, ETA ?
+
+---
+
+how strong is our paper now
+
+---
+
+let's do that carefully
+
+---
+
+let's continue
+
+---
+
+/commit-push
+
+---
+
+so what exepriemnts are we running now, if results are good, how much strengthened is the paper, can we use this spare time to design further experimentations that likely boost acceptance, we still have 2 weeks left for that and submissions, writing is very fast now
+
+---
+
+let's do that carefully
+
+---
+
+measure resource usage at our RACE VM
+
+---
+
+but GPU is fully packed ?
+
+---
+
+how is our VM now
+
+---
+
+how is everything
+
+---
+
+how is everything
+
+---
+
+let run new experiments now and write after that
+
+---
+
+let's write incrementally
+
+---
+
+one by one
+
+---
+
+how is our VM now, is GPU fully utilised ? how many experiments we are using ?
+
+---
+
+let keep the GPU busy, run our newly designed experiments
+
+---
+
+design new experiments now
+
+---
+
+how is our VM now, is GPU fully utilised ? how many experiments we are using ?
+
+---
+
+in the meantime cna we design more experiments and load them to the GPU
+
+---
+
+how is our VM now, is GPU fully utilised ? how many experiments we are using ?
+
+---
+
+we have the full nights of 8 hours, let design all experiments that will solidify our contributions even further, new algorithm that are likely helpful, and queued that after GPU is ready
+
+---
+
+did we queued it
+
+---
+
+did the paper incorporate recent results
