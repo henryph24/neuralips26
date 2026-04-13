@@ -185,3 +185,7 @@ did we queued it
 ---
 
 did the paper incorporate recent results
+
+---
+
+yes, make sure that all results that are relevant and sthenghenting our paper are wrriten
