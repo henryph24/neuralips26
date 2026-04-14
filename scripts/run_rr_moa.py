@@ -112,11 +112,15 @@ class RawRoutedMoA(nn.Module):
     """
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None,
                  router_input_mode="raw", expert_pool="canonical", entropy_reg_coef=0.0,
-                 router_temp=1.0):
+                 router_temp=1.0, router_arch="conv", expert_dropout=0.0,
+                 rdgf=False):
         super().__init__()
         self.K = K
         self.top_k = top_k if top_k is not None else K  # default: dense
         self.router_temp = router_temp
+        self.router_arch = router_arch
+        self.expert_dropout = expert_dropout
+        self.rdgf = rdgf
         self.output_dim = output_dim
         assert router_input_mode in ("raw", "revin", "uniform"), router_input_mode
         self.router_input_mode = router_input_mode
@@ -133,13 +137,26 @@ class RawRoutedMoA(nn.Module):
         ])
 
         # RAW-INPUT router (operates on unnormalized time series)
-        # Lightweight: small conv + global pool + linear
-        self.router = nn.Sequential(
-            nn.Conv1d(1, 16, kernel_size=32, stride=16, padding=8),
-            nn.GELU(),
-            nn.AdaptiveAvgPool1d(4),  # (B, 16, 4)
-        )
-        self.router_head = nn.Linear(64, K)  # 16*4 = 64
+        if router_arch == "ssr":
+            # Sufficient Statistic Router: route on ONLY [μ, σ] — Prop 2 empirical proof
+            self.router_head = nn.Linear(2, K)
+        elif router_arch == "stats":
+            # Stats router: route on hand-crafted [mean, std, range, slope, autocorr]
+            self.router_head = nn.Linear(5, K)
+        elif router_arch == "multiscale":
+            # Multi-scale router: parallel Conv1d at k=4/16/64
+            self.router_ms_4 = nn.Conv1d(1, 8, kernel_size=4, stride=4)
+            self.router_ms_16 = nn.Conv1d(1, 8, kernel_size=16, stride=8)
+            self.router_ms_64 = nn.Conv1d(1, 8, kernel_size=64, stride=32)
+            self.router_head = nn.Linear(24, K)  # 3 scales × 8 channels pooled to 1
+        else:
+            # Default conv router
+            self.router = nn.Sequential(
+                nn.Conv1d(1, 16, kernel_size=32, stride=16, padding=8),
+                nn.GELU(),
+                nn.AdaptiveAvgPool1d(4),  # (B, 16, 4)
+            )
+            self.router_head = nn.Linear(64, K)  # 16*4 = 64
 
         self.load_balance_coeff = 0.01
 
@@ -166,6 +183,36 @@ class RawRoutedMoA(nn.Module):
             x = (raw_input - mu) / sigma
         else:
             x = raw_input
+
+        if self.router_arch == "ssr":
+            # Sufficient Statistic Router: just [μ, σ] — 2 scalars, ~10 params
+            mu = x.mean(dim=-1)
+            sigma = x.std(dim=-1)
+            return self.router_head(torch.stack([mu, sigma], dim=-1))
+
+        if self.router_arch == "stats":
+            # Hand-crafted statistics: [mean, std, range, slope, autocorr_lag1]
+            mu = x.mean(dim=-1)
+            sigma = x.std(dim=-1)
+            rng = x.max(dim=-1).values - x.min(dim=-1).values
+            # Linear regression slope
+            t = torch.arange(x.shape[-1], dtype=x.dtype, device=x.device)
+            t_centered = t - t.mean()
+            slope = ((x - mu.unsqueeze(-1)) * t_centered).sum(dim=-1) / (t_centered ** 2).sum()
+            # Autocorrelation at lag 1
+            x_centered = x - mu.unsqueeze(-1)
+            autocorr = (x_centered[:, :-1] * x_centered[:, 1:]).mean(dim=-1) / (sigma ** 2 + 1e-8)
+            stats = torch.stack([mu, sigma, rng, slope, autocorr], dim=-1)  # (B, 5)
+            return self.router_head(stats)
+
+        if self.router_arch == "multiscale":
+            x1 = x.unsqueeze(1)
+            f4 = F.adaptive_avg_pool1d(F.gelu(self.router_ms_4(x1)), 1).flatten(1)   # (B, 8)
+            f16 = F.adaptive_avg_pool1d(F.gelu(self.router_ms_16(x1)), 1).flatten(1)  # (B, 8)
+            f64 = F.adaptive_avg_pool1d(F.gelu(self.router_ms_64(x1)), 1).flatten(1)  # (B, 8)
+            return self.router_head(torch.cat([f4, f16, f64], dim=-1))
+
+        # Default conv router
         x = x.unsqueeze(1)  # (B, 1, input_len)
         router_feat = self.router(x).flatten(1)  # (B, 64)
         return self.router_head(router_feat)  # (B, K)
@@ -178,6 +225,14 @@ class RawRoutedMoA(nn.Module):
         logits = self._compute_logits(raw_input)  # (B, K)
         if self.router_temp != 1.0:
             logits = logits / self.router_temp
+
+        # Expert dropout during training: randomly zero out one expert's weight
+        if self.training and self.expert_dropout > 0:
+            drop_mask = torch.ones(logits.shape, device=logits.device)
+            drop_idx = torch.randint(0, self.K, (logits.shape[0],), device=logits.device)
+            if torch.rand(1).item() < self.expert_dropout:
+                drop_mask[torch.arange(logits.shape[0]), drop_idx] = -1e9
+                logits = logits + drop_mask
 
         if self.top_k >= self.K:
             # Dense mode: all experts
@@ -230,13 +285,16 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
                  backbone_type="moment", K=5, hidden=64, top_k=None,
                  router_input_mode="raw", test_ch=None, scaler=None,
-                 expert_pool="canonical", entropy_reg_coef=0.0, router_temp=1.0):
+                 expert_pool="canonical", entropy_reg_coef=0.0, router_temp=1.0,
+                 router_arch="conv", expert_dropout=0.0, rdgf=False):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
     adapter = RawRoutedMoA(
         hdim, forecast_horizon, input_len=512, K=K, hidden=hidden, top_k=top_k,
         router_input_mode=router_input_mode, expert_pool=expert_pool,
         entropy_reg_coef=entropy_reg_coef, router_temp=router_temp,
+        router_arch=router_arch, expert_dropout=expert_dropout,
+        rdgf=rdgf,
     ).to(device)
 
     trainable = list(adapter.parameters())
@@ -264,8 +322,18 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
 
             with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
                 feat = _extract_features_batch(model, blocks, bx_enc, mask, backbone_type=backbone_type)
-                pred = adapter(feat, bx_raw)
-                loss = mse_fn(pred, by) + adapter.load_balance_coeff * adapter.load_balance_loss(bx_raw)
+                if rdgf:
+                    # RDGF: main loss uses detached H (no backbone gradient from weighted path)
+                    pred = adapter(feat.detach(), bx_raw)
+                    loss = mse_fn(pred, by)
+                    # Auxiliary: uniform-weighted experts on live H (backbone gets uniform gradient)
+                    outputs_live = torch.stack([a(feat) for a in adapter.adapters], dim=1)
+                    aux_pred = outputs_live.mean(dim=1)
+                    loss = loss + mse_fn(aux_pred, by)
+                else:
+                    pred = adapter(feat, bx_raw)
+                    loss = mse_fn(pred, by)
+                loss = loss + adapter.load_balance_coeff * adapter.load_balance_loss(bx_raw)
                 if adapter.entropy_reg_coef > 0:
                     loss = loss + adapter.entropy_reg_coef * adapter.entropy_regularization(bx_raw)
 
@@ -387,6 +455,13 @@ def main():
                         help="Entropy reg coefficient for the raw router (B9 symmetry test)")
     parser.add_argument("--router-temp", type=float, default=1.0,
                         help="Router softmax temperature (>1 softer, <1 sharper)")
+    parser.add_argument("--router-arch", default="conv",
+                        choices=["conv", "stats", "multiscale", "ssr"],
+                        help="Router architecture: conv (default), stats (hand-crafted), multiscale")
+    parser.add_argument("--expert-dropout", type=float, default=0.0,
+                        help="Expert dropout probability during training")
+    parser.add_argument("--rdgf", action="store_true",
+                        help="Router-Detached Gradient Flow: unfreeze backbone with uniform gradient")
     args = parser.parse_args()
 
     os.makedirs("results/rr_moa", exist_ok=True)
@@ -428,7 +503,10 @@ def main():
                           expert_pool=args.expert_pool,
                           batch_size=args.batch_size,
                           entropy_reg_coef=args.entropy_reg,
-                          router_temp=args.router_temp)
+                          router_temp=args.router_temp,
+                          router_arch=args.router_arch,
+                          expert_dropout=args.expert_dropout,
+                          rdgf=args.rdgf)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -514,6 +592,12 @@ def main():
         suffixes.append("entreg-%.3g" % args.entropy_reg)
     if args.router_temp != 1.0:
         suffixes.append("temp-%.3g" % args.router_temp)
+    if args.router_arch != "conv":
+        suffixes.append("rarch-%s" % args.router_arch)
+    if args.expert_dropout > 0:
+        suffixes.append("edrop-%.2g" % args.expert_dropout)
+    if args.rdgf:
+        suffixes.append("rdgf")
     # Backbone suffix for non-default backbones
     bb_lower = args.backbone.lower()
     if "moment" in bb_lower and "large" in bb_lower:
