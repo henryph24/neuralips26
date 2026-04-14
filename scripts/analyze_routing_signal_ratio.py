@@ -44,6 +44,10 @@ def load_channel_standardized_windows(dataset_name):
         df = pd.read_csv(os.path.join(data_dir, "electricity.csv"))
     elif dataset_name == "Traffic":
         df = pd.read_csv(os.path.join(data_dir, "traffic.csv"))
+    elif dataset_name == "Exchange":
+        df = pd.read_csv(os.path.join(data_dir, "exchange_rate.csv"))
+    elif dataset_name == "Solar":
+        df = pd.read_csv(os.path.join(data_dir, "solar.csv"))
     else:
         raise ValueError("Unknown dataset: %s" % dataset_name)
 
@@ -133,7 +137,8 @@ def load_rrmoa_improvement(dataset_name):
 
 
 def main():
-    datasets = ["ETTh1", "ETTh2", "ETTm1", "ETTm2", "Weather", "Electricity"]
+    datasets = ["ETTh1", "ETTh2", "ETTm1", "ETTm2", "Weather", "Electricity",
+                 "Exchange", "Solar"]
 
     print("=" * 80)
     print("ROUTING SIGNAL RATIO ANALYSIS (Theorem 1 Prediction)")

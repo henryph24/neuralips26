@@ -102,12 +102,29 @@ def load_moirai_moe(device: str = "cpu",
     return model
 
 
+def load_timer(device: str = "cpu",
+               model_name: str = "thuml/timer-base-84m") -> nn.Module:
+    """Load Timer/Timer-XL decoder-only Transformer.
+
+    Timer-XL is a causal transformer for unified time series forecasting.
+    No RevIN — uses LayerNorm only. Hidden states accessible via
+    model.model.layers (8 TimerDecoderLayer modules, d_model=1024).
+    Input: (B, L) raw time series, internally patched to (B, L//96, 1024).
+    """
+    from transformers import AutoModelForCausalLM
+    model = AutoModelForCausalLM.from_pretrained(model_name,
+                                                  trust_remote_code=True)
+    model = model.to(device)
+    model.eval()
+    return model
+
+
 def load_backbone(backbone_name: str, device: str = "cpu",
                    disable_revin: bool = False, norm_type: str = "revin") -> nn.Module:
     """Load any supported TSFM backbone by name.
 
-    Dispatch order matters: "moirai-moe" must be checked BEFORE "moirai"
-    because both substrings match a Moirai-MoE model name.
+    Dispatch order matters: "moirai-moe" must be checked BEFORE "moirai",
+    and "timer" must be checked BEFORE generic fallback.
     """
     lower = backbone_name.lower()
     if "MOMENT" in backbone_name or "moment" in lower:
@@ -115,6 +132,8 @@ def load_backbone(backbone_name: str, device: str = "cpu",
                            disable_revin=disable_revin, norm_type=norm_type)
     elif "chronos" in lower:
         return load_chronos(device, model_name=backbone_name)
+    elif "timer" in lower:
+        return load_timer(device, model_name=backbone_name)
     elif "moirai-moe" in lower or "moirai_moe" in lower or "moiraimoe" in lower:
         return load_moirai_moe(device, model_name=backbone_name)
     elif "moirai" in lower:
@@ -270,12 +289,16 @@ def attach_bottleneck(
 
 
 def _get_encoder_blocks(model: nn.Module) -> list:
-    """Navigate model structure to find encoder blocks. Supports MOMENT, Chronos, Moirai."""
+    """Navigate model structure to find encoder/decoder blocks.
+
+    Supports MOMENT, Chronos, Moirai, Timer-XL.
+    """
     # Try common paths across architectures
     for path_fn in [
         lambda m: m.encoder.block,           # MOMENT
         lambda m: m.model.encoder.block,     # MOMENT variant
         lambda m: m.backbone.encoder.block,  # MOMENT variant
+        lambda m: m.model.layers,            # Timer-XL (decoder-only)
         lambda m: m.encoder.layers,          # Moirai (TransformerEncoder)
         lambda m: m.encoder.layer,           # Generic transformer
     ]:
