@@ -78,6 +78,23 @@ class DualStreamWrapper(nn.Module):
         return a * h_out + (1 - a) * r_out
 
 
+class ResidualStreamWrapper(nn.Module):
+    """Raw branch predicts base forecast; backbone branch predicts residual."""
+    def __init__(self, backbone_head, input_len, output_dim):
+        super().__init__()
+        self.backbone_branch = backbone_head
+        self.raw_branch = nn.Sequential(
+            nn.Linear(input_len, 128),
+            nn.GELU(),
+            nn.Linear(128, output_dim),
+        )
+
+    def forward(self, hidden_states, raw_input):
+        base = self.raw_branch(raw_input)
+        residual = self.backbone_branch(hidden_states)
+        return base + residual
+
+
 # ---------------------------------------------------------------------------
 # Direction 2: FiLM Statistics Re-Injection
 # ---------------------------------------------------------------------------
@@ -189,7 +206,7 @@ class MultiResHead(nn.Module):
 class GapClosingMoA(nn.Module):
     """Gap-closing RR-MoA with selectable variant."""
 
-    VARIANTS = ("dual-stream", "film", "raw-expert", "multi-res")
+    VARIANTS = ("dual-stream", "film", "raw-expert", "multi-res", "residual-stream")
 
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64,
                  top_k=2, variant="dual-stream"):
@@ -235,6 +252,16 @@ class GapClosingMoA(nn.Module):
                 for i in range(K)
             ])
             self._expert_names = [f"mres_{n}" for n in HEAD_NAMES]
+            self.K = K
+
+        elif variant == "residual-stream":
+            self.adapters = nn.ModuleList([
+                ResidualStreamWrapper(
+                    HEAD_CLASSES[i](d_model, output_dim, hidden),
+                    input_len, output_dim,
+                ) for i in range(K)
+            ])
+            self._expert_names = [f"resid_{n}" for n in HEAD_NAMES]
             self.K = K
 
         self.top_k = min(top_k, self.K)
@@ -430,7 +457,7 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
 def main():
     parser = argparse.ArgumentParser(description="Gap-Closing RR-MoA Variants")
     parser.add_argument("--variant", required=True,
-                        choices=["dual-stream", "film", "raw-expert", "multi-res"])
+                        choices=["dual-stream", "film", "raw-expert", "multi-res", "residual-stream"])
     parser.add_argument("--dataset", default="ETTh1")
     parser.add_argument("--horizon", type=int, default=96)
     parser.add_argument("--seed", type=int, default=42)

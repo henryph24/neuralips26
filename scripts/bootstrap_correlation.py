@@ -10,9 +10,10 @@ Usage:
 import numpy as np
 from scipy import stats
 
-# Data from Figure 4: (routing_signal_ratio R, RR-MoA improvement delta%)
-# 7 datasets, computed from analyze_routing_signal_ratio.py
+# Data from Figure 3: (routing_signal_ratio R, RR-MoA improvement delta%)
+# 9 datasets, computed from analyze_routing_signal_ratio.py
 data = [
+    ("Solar",        0.061, -35.0),
     ("Traffic",      0.135,  +2.9),
     ("Electricity",  0.242, -26.8),
     ("ETTh1",        0.566, -43.2),
@@ -20,6 +21,7 @@ data = [
     ("Weather",      0.703, -44.6),
     ("ETTh2",        1.163, -71.0),
     ("ETTm2",        1.241, -77.2),
+    ("Exchange",     2.174, -68.5),
 ]
 
 names = [d[0] for d in data]

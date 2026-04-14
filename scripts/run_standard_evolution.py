@@ -77,6 +77,12 @@ def load_standard_data(dataset_name, forecast_horizon=96, max_samples=5000):
     elif dataset_name == "Traffic":
         local_path = os.path.join(os.path.dirname(__file__), "..", "data", "traffic.csv")
         df = pd.read_csv(local_path)
+    elif dataset_name == "Exchange":
+        local_path = os.path.join(os.path.dirname(__file__), "..", "data", "exchange_rate.csv")
+        df = pd.read_csv(local_path)
+    elif dataset_name == "Solar":
+        local_path = os.path.join(os.path.dirname(__file__), "..", "data", "solar.csv")
+        df = pd.read_csv(local_path)
     else:
         raise ValueError("Unknown dataset: %s" % dataset_name)
 
@@ -158,6 +164,7 @@ def _detect_backbone_type(backbone_name):
     """Detect backbone type from name string."""
     name = backbone_name.lower()
     if "chronos" in name: return "chronos"
+    if "timer" in name: return "timer"
     if "moirai" in name: return "moirai"
     return "moment"
 

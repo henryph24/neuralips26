@@ -100,12 +100,13 @@ def _get_trainable_params(model, adapter_cfg, head):
 # --- Feature extraction helper ---
 
 def _extract_features_batch(model, encoder_blocks, batch_x, input_mask, backbone_type="moment"):
-    """Run forward pass and capture last encoder block output.
+    """Run forward pass and capture last encoder/decoder block output.
 
     Supports multiple backbone types:
     - moment: MOMENT pipeline (x_enc + input_mask)
     - chronos: Chronos T5 encoder (tokenize then encode)
     - moirai: Moirai encoder (patch projection then encode)
+    - timer: Timer-XL decoder-only (raw input, internal patching)
     """
     features = []
 
@@ -121,6 +122,8 @@ def _extract_features_batch(model, encoder_blocks, batch_x, input_mask, backbone
         _forward_chronos(model, encoder_blocks, batch_x)
     elif backbone_type == "moirai":
         _forward_moirai(model, encoder_blocks, batch_x)
+    elif backbone_type == "timer":
+        _forward_timer(model, batch_x)
     else:
         # MOMENT and generic fallback
         try:
@@ -194,6 +197,18 @@ def _forward_moirai(model, encoder_blocks, batch_x):
     # Forward through encoder — hook on encoder_blocks[-1] captures output
     encoder = model.encoder
     encoder(projected)
+
+
+def _forward_timer(model, batch_x):
+    """Forward pass for Timer-XL decoder-only Transformer.
+
+    Timer-XL internally patches input via input_token_len=96 and runs
+    through 8 TimerDecoderLayer blocks. The hook on the last block
+    captures hidden states of shape (B, n_tokens, 1024) where
+    n_tokens = L // 96.  Input: batch_x (B, 1, L) or (B, L).
+    """
+    x = batch_x.squeeze(1) if batch_x.dim() == 3 else batch_x  # (B, L)
+    model(x)  # Hook captures output from last decoder layer
 
 
 # --- Forecasting ---
