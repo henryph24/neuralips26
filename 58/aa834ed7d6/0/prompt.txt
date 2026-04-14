@@ -115,3 +115,7 @@ let run it
 ---
 
 How many experiments are currently running on our RACE VM? How is the GPU utilization right now? ETA please.
+
+---
+
+/commit-push
