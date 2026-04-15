@@ -78,6 +78,26 @@ class DualStreamWrapper(nn.Module):
         return a * h_out + (1 - a) * r_out
 
 
+class IAGatingWrapper(nn.Module):
+    """Instance-Adaptive gating: per-window gamma blends backbone + raw.
+    Unlike DualStreamWrapper (static alpha), gate comes from external router latent."""
+    def __init__(self, backbone_head, input_len, output_dim):
+        super().__init__()
+        self.backbone_branch = backbone_head
+        self.raw_branch = nn.Sequential(
+            nn.Linear(input_len, 128),
+            nn.GELU(),
+            nn.Linear(128, output_dim),
+        )
+
+    def forward(self, hidden_states, raw_input, gate=None):
+        h_out = self.backbone_branch(hidden_states)
+        r_out = self.raw_branch(raw_input)
+        if gate is None:
+            gate = 0.5
+        return gate * h_out + (1 - gate) * r_out
+
+
 class ResidualStreamWrapper(nn.Module):
     """Raw branch predicts base forecast; backbone branch predicts residual."""
     def __init__(self, backbone_head, input_len, output_dim):
@@ -206,7 +226,7 @@ class MultiResHead(nn.Module):
 class GapClosingMoA(nn.Module):
     """Gap-closing RR-MoA with selectable variant."""
 
-    VARIANTS = ("dual-stream", "film", "raw-expert", "multi-res", "residual-stream")
+    VARIANTS = ("dual-stream", "film", "raw-expert", "multi-res", "residual-stream", "ia-gating")
 
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64,
                  top_k=2, variant="dual-stream"):
@@ -264,6 +284,18 @@ class GapClosingMoA(nn.Module):
             self._expert_names = [f"resid_{n}" for n in HEAD_NAMES]
             self.K = K
 
+        elif variant == "ia-gating":
+            self.adapters = nn.ModuleList([
+                IAGatingWrapper(
+                    HEAD_CLASSES[i](d_model, output_dim, hidden),
+                    input_len, output_dim,
+                ) for i in range(K)
+            ])
+            self._expert_names = [f"iag_{n}" for n in HEAD_NAMES]
+            self.K = K
+            # Per-expert instance-adaptive gate: router_feat (64-dim) -> K sigmoid gates
+            self.gate_head = nn.Linear(64, K)
+
         self.top_k = min(top_k, self.K)
 
         # Router: identical to RawRoutedMoA (Conv1d + pool + linear)
@@ -275,13 +307,22 @@ class GapClosingMoA(nn.Module):
         self.router_head = nn.Linear(64, self.K)
         self.load_balance_coeff = 0.01
 
-    def _compute_logits(self, raw_input):
+    def _compute_logits(self, raw_input, return_feat=False):
         x = raw_input.unsqueeze(1)  # (B, 1, input_len)
         router_feat = self.router(x).flatten(1)  # (B, 64)
-        return self.router_head(router_feat)      # (B, K)
+        logits = self.router_head(router_feat)    # (B, K)
+        if return_feat:
+            return logits, router_feat
+        return logits
 
     def forward(self, hidden_states, raw_input):
-        logits = self._compute_logits(raw_input)
+        # IA-Gating needs router_feat for per-instance gate computation
+        if self.variant == "ia-gating":
+            logits, router_feat = self._compute_logits(raw_input, return_feat=True)
+            gates = torch.sigmoid(self.gate_head(router_feat))  # (B, K)
+        else:
+            logits = self._compute_logits(raw_input)
+            gates = None
 
         if self.variant == "film":
             # Condition hidden states BEFORE expert dispatch
@@ -292,6 +333,11 @@ class GapClosingMoA(nn.Module):
             weights = F.softmax(logits, dim=-1)
             if self.variant == "film":
                 outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)
+            elif self.variant == "ia-gating":
+                outputs = torch.stack([
+                    self.adapters[i](hidden_states, raw_input, gate=gates[:, i:i+1])
+                    for i in range(self.K)
+                ], dim=1)
             else:
                 outputs = torch.stack([a(hidden_states, raw_input) for a in self.adapters], dim=1)
             return (weights.unsqueeze(-1) * outputs).sum(dim=1)
@@ -310,6 +356,10 @@ class GapClosingMoA(nn.Module):
                 if mask.any():
                     if self.variant == "film":
                         result[mask] += w[mask] * self.adapters[k](hidden_states[mask])
+                    elif self.variant == "ia-gating":
+                        result[mask] += w[mask] * self.adapters[k](
+                            hidden_states[mask], raw_input[mask],
+                            gate=gates[mask, k:k+1])
                     else:
                         result[mask] += w[mask] * self.adapters[k](hidden_states[mask], raw_input[mask])
         return result
@@ -337,6 +387,18 @@ class GapClosingMoA(nn.Module):
             self._expert_names[i]: torch.sigmoid(self.adapters[i].alpha).item()
             for i in range(self.K)
         }
+
+    def get_gate_stats(self, raw_input):
+        """For ia-gating: return mean per-expert gate values across test set."""
+        if self.variant != "ia-gating":
+            return None
+        with torch.no_grad():
+            _, router_feat = self._compute_logits(raw_input, return_feat=True)
+            gates = torch.sigmoid(self.gate_head(router_feat))  # (B, K)
+            return {
+                self._expert_names[i]: round(gates[:, i].mean().item(), 4)
+                for i in range(self.K)
+            }
 
 
 # ---------------------------------------------------------------------------
@@ -442,6 +504,22 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
     if alphas:
         out["alpha_values"] = alphas
 
+    # IA-Gating: log mean gate values over test set
+    if variant == "ia-gating":
+        all_gates = []
+        with torch.no_grad():
+            for bx, by in test_loader:
+                bx_raw = bx.to(device)
+                gate_stats = adapter.get_gate_stats(bx_raw)
+                if gate_stats:
+                    all_gates.append(gate_stats)
+        if all_gates:
+            # Average gate values across batches
+            avg_gates = {}
+            for name in all_gates[0]:
+                avg_gates[name] = round(np.mean([g[name] for g in all_gates]), 4)
+            out["gate_values"] = avg_gates
+
     if test_ch is not None and scaler is not None:
         mse_d, mae_d = compute_denorm_mse(preds, tgts, test_ch, scaler)
         out["mse_denorm"] = mse_d
@@ -457,7 +535,7 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
 def main():
     parser = argparse.ArgumentParser(description="Gap-Closing RR-MoA Variants")
     parser.add_argument("--variant", required=True,
-                        choices=["dual-stream", "film", "raw-expert", "multi-res", "residual-stream"])
+                        choices=["dual-stream", "film", "raw-expert", "multi-res", "residual-stream", "ia-gating"])
     parser.add_argument("--dataset", default="ETTh1")
     parser.add_argument("--horizon", type=int, default=96)
     parser.add_argument("--seed", type=int, default=42)
@@ -538,7 +616,8 @@ def main():
         bb_suffix = "_bb-chronos"
     elif "moment" in bb_lower and "large" in bb_lower:
         bb_suffix = "_bb-moment-large"
-    out_path = f"results/gap_closing/{args.variant}_{args.dataset}_H{args.horizon}_{args.seed}{bb_suffix}.json"
+    unfreeze_suffix = f"_{args.unfreeze}" if args.unfreeze != "frozen" else ""
+    out_path = f"results/gap_closing/{args.variant}_{args.dataset}_H{args.horizon}_{args.seed}{unfreeze_suffix}{bb_suffix}.json"
     with open(out_path, "w") as f:
         json.dump(result, f, indent=2)
     print(f"  Saved: {out_path}")

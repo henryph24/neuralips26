@@ -113,7 +113,7 @@ class RawRoutedMoA(nn.Module):
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None,
                  router_input_mode="raw", expert_pool="canonical", entropy_reg_coef=0.0,
                  router_temp=1.0, router_arch="conv", expert_dropout=0.0,
-                 rdgf=False):
+                 rdgf=False, saib_coef=0.0):
         super().__init__()
         self.K = K
         self.top_k = top_k if top_k is not None else K  # default: dense
@@ -149,6 +149,15 @@ class RawRoutedMoA(nn.Module):
             self.router_ms_16 = nn.Conv1d(1, 8, kernel_size=16, stride=8)
             self.router_ms_64 = nn.Conv1d(1, 8, kernel_size=64, stride=32)
             self.router_head = nn.Linear(24, K)  # 3 scales × 8 channels pooled to 1
+        elif router_arch == "fft":
+            # Spectral-Temporal Router: parallel time + frequency branches
+            self.router_time = nn.Sequential(
+                nn.Conv1d(1, 16, kernel_size=32, stride=16, padding=8),
+                nn.GELU(),
+                nn.AdaptiveAvgPool1d(4),  # (B, 16, 4)
+            )
+            self.router_fft_proj = nn.Linear(32, 32)
+            self.router_head = nn.Linear(96, K)  # 64 time + 32 spectral
         else:
             # Default conv router
             self.router = nn.Sequential(
@@ -159,6 +168,11 @@ class RawRoutedMoA(nn.Module):
             self.router_head = nn.Linear(64, K)  # 16*4 = 64
 
         self.load_balance_coeff = 0.01
+
+        # SAIB: Statistic-Aware Information Bottleneck auxiliary loss
+        self.saib_coef = saib_coef
+        if saib_coef > 0 and router_arch in ("conv", "fft"):
+            self.saib_head = nn.Linear(64, 2)  # predict [mu, sigma] from router latent
 
     def _compute_logits(self, raw_input):
         if self.router_input_mode == "uniform":
@@ -211,6 +225,14 @@ class RawRoutedMoA(nn.Module):
             f16 = F.adaptive_avg_pool1d(F.gelu(self.router_ms_16(x1)), 1).flatten(1)  # (B, 8)
             f64 = F.adaptive_avg_pool1d(F.gelu(self.router_ms_64(x1)), 1).flatten(1)  # (B, 8)
             return self.router_head(torch.cat([f4, f16, f64], dim=-1))
+
+        if self.router_arch == "fft":
+            x1 = x.unsqueeze(1)  # (B, 1, input_len)
+            time_feat = self.router_time(x1).flatten(1)  # (B, 64)
+            fft_amp = torch.fft.rfft(x, dim=-1).abs()  # (B, input_len//2 + 1)
+            fft_top = fft_amp[:, 1:33]  # skip DC component, take bins 1-32
+            spec_feat = F.gelu(self.router_fft_proj(fft_top))  # (B, 32)
+            return self.router_head(torch.cat([time_feat, spec_feat], dim=-1))
 
         # Default conv router
         x = x.unsqueeze(1)  # (B, 1, input_len)
@@ -280,13 +302,34 @@ class RawRoutedMoA(nn.Module):
         H = -(probs * torch.log(probs.clamp_min(1e-10))).sum(dim=-1).mean()
         return -H
 
+    def saib_loss(self, raw_input):
+        """SAIB: force router latent to encode window [mu, sigma].
+        Operationalizes Proposition 2 as an explicit training objective."""
+        if self.saib_coef <= 0 or self.router_arch not in ("conv", "fft"):
+            return torch.tensor(0.0, device=raw_input.device)
+        x = raw_input
+        if self.router_input_mode == "revin":
+            mu = x.mean(dim=-1, keepdim=True)
+            sigma = x.std(dim=-1, keepdim=True) + 1e-5
+            x = (x - mu) / sigma
+        if self.router_arch == "fft":
+            router_feat = self.router_time(x.unsqueeze(1)).flatten(1)  # (B, 64)
+        else:
+            router_feat = self.router(x.unsqueeze(1)).flatten(1)  # (B, 64)
+        pred_stats = self.saib_head(router_feat)  # (B, 2)
+        true_mu = raw_input.mean(dim=-1)
+        true_sigma = raw_input.std(dim=-1)
+        true_stats = torch.stack([true_mu, true_sigma], dim=-1)
+        return F.mse_loss(pred_stats, true_stats)
+
 
 def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
                  backbone_type="moment", K=5, hidden=64, top_k=None,
                  router_input_mode="raw", test_ch=None, scaler=None,
                  expert_pool="canonical", entropy_reg_coef=0.0, router_temp=1.0,
-                 router_arch="conv", expert_dropout=0.0, rdgf=False):
+                 router_arch="conv", expert_dropout=0.0, rdgf=False,
+                 saib_coef=0.0):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
     adapter = RawRoutedMoA(
@@ -294,7 +337,7 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
         router_input_mode=router_input_mode, expert_pool=expert_pool,
         entropy_reg_coef=entropy_reg_coef, router_temp=router_temp,
         router_arch=router_arch, expert_dropout=expert_dropout,
-        rdgf=rdgf,
+        rdgf=rdgf, saib_coef=saib_coef,
     ).to(device)
 
     trainable = list(adapter.parameters())
@@ -336,6 +379,8 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                 loss = loss + adapter.load_balance_coeff * adapter.load_balance_loss(bx_raw)
                 if adapter.entropy_reg_coef > 0:
                     loss = loss + adapter.entropy_reg_coef * adapter.entropy_regularization(bx_raw)
+                if adapter.saib_coef > 0:
+                    loss = loss + adapter.saib_coef * adapter.saib_loss(bx_raw)
 
             optimizer.zero_grad()
             loss.backward()
@@ -456,8 +501,10 @@ def main():
     parser.add_argument("--router-temp", type=float, default=1.0,
                         help="Router softmax temperature (>1 softer, <1 sharper)")
     parser.add_argument("--router-arch", default="conv",
-                        choices=["conv", "stats", "multiscale", "ssr"],
-                        help="Router architecture: conv (default), stats (hand-crafted), multiscale")
+                        choices=["conv", "stats", "multiscale", "ssr", "fft"],
+                        help="Router architecture: conv (default), stats (hand-crafted), multiscale, fft (spectral-temporal)")
+    parser.add_argument("--saib-coef", type=float, default=0.0,
+                        help="SAIB auxiliary loss coefficient (0 = disabled). Forces router latent to encode window mu/sigma.")
     parser.add_argument("--expert-dropout", type=float, default=0.0,
                         help="Expert dropout probability during training")
     parser.add_argument("--rdgf", action="store_true",
@@ -506,7 +553,8 @@ def main():
                           router_temp=args.router_temp,
                           router_arch=args.router_arch,
                           expert_dropout=args.expert_dropout,
-                          rdgf=args.rdgf)
+                          rdgf=args.rdgf,
+                          saib_coef=args.saib_coef)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -598,6 +646,8 @@ def main():
         suffixes.append("edrop-%.2g" % args.expert_dropout)
     if args.rdgf:
         suffixes.append("rdgf")
+    if args.saib_coef > 0:
+        suffixes.append("saib-%.3g" % args.saib_coef)
     # Backbone suffix for non-default backbones
     bb_lower = args.backbone.lower()
     if "moment" in bb_lower and "large" in bb_lower:
