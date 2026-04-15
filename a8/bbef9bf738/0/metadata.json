@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "a8bbef9bf738",
+  "session_id": "370a641a-4f3f-4f1b-9338-a4bdaf027e61",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-15T15:09:11.515463Z",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_gap_closing.py",
+    "scripts/run_new_ablations_race.sh",
+    "scripts/run_rr_moa.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c2e1f6f78d01",
+  "token_usage": {
+    "input_tokens": 85,
+    "cache_creation_tokens": 341708,
+    "cache_read_tokens": 7096677,
+    "output_tokens": 46172,
+    "api_call_count": 75
+  },
+  "session_metrics": {
+    "turn_count": 3
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-15T15:09:10.994403Z",
+    "agent_lines": 314,
+    "human_added": 134,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 448,
+    "agent_percentage": 70.08928571428571
+  }
+}
