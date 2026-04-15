@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "a8bbef9bf738",
+  "session_id": "a34b6199-9b61-4012-9e65-841a686ad2b1",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-15T15:09:18.113241Z",
+  "branch": "main",
+  "checkpoints_count": 16,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_gap_closing.py",
+    "scripts/run_rr_moa.py",
+    "scripts/run_vulnerability_sweep_race.sh"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-4-6[1m]",
+  "turn_id": "cce48c95fb50",
+  "token_usage": {
+    "input_tokens": 317,
+    "cache_creation_tokens": 368971,
+    "cache_read_tokens": 20141678,
+    "output_tokens": 54616,
+    "api_call_count": 158
+  },
+  "session_metrics": {
+    "turn_count": 16
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-15T15:09:14.630211Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 115,
+    "human_removed": 3921,
+    "total_committed": 333,
+    "agent_percentage": 0
+  }
+}
