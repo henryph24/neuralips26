@@ -115,6 +115,53 @@ class ResidualStreamWrapper(nn.Module):
         return base + residual
 
 
+class ResidualIAWrapper(nn.Module):
+    """Residual formulation with instance-adaptive gating.
+
+    Raw branch is the primary predictor (DLinear-like by default).
+    Backbone branch contributes an additive residual scaled by a per-sample
+    gate: output = raw_branch(x) + gate(x) * backbone_branch(H).
+    The gate is sigmoid-activated, so the backbone must earn its contribution.
+    """
+    def __init__(self, backbone_head, input_len, output_dim, raw_hidden=192,
+                 raw_depth=2, shared_raw=None, raw_arch="linear"):
+        super().__init__()
+        self.backbone_branch = backbone_head
+        self.raw_arch = raw_arch
+        if shared_raw is not None:
+            # Shared raw branch (single Linear(input_len, output_dim)) across all experts
+            self.raw_branch = shared_raw
+        elif raw_depth == 1:
+            # Pure linear (DLinear-like)
+            self.raw_branch = nn.Linear(input_len, output_dim)
+        elif raw_depth == 3:
+            self.raw_branch = nn.Sequential(
+                nn.Linear(input_len, raw_hidden),
+                nn.GELU(),
+                nn.Linear(raw_hidden, raw_hidden // 2),
+                nn.GELU(),
+                nn.Linear(raw_hidden // 2, output_dim),
+            )
+        else:  # depth == 2 (default)
+            self.raw_branch = nn.Sequential(
+                nn.Linear(input_len, raw_hidden),
+                nn.GELU(),
+                nn.Linear(raw_hidden, output_dim),
+            )
+
+    def forward(self, hidden_states, raw_input, gate=None):
+        if self.raw_arch == "nlinear":
+            # Shift-subtract-linear-add-back (NLinear trick for non-stationary series)
+            last = raw_input[:, -1:].detach()
+            base = self.raw_branch(raw_input - last) + last
+        else:
+            base = self.raw_branch(raw_input)
+        residual = self.backbone_branch(hidden_states)
+        if gate is None:
+            gate = 0.5
+        return base + gate * residual
+
+
 # ---------------------------------------------------------------------------
 # Direction 2: FiLM Statistics Re-Injection
 # ---------------------------------------------------------------------------
@@ -226,14 +273,18 @@ class MultiResHead(nn.Module):
 class GapClosingMoA(nn.Module):
     """Gap-closing RR-MoA with selectable variant."""
 
-    VARIANTS = ("dual-stream", "film", "raw-expert", "multi-res", "residual-stream", "ia-gating")
+    VARIANTS = ("dual-stream", "film", "raw-expert", "multi-res", "residual-stream", "ia-gating", "residual-ia")
 
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64,
-                 top_k=2, variant="dual-stream"):
+                 top_k=2, variant="dual-stream", raw_hidden=192, raw_depth=2,
+                 gate_init=-2.0, adapter_hidden=None,
+                 raw_branch_shared=False, raw_arch="linear"):
         super().__init__()
         assert variant in self.VARIANTS, f"Unknown variant: {variant}"
         self.variant = variant
         self.output_dim = output_dim
+        # adapter_hidden overrides the backbone expert hidden dim (default: hidden=64)
+        _ahidden = adapter_hidden if adapter_hidden is not None else hidden
 
         # Build experts based on variant
         if variant == "dual-stream":
@@ -296,6 +347,32 @@ class GapClosingMoA(nn.Module):
             # Per-expert instance-adaptive gate: router_feat (64-dim) -> K sigmoid gates
             self.gate_head = nn.Linear(64, K)
 
+        elif variant == "residual-ia":
+            # Diverse raw_hidden per expert for architectural diversity
+            raw_hiddens = [raw_hidden - 64, raw_hidden - 32, raw_hidden,
+                           raw_hidden + 32, raw_hidden + 64][:K]
+            # Optional shared raw branch (matches DLinear's 49K param budget)
+            if raw_branch_shared:
+                # Build a single Linear(input_len, output_dim); shared across all experts
+                self.shared_raw = nn.Linear(input_len, output_dim)
+            else:
+                self.shared_raw = None
+            self.adapters = nn.ModuleList([
+                ResidualIAWrapper(
+                    HEAD_CLASSES[i](d_model, output_dim, _ahidden),
+                    input_len, output_dim, raw_hidden=raw_hiddens[i],
+                    raw_depth=raw_depth,
+                    shared_raw=self.shared_raw, raw_arch=raw_arch,
+                ) for i in range(K)
+            ])
+            self._expert_names = [f"ria_{n}" for n in HEAD_NAMES]
+            self.K = K
+            # Per-expert gate from router features — bias init controls
+            # the starting backbone contribution: sigmoid(-2)≈0.12 (raw-dominant)
+            self.gate_head = nn.Linear(64, K)
+            if gate_init != 0.0:
+                nn.init.constant_(self.gate_head.bias, gate_init)
+
         self.top_k = min(top_k, self.K)
 
         # Router: identical to RawRoutedMoA (Conv1d + pool + linear)
@@ -316,8 +393,8 @@ class GapClosingMoA(nn.Module):
         return logits
 
     def forward(self, hidden_states, raw_input):
-        # IA-Gating needs router_feat for per-instance gate computation
-        if self.variant == "ia-gating":
+        # IA-Gating and Residual-IA need router_feat for per-instance gate
+        if self.variant in ("ia-gating", "residual-ia"):
             logits, router_feat = self._compute_logits(raw_input, return_feat=True)
             gates = torch.sigmoid(self.gate_head(router_feat))  # (B, K)
         else:
@@ -333,7 +410,7 @@ class GapClosingMoA(nn.Module):
             weights = F.softmax(logits, dim=-1)
             if self.variant == "film":
                 outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)
-            elif self.variant == "ia-gating":
+            elif self.variant in ("ia-gating", "residual-ia"):
                 outputs = torch.stack([
                     self.adapters[i](hidden_states, raw_input, gate=gates[:, i:i+1])
                     for i in range(self.K)
@@ -356,7 +433,7 @@ class GapClosingMoA(nn.Module):
                 if mask.any():
                     if self.variant == "film":
                         result[mask] += w[mask] * self.adapters[k](hidden_states[mask])
-                    elif self.variant == "ia-gating":
+                    elif self.variant in ("ia-gating", "residual-ia"):
                         result[mask] += w[mask] * self.adapters[k](
                             hidden_states[mask], raw_input[mask],
                             gate=gates[mask, k:k+1])
@@ -389,8 +466,8 @@ class GapClosingMoA(nn.Module):
         }
 
     def get_gate_stats(self, raw_input):
-        """For ia-gating: return mean per-expert gate values across test set."""
-        if self.variant != "ia-gating":
+        """For ia-gating/residual-ia: return mean per-expert gate values across test set."""
+        if self.variant not in ("ia-gating", "residual-ia"):
             return None
         with torch.no_grad():
             _, router_feat = self._compute_logits(raw_input, return_feat=True)
@@ -408,16 +485,25 @@ class GapClosingMoA(nn.Module):
 def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
                       device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
                       backbone_type="moment", K=5, hidden=64, top_k=2,
-                      variant="dual-stream", test_ch=None, scaler=None):
+                      variant="dual-stream", test_ch=None, scaler=None,
+                      raw_hidden=192, lr=1e-3, weight_decay=0.0,
+                      cosine_schedule=False, raw_depth=2,
+                      gate_init=-2.0, warmup_epochs=0, adapter_hidden=None,
+                      X_val=None, Y_val=None, val_early_stop=False, val_patience=5,
+                      raw_branch_shared=False, raw_arch="linear", grad_clip=0.0):
     """Train gap-closing MoA variant."""
+    import copy
     hdim = _get_hidden_dim(model)
     adapter = GapClosingMoA(
         hdim, forecast_horizon, input_len=512, K=K, hidden=hidden,
-        top_k=top_k, variant=variant,
+        top_k=top_k, variant=variant, raw_hidden=raw_hidden,
+        raw_depth=raw_depth, gate_init=gate_init,
+        adapter_hidden=adapter_hidden,
+        raw_branch_shared=raw_branch_shared, raw_arch=raw_arch,
     ).to(device)
 
     print(f"  Variant: {variant}, K={adapter.K}, top_k={adapter.top_k}, "
-          f"params={adapter.param_count():,}")
+          f"params={adapter.param_count():,}, lr={lr}, wd={weight_decay}")
 
     trainable = list(adapter.parameters())
     pids = {id(p) for p in trainable}
@@ -426,7 +512,10 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
             trainable.append(p)
             pids.add(id(p))
 
-    optimizer = torch.optim.Adam(trainable, lr=1e-3)
+    optimizer = torch.optim.AdamW(trainable, lr=lr, weight_decay=weight_decay)
+    scheduler = None
+    if cosine_schedule:
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs)
     mse_fn = nn.MSELoss()
     use_amp = device == "cuda"
 
@@ -434,7 +523,38 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
         torch.from_numpy(X_train).float(), torch.from_numpy(Y_train).float(),
     ), batch_size=batch_size, shuffle=True)
 
+    # Optional val loader for early stopping
+    val_loader = None
+    if val_early_stop and X_val is not None and Y_val is not None:
+        val_loader = DataLoader(TensorDataset(
+            torch.from_numpy(X_val).float(), torch.from_numpy(Y_val).float(),
+        ), batch_size=batch_size)
+        print(f"  Val early-stop enabled: patience={val_patience} n_val={len(X_val)}")
+
+    best_val_mse = float("inf")
+    best_state = None
+    best_epoch = -1
+    val_mse_curve = []
+    patience_counter = 0
+
+    # Warmup: freeze gate + backbone branches so raw branch learns alone first
+    _warmup_frozen = set()
+    if warmup_epochs > 0 and variant == "residual-ia":
+        for name, p in adapter.named_parameters():
+            if "backbone_branch" in name or "gate_head" in name:
+                p.requires_grad = False
+                _warmup_frozen.add(name)
+        print(f"  Warmup: freezing {len(_warmup_frozen)} params for {warmup_epochs} epochs")
+
     for epoch in range(n_epochs):
+        # End warmup: unfreeze backbone branches + gate
+        if epoch == warmup_epochs and _warmup_frozen:
+            for name, p in adapter.named_parameters():
+                if name in _warmup_frozen:
+                    p.requires_grad = True
+            _warmup_frozen.clear()
+            print(f"  Warmup ended at epoch {epoch}, unfreezing backbone+gate")
+
         model.train(); adapter.train()
         epoch_loss = 0.0
         for bx, by in train_loader:
@@ -450,11 +570,50 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
 
             optimizer.zero_grad()
             loss.backward()
+            if grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(trainable, grad_clip)
             optimizer.step()
             epoch_loss += loss.item()
 
+        if scheduler is not None:
+            scheduler.step()
+
+        # Val-based early stopping
+        if val_loader is not None:
+            model.eval(); adapter.eval()
+            v_se = 0.0; v_n = 0
+            with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
+                for bx, by in val_loader:
+                    bx_raw = bx.to(device)
+                    bx_enc = bx.to(device).unsqueeze(1)
+                    by = by.to(device)
+                    mask = torch.ones(bx_enc.shape[0], bx_enc.shape[2], device=device)
+                    feat = _extract_features_batch(model, blocks, bx_enc, mask, backbone_type=backbone_type)
+                    pred = adapter(feat, bx_raw)
+                    v_se += ((pred - by) ** 2).sum().item()
+                    v_n += pred.numel()
+            v_mse = v_se / max(v_n, 1)
+            val_mse_curve.append(v_mse)
+            # Skip tracking during warmup (unstable early loss)
+            if epoch >= warmup_epochs:
+                if v_mse < best_val_mse:
+                    best_val_mse = v_mse
+                    best_state = copy.deepcopy(adapter.state_dict())
+                    best_epoch = epoch
+                    patience_counter = 0
+                else:
+                    patience_counter += 1
+                if patience_counter >= val_patience:
+                    print(f"    Early stop at epoch {epoch+1}: best_val={best_val_mse:.4f} @ ep{best_epoch+1}")
+                    break
+
         if (epoch + 1) % 5 == 0 or epoch == 0:
             print(f"    Epoch {epoch+1}/{n_epochs}: loss={epoch_loss/len(train_loader):.4f}")
+
+    # Restore best checkpoint for test eval
+    if best_state is not None:
+        adapter.load_state_dict(best_state)
+        print(f"  Restored best val state from epoch {best_epoch+1} (val_mse={best_val_mse:.4f})")
 
     # Evaluate
     model.eval(); adapter.eval()
@@ -499,13 +658,20 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
         "routing_cross_sample_var": cross_sample_var,
     }
 
+    # Val early-stop diagnostics
+    if val_loader is not None:
+        out["best_epoch"] = best_epoch + 1 if best_epoch >= 0 else -1
+        out["best_val_mse"] = best_val_mse if best_val_mse < float("inf") else None
+        out["val_mse_curve"] = [round(v, 6) for v in val_mse_curve]
+        out["n_epochs_trained"] = len(val_mse_curve)
+
     # Dual-stream: log alpha values
     alphas = adapter.get_alpha_values()
     if alphas:
         out["alpha_values"] = alphas
 
-    # IA-Gating: log mean gate values over test set
-    if variant == "ia-gating":
+    # IA-Gating / Residual-IA: log mean gate values over test set
+    if variant in ("ia-gating", "residual-ia"):
         all_gates = []
         with torch.no_grad():
             for bx, by in test_loader:
@@ -535,7 +701,7 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
 def main():
     parser = argparse.ArgumentParser(description="Gap-Closing RR-MoA Variants")
     parser.add_argument("--variant", required=True,
-                        choices=["dual-stream", "film", "raw-expert", "multi-res", "residual-stream", "ia-gating"])
+                        choices=["dual-stream", "film", "raw-expert", "multi-res", "residual-stream", "ia-gating", "residual-ia"])
     parser.add_argument("--dataset", default="ETTh1")
     parser.add_argument("--horizon", type=int, default=96)
     parser.add_argument("--seed", type=int, default=42)
@@ -543,11 +709,36 @@ def main():
     parser.add_argument("--K", type=int, default=5)
     parser.add_argument("--top-k", type=int, default=2)
     parser.add_argument("--hidden", type=int, default=64)
+    parser.add_argument("--raw-hidden", type=int, default=192,
+                        help="Raw branch hidden dim for residual-ia variant")
+    parser.add_argument("--raw-depth", type=int, default=2, choices=[1, 2, 3],
+                        help="Raw branch depth: 1=linear, 2=default, 3=deep")
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--cosine", action="store_true", help="Cosine LR schedule")
+    parser.add_argument("--gate-init", type=float, default=-2.0,
+                        help="Gate bias init: -2=raw-dominant(default), 0=50/50")
+    parser.add_argument("--warmup-epochs", type=int, default=0,
+                        help="Epochs to train raw branch only (backbone+gate frozen)")
+    parser.add_argument("--adapter-hidden", type=int, default=None,
+                        help="Backbone expert hidden dim (default: same as --hidden)")
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--unfreeze", default="frozen",
                         choices=["frozen", "last2", "last4", "all"])
+    parser.add_argument("--max-samples", type=int, default=5000,
+                        help="Cap on per-split sample count (default 5000 matches main paper)")
+    parser.add_argument("--raw-branch-shared", action="store_true",
+                        help="Share one raw_branch across all K experts (matches DLinear param budget)")
+    parser.add_argument("--raw-arch", default="linear", choices=["linear", "nlinear"],
+                        help="Raw branch architecture: linear=Linear, nlinear=shift-linear-unshift")
+    parser.add_argument("--val-early-stop", action="store_true",
+                        help="Use val split for early stopping, restore best checkpoint")
+    parser.add_argument("--val-patience", type=int, default=5,
+                        help="Epochs without val improvement before early stop")
+    parser.add_argument("--grad-clip", type=float, default=0.0,
+                        help="Max grad norm (0 = no clipping)")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -580,11 +771,13 @@ def main():
                 p.requires_grad = True
 
     # Load data
-    splits, n_ch = load_standard_data(args.dataset, args.horizon, max_samples=5000)
+    splits, n_ch = load_standard_data(args.dataset, args.horizon, max_samples=args.max_samples)
     X_train, Y_train = splits["train"]
     X_test, Y_test = splits["test"]
+    X_val, Y_val = splits.get("val", (None, None))
     test_ch = splits.get("test_ch")
     scaler = splits.get("_scaler")
+    print(f"  Data: train={len(X_train)} val={0 if X_val is None else len(X_val)} test={len(X_test)} max_samples={args.max_samples}")
 
     t0 = time.time()
     result = train_gap_closing(
@@ -593,6 +786,15 @@ def main():
         batch_size=args.batch_size, backbone_type=backbone_type,
         K=args.K, hidden=args.hidden, top_k=args.top_k,
         variant=args.variant, test_ch=test_ch, scaler=scaler,
+        raw_hidden=args.raw_hidden, lr=args.lr,
+        weight_decay=args.weight_decay, cosine_schedule=args.cosine,
+        raw_depth=args.raw_depth, gate_init=args.gate_init,
+        warmup_epochs=args.warmup_epochs,
+        adapter_hidden=args.adapter_hidden,
+        X_val=X_val, Y_val=Y_val,
+        val_early_stop=args.val_early_stop, val_patience=args.val_patience,
+        raw_branch_shared=args.raw_branch_shared, raw_arch=args.raw_arch,
+        grad_clip=args.grad_clip,
     )
     elapsed = time.time() - t0
 
@@ -617,7 +819,36 @@ def main():
     elif "moment" in bb_lower and "large" in bb_lower:
         bb_suffix = "_bb-moment-large"
     unfreeze_suffix = f"_{args.unfreeze}" if args.unfreeze != "frozen" else ""
-    out_path = f"results/gap_closing/{args.variant}_{args.dataset}_H{args.horizon}_{args.seed}{unfreeze_suffix}{bb_suffix}.json"
+    rh_suffix = f"_rh{args.raw_hidden}" if args.variant == "residual-ia" else ""
+    hp_parts = []
+    if args.raw_depth != 2:
+        hp_parts.append(f"d{args.raw_depth}")
+    if args.lr != 1e-3:
+        hp_parts.append(f"lr{args.lr:g}")
+    if args.weight_decay > 0:
+        hp_parts.append(f"wd{args.weight_decay:g}")
+    if args.cosine:
+        hp_parts.append("cos")
+    if args.gate_init != -2.0:
+        hp_parts.append(f"gi{args.gate_init:g}")
+    if args.warmup_epochs > 0:
+        hp_parts.append(f"wu{args.warmup_epochs}")
+    if args.adapter_hidden is not None:
+        hp_parts.append(f"ah{args.adapter_hidden}")
+    if args.raw_branch_shared:
+        hp_parts.append("shared")
+    if args.max_samples != 5000:
+        hp_parts.append(f"maxN{args.max_samples}")
+    if args.val_early_stop:
+        hp_parts.append(f"es{args.val_patience}")
+    if args.raw_arch != "linear":
+        hp_parts.append(args.raw_arch)  # "nlinear"
+    if args.grad_clip > 0:
+        hp_parts.append(f"gc{args.grad_clip:g}")
+    if args.K != 5:
+        hp_parts.append(f"K{args.K}")
+    hp_suffix = "_" + "_".join(hp_parts) if hp_parts else ""
+    out_path = f"results/gap_closing/{args.variant}_{args.dataset}_H{args.horizon}_{args.seed}{unfreeze_suffix}{bb_suffix}{rh_suffix}{hp_suffix}.json"
     with open(out_path, "w") as f:
         json.dump(result, f, indent=2)
     print(f"  Saved: {out_path}")

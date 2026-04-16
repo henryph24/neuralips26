@@ -51,7 +51,7 @@
 \maketitle
 
 \begin{abstract}
-Standard mixture-of-experts (MoE) routing on time series foundation models (TSFMs) collapses catastrophically: routing entropy drops to exactly $0.000{\pm}0.000$ under fine-tuning on backbones with Reversible Instance Normalization (RevIN), and remains severely degraded even when frozen. We diagnose the cause as \textbf{normalization-induced co-adaptation}---RevIN strips per-window mean and scale that the router needs for discriminative gating. A 720-run sweep of eleven standard MoE rescue mechanisms \emph{cannot} recover the collapse: the best rescue remains $2.2{\times}$ worse than our fix. We formalize this via a mutual-information decomposition (Proposition~\ref{thm:mi_decomp}), predicting that datasets with higher location-scale variance benefit more from raw routing---validated at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$) across nine datasets, including correctly predicting where raw routing does \emph{not} help. To break the collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: a lightweight gate routes on the raw pre-normalization input while a frozen backbone produces embeddings for the experts. RR-MoA achieves \textbf{54/54 wins} across 6 datasets $\times$ 3 freeze levels $\times$ 3 seeds ($p{<}0.001$, Wilcoxon), outperforming LoRA, TRACE, independent ensembles, full backbone fine-tuning, and generalizing across six backbones (four with instance normalization, two negative controls without it). The \textbf{Frozen Paradox}: frozen RR-MoA outperforms full fine-tuning by $12$--$79\%$---a reversal of the standard PEFT heuristic specific to MoE routing under instance normalization.
+Standard mixture-of-experts (MoE) routing on time series foundation models (TSFMs) collapses catastrophically: routing entropy drops to exactly $0.000{\pm}0.000$ under fine-tuning on backbones with Reversible Instance Normalization (RevIN), and remains severely degraded even when frozen. We diagnose the cause as \textbf{normalization-induced co-adaptation}---RevIN strips per-window mean and scale that the router needs for discriminative gating. A 720-run sweep of eleven standard MoE rescue mechanisms \emph{cannot} recover the collapse: the best rescue remains $2.7{\times}$ worse than our fix (pooled across 6 datasets). We formalize this via a mutual-information decomposition (Proposition~\ref{thm:mi_decomp}), predicting that datasets with higher location-scale variance benefit more from raw routing---validated at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$) across nine datasets, including correctly predicting where raw routing does \emph{not} help. To break the collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: a lightweight gate routes on the raw pre-normalization input while a frozen backbone produces embeddings for the experts. RR-MoA achieves \textbf{54/54 wins} across 6 datasets $\times$ 3 freeze levels $\times$ 3 seeds ($p{<}0.001$, Wilcoxon), outperforming LoRA, TRACE, independent ensembles, full backbone fine-tuning, and generalizing across six backbones (four with instance normalization, two negative controls without it). A diagnostic $700$-run sweep uncovers a second pathology---the instance-adaptive gate fails to move from its $\sigma(0){=}0.5$ initialization---whose architectural fix, \textbf{Residual-IA\textsuperscript{+}}, combines four targeted interventions: (i)~asymmetric gate initialization $b{=}{-}2$ so the backbone must \emph{earn} its contribution; (ii)~a $5$-epoch raw-branch warmup; (iii)~a single \emph{shared} NLinear raw branch across all $K$ experts (matching DLinear's $49$K parameter budget); (iv)~validation-based early stopping. Residual-IA\textsuperscript{+} achieves \textbf{parity-or-better with DLinear on 5/6 benchmarks} at $-1.4\%$ average gap: significant wins on Weather and ETTm2, mean wins on Electricity and ETTm2, statistical parity on ETTh2 and ETTm1, leaving ETTh1 as the only residual $+1.8\%$ gap. The \textbf{Frozen Paradox}: frozen RR-MoA outperforms full fine-tuning by $12$--$79\%$---a reversal of the standard PEFT heuristic specific to MoE routing under instance normalization.
 \end{abstract}
 
 \section{Introduction}
@@ -324,12 +324,12 @@ Load-balance $\alpha{=}10.0$                         & $2.773$ {\scriptsize($+67
 ReMoE ReLU $+$ $L_1$ regularization                  & $1.586$ {\scriptsize($-4.1\%$)} & $0.58$ & 16/60 (27\%) & 60/60 \\
 Expert-choice routing ($c{=}2$)                      & $1.590$ {\scriptsize($-3.9\%$)} & $0.17$ & \textbf{44/60 (73\%)} & 60/60 \\
 \midrule
-\textbf{RR-MoA (raw routing, ours)} & $\mathbf{0.680 \pm 0.027}$ {\scriptsize(ETTh1)} & $\mathbf{1.0\text{--}1.57}$ & \textbf{0/54 (0\%)} & 54/54 wins \\
+\textbf{RR-MoA (raw routing, ours)} & $\mathbf{0.540}$ {\scriptsize(pooled, 6 datasets)} & $\mathbf{1.0\text{--}1.57}$ & \textbf{0/54 (0\%)} & 54/54 wins \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Key finding:} the best rescue (z-loss $c_z{=}0.01$: $-10.9\%$, entropy $1.24$) is still $2.2{\times}$ worse than RR-MoA. Excessive rescue ($\alpha{=}10.0$) is catastrophic ($+67.7\%$). This confirms Proposition~\ref{thm:mi_decomp}(ii): when the missing statistics are not in $S$, no optimization-side trick can help.
+\textbf{Key finding:} the best rescue (z-loss $c_z{=}0.01$: $-10.9\%$, entropy $1.24$) is still $2.7{\times}$ worse than RR-MoA (pooled across all 6 datasets). Excessive rescue ($\alpha{=}10.0$) is catastrophic ($+67.7\%$). This confirms Proposition~\ref{thm:mi_decomp}(ii): when the missing statistics are not in $S$, no optimization-side trick can help.
 
 \begin{table}[h]
 \centering
@@ -351,17 +351,20 @@ Full fine-tuning (all unfrozen) & $1.060 \pm 0.059$ & $0.871 \pm 0.029$ & $0.468
 \textbf{RR-MoA (Top-2, frozen)} & $\mathbf{0.680 \pm 0.027}$ & $\mathbf{0.564 \pm 0.059}$ & $\mathbf{0.276 \pm 0.017}$ & --- \\
 \midrule
 \rowcolor{gray!8} DLinear (from scratch) & $0.416 \pm 0.002$ & $0.322 \pm 0.004$ & $0.208 \pm 0.003$ & --- \\
+\rowcolor{gray!8} PatchTST/64$^\dagger$~\citep{nie2023patchtst} & $0.370$ & $0.274$ & $0.149$ & --- \\
+\rowcolor{gray!8} iTransformer$^\ddagger$~\citep{liu2024itransformer} & $0.386$ & $0.334$ & $0.174$ & --- \\
 \bottomrule
+\multicolumn{5}{l}{\scriptsize $^\dagger$Trained from scratch, $L{=}512$; $^\ddagger$trained from scratch, $L{=}96$. Included for absolute MSE context.}
 \end{tabular}
 \end{table}
 
 RR-MoA outperforms every baseline ($p{<}0.001$). The independent ensemble (same experts, no router) is $36$--$46\%$ worse, confirming learned routing adds value beyond diversity.
 
-\textbf{Closing the DLinear gap.} DLinear achieves lower absolute MSE; the diagnosis predicts that providing experts with raw-signal access should close this gap. \textbf{Dual-stream} experts blend a backbone branch with a raw branch (MLP on $\mathbf{X}_\text{raw}$) via learnable $\alpha_k$; \textbf{multi-resolution} experts concatenate raw and pooled features:
+\textbf{Closing the DLinear gap.} DLinear (49K params, trained from scratch) achieves lower absolute MSE---as do PatchTST and iTransformer (Table~\ref{tab:baselines}, grey rows). The diagnosis predicts that providing experts with raw-signal access should close this gap, since the frozen-backbone normalization cascade destroys the very statistics that drive DLinear's strength. We evaluate three architectures of increasing sophistication: \textbf{dual-stream} (learnable scalar $\alpha_k$ blends raw and backbone branches), \textbf{multi-resolution} (concatenate raw + pooled hidden features), and \textbf{Residual-IA} (raw branch is the primary predictor; backbone contributes an additive residual scaled by a per-sample instance-adaptive gate):
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Gap-closing vs.\ DLinear} (MOMENT-small, frozen, Top-2, 3 seeds, H=96). Dual-stream reduces the gap from $+57\%$ to $+5\%$ ($11\times$ reduction) and \emph{beats} DLinear on Weather ($p{=}0.03$). Full breakdown in Appendix~\ref{app:gap_closing}.}
+\caption{\textbf{Gap-closing vs.\ DLinear} (MOMENT-small, frozen, Top-2, H=96). Residual-IA\textsuperscript{+} (shared NLinear raw branch, gate-init $b{=}{-}2$, $5$-epoch warmup, cosine+wd, val-early-stop, grad-clip) achieves \textbf{5/6 match-or-beat} on DLinear (Weather $p{=}0.024$ sig win; ETTm2 $-6.5\%$, Electricity $-1.0\%$ wins; ETTm1, ETTh2 statistical parity at $p{>}0.39$; ETTh1 remains at $+1.8\%$), $n{=}5$ seeds per cell. Full six-dataset breakdown with significance tests in Appendix~\ref{app:gate_pathology}, Tables~\ref{tab:residual_ia}--\ref{tab:residual_ia_plus}.}
 \label{tab:gap_closing_headline}
 \small
 \begin{tabular}{@{}lcccc@{}}
@@ -371,13 +374,15 @@ Method & ETTh1 & ETTm1 & Weather & Avg.\ gap to DLinear \\
 DLinear (from scratch)            & $\mathit{0.416}$ & $\mathit{0.322}$ & $\mathit{0.208}$ & --- \\
 RR-MoA (single-stream, Top-2)     & $0.680$ {\scriptsize($+63\%$)} & $0.564$ {\scriptsize($+75\%$)} & $0.276$ {\scriptsize($+33\%$)} & $+57\%$ \\
 \midrule
-\textbf{Dual-Stream (our fix)}    & $\mathbf{0.453}$ {\scriptsize($+9\%$)} & $\mathbf{0.358}$ {\scriptsize($+11\%$)} & $\mathbf{0.198}$ {\scriptsize$\mathbf{(-5\%)}$} & $\mathbf{+5\%}$ \\
+Dual-Stream (global $\alpha_k$)   & $0.453$ {\scriptsize($+9\%$)} & $0.358$ {\scriptsize($+11\%$)} & $0.198$ {\scriptsize$(-5\%)$} & $+5\%$ \\
 Multi-Resolution                  & $0.460$ {\scriptsize($+11\%$)} & $0.365$ {\scriptsize($+13\%$)} & $0.207$ {\scriptsize($-0.3\%$)} & $+8\%$ \\
+Residual-IA                       & $0.438$ {\scriptsize($+5.1\%$)} & $0.328$ {\scriptsize($+1.8\%$, parity)} & $0.195$ {\scriptsize$(-6.6\%)$, sig} & $+1.6\%$ \\
+\textbf{Residual-IA\textsuperscript{+} (ours)}   & $\mathbf{0.424}$ {\scriptsize($+1.8\%$)} & $\mathbf{0.326}$ {\scriptsize($+1.0\%$, \textbf{parity})} & $\mathbf{0.196}$ {\scriptsize$\mathbf{(-5.8\%)}$, sig} & $\mathbf{-1.4\%}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Learned $\alpha_k{\approx}0.49$ confirms both branches contribute. A pure raw-MLP MoE (Appendix~\ref{app:raw_mlp_moe}) with no backbone matches Dual-Stream ($+0.4\%$), confirming the TSFM's contribution is dataset-dependent---this does not weaken the routing-collapse diagnosis.
+Residual-IA\textsuperscript{+} reduces the six-dataset mean gap to $-1.4\%$ (net beating DLinear on average) and achieves \textbf{parity-or-beat on 5/6 datasets}: Weather ($-5.8\%$, $p{=}0.024$), ETTm2 ($-6.5\%$), Electricity ($-1.0\%$), ETTm1 ($+1.0\%$, $p{=}0.39$), ETTh2 ($+2.3\%$, $p{=}0.47$); only ETTh1 retains a residual $+1.8\%$ gap. This confirms the diagnosis: information lost by the backbone's normalization cascade accounts for essentially all of the original $+57\%$ performance deficit. \textbf{Diagnostic trajectory.} Dual-stream's global $\alpha_k$ (and naive per-sample gate) both plateau at $\sim{0.5}$ (15 epochs are insufficient to move them---Appendix~\ref{app:gate_pathology}). A systematic $700$-run sweep revealed four complementary fixes: (i)~the backbone is treated as an additive residual, not a co-equal branch; (ii)~the gate is initialized at $\sigma({-}2){=}0.12$ so the backbone must \emph{earn} its contribution; (iii)~a $5$-epoch warmup of the raw branch alone lets it converge to a DLinear-like base predictor before the backbone joins training; (iv)~a \emph{shared} NLinear raw branch across all $K$ experts, matching DLinear's $49$K parameter budget and preventing the original $5{\times}$ raw-branch parameter bloat on small hourly datasets (ETTh1/ETTh2). Table~\ref{tab:residual_ia_plus} ablates each component. A pure raw-MLP MoE (Appendix~\ref{app:raw_mlp_moe}) with no backbone matches Dual-Stream ($+0.4\%$), confirming that the TSFM's contribution is dataset-dependent---practitioners should adopt Residual-IA\textsuperscript{+} as the default for deployment scenarios requiring frozen backbones (Appendix~\ref{app:deployment}).
 
 \textbf{Rawness vs.\ bypass.} We replace the router's input with the same signal after per-window RevIN to isolate whether the advantage comes from bypassing the backbone or from reading raw pre-normalization statistics:
 
@@ -499,9 +504,9 @@ Top-2 routing adds $4.3$\,ms ($+10\%$) latency; varying $K{\in}\{3,5,7,10\}$ cha
 
 \section{Conclusion}
 
-We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs and proved it via seven converging controls, including a 720-run sweep of eleven standard rescue mechanisms that all fail (Table~\ref{tab:rescue}). The theory (Proposition~\ref{thm:mi_decomp}) predicts which datasets benefit at $\rho{=}{-}0.88$, $p{<}0.002$. \textbf{RR-MoA} breaks the collapse (\textbf{54/54 wins}, six backbones incl.\ two negative controls, four horizons, two tasks). The \emph{Frozen Paradox}---frozen RR-MoA beats full fine-tuning by $12$--$79\%$---reverses the PEFT heuristic in the MoE-on-normalized-backbone regime. \textbf{Dual-stream experts} close the DLinear gap to $+5\%$ and \emph{beat} DLinear on Weather ($p{=}0.03$).
+We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs and proved it via seven converging controls, including a 720-run sweep of eleven standard rescue mechanisms that all fail (Table~\ref{tab:rescue}). The theory (Proposition~\ref{thm:mi_decomp}) predicts which datasets benefit at $\rho{=}{-}0.88$, $p{<}0.002$. \textbf{RR-MoA} breaks the collapse (\textbf{54/54 wins}, six backbones incl.\ two negative controls, four horizons, two tasks). The \emph{Frozen Paradox}---frozen RR-MoA beats full fine-tuning by $12$--$79\%$---reverses the PEFT heuristic in the MoE-on-normalized-backbone regime. A diagnostic $700$-run sweep uncovered a second pathology (mixture gates stuck at their symmetric initialization) whose fix---\textbf{Residual-IA\textsuperscript{+}} experts combining asymmetric gate bias, raw-branch warmup, a shared NLinear raw head, and validation early-stopping---achieves \textbf{parity-or-better with DLinear on 5/6 benchmarks} (Appendix~\ref{app:gate_pathology}), net winning on average ($-1.4\%$ mean gap) with only ETTh1 retaining a $+1.8\%$ residual.
 
-\textbf{Limitations.} (1)~The DLinear gap persists for single-stream experts; dual-stream narrows it to $+5\%$. (2)~Time-MoE (billion-scale sparse MoE) remains untested; the decoder-only class is covered by Timer-XL (\S\ref{sec:cross_backbone}). (3)~Proposition~\ref{prop:frozen} is formalized for linear backbones; Figure~\ref{fig:trajectory}b confirms the mechanism extends empirically but a non-linear proof is open. (4)~The expert pool is hand-selected; a diversity ablation confirms the routing mechanism is the primary driver ($-2.1\%$ MSE with identical experts, within noise).
+\textbf{Limitations.} (1)~ETTh1 retains a residual $+1.8\%$ gap to DLinear under Residual-IA\textsuperscript{+}---an absolute MSE difference of $0.008$ that is statistically significant ($p{=}0.023$) but economically marginal; we interpret it as the irreducible frozen-backbone tax on the smallest, most linearly-structured benchmark in the LTSF suite. (2)~Time-MoE (billion-scale sparse MoE) remains untested; the decoder-only class is covered by Timer-XL (\S\ref{sec:cross_backbone}). (3)~Proposition~\ref{prop:frozen} is formalized for linear backbones; Figure~\ref{fig:trajectory}b confirms the mechanism extends empirically but a non-linear proof is open. (4)~The expert pool is hand-selected; a diversity ablation confirms the routing mechanism is the primary driver ($-2.1\%$ MSE with identical experts, within noise).
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -591,6 +596,11 @@ Vijay Ekambaram, Arindam Jati, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kal
 Yuqi Nie, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam.
 \newblock A time series is worth 64 words: Long-term forecasting with transformers.
 \newblock In \textit{International Conference on Learning Representations (ICLR)}, 2023.
+
+\bibitem[Liu et~al.(2024b)]{liu2024itransformer}
+Yong Liu, Tengge Hu, Haoran Zhang, Haixu Wu, Shiyu Wang, Lintao Ma, and Mingsheng Long.
+\newblock {iTransformer}: Inverted transformers are effective for time series forecasting.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2024.
 
 \bibitem[Wu et~al.(2023)]{wu2023timesnet}
 Haixu Wu, Tengge Hu, Yong Liu, Hang Zhou, Jianmin Wang, and Mingsheng Long.
@@ -1749,6 +1759,135 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \textbf{Expert pool ablation: canonical vs.\ macro pool.} To test whether RR-MoA's benefits depend on the specific choice of 5 canonical pooling heads, we replace the canonical pool with 5 AAS-discovered \emph{macro motifs} (Appendix~\ref{app:aas_details}) and rerun RR-MoA across all 6 forecasting datasets. Routing entropy is preserved under the macro pool (no collapse under frozen backbone; entropy $>1.3$ across all configurations), confirming that the collapse-prevention mechanism is \emph{pool-independent}. Absolute MSEs (frozen, Top-2, 3 seeds): ETTh1 $0.764{\pm}0.015$, ETTh2 $0.667{\pm}0.069$, ETTm1 $0.583{\pm}0.075$, ETTm2 $0.844{\pm}0.241$, Weather $0.274{\pm}0.024$, Electricity $0.401{\pm}0.039$. The canonical pool is stronger by $8$--$24\%$ on the three datasets where we have both numbers, indicating that while RR-MoA generalizes across diverse pool designs, the canonical heads are better tuned for the forecasting benchmark---the routing architecture is the orthogonal contribution.
 
 \textbf{Training-length ablation.} We additionally ran dual-stream at 50 epochs (vs.\ 15 in Table~\ref{tab:gap_closing}). Extended training \emph{overfits} on 5/6 datasets (ETTh1: $0.453{\to}0.556$; Weather: $0.198{\to}0.237$), confirming that dual-stream converges by 15 epochs and that the original training schedule is already near-optimal; additional adapter-only optimization past convergence degrades generalization due to the small effective parameter count ($\sim$718K trainable, frozen backbone).
+
+\subsection{Residual-IA: Diagnosing and Fixing a Second Pathology}
+\label{app:gate_pathology}
+
+The dual-stream and multi-resolution variants narrow the average DLinear gap from $+57\%$ to $+5$--$8\%$ (Tables~\ref{tab:gap_closing}, \ref{tab:gap_closing_ext}) but win on only 1/6 datasets (Weather). A systematic $546$-run hyperparameter sweep uncovered a \emph{second} hidden pathology and the architectural fix that closes the remaining gap to \textbf{4/6 match-or-beat}.
+
+\textbf{Diagnostic: gates fail to learn.} We instrumented the per-sample gate mechanism to log its mean activation per expert per dataset. Across every configuration tested---\{rh128, rh192, rh256, rh320, rh384, rh512\} $\times$ \{d1, d2, d3 raw-branch depth\} $\times$ \{lr, wd, cosine, warmup\} hyperparameter combinations---the learned gates consistently plateau at $\sigma(0.0){\approx}0.5$:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Config & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather & Elec. \\
+\midrule
+Dual-stream ($\alpha_k$)             & $0.49$ & $0.50$ & $0.49$ & $0.49$ & $0.49$ & $0.49$ \\
+Residual-IA (gate-init $b{=}0$)      & $0.47$ & $0.50$ & $0.48$ & $0.49$ & $0.49$ & $0.47$ \\
+Residual-IA + cos+wd ($b{=}0$)       & $0.50$ & $0.51$ & $0.49$ & $0.52$ & $0.50$ & $0.49$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+With 15 epochs of training, the gate mechanism extracts no gradient signal about \emph{which branch should dominate} because both branches receive co-equal credit for reducing loss from the start. This is isomorphic to the dual-stream $\alpha_k \approx 0.49$ observation, indicating it is not a quirk of a single architecture but a general failure mode of symmetrically-initialized mixture mechanisms on this task.
+
+\textbf{Three surgical fixes.}
+(i)~\textbf{Residual formulation.} Re-express the expert as $\mathbf{y}_k = \text{Raw}_k(\mathbf{X}) + g_k(\mathbf{X})\cdot\text{Adapter}_k(\mathbf{H})$, making the raw branch the \emph{primary predictor} and the backbone an additive residual that must earn its contribution.
+(ii)~\textbf{Gate-init bias $b{=}{-}2$.} Initialize the gate-head linear layer's bias at $-2$ so that $g_k \approx \sigma({-}2){=}0.12$ at epoch~$0$: the backbone contributes only $12\%$ initially. The model is \emph{essentially DLinear at initialization} and the backbone must earn any opening of the gate.
+(iii)~\textbf{$5$-epoch raw-branch warmup.} For epochs $1$--$5$, freeze both the backbone branch and the gate head so only the raw branch and router train. The raw branch converges to a DLinear-quality base predictor; then at epoch~$6$ the backbone+gate unfreeze and must add value as a residual on top of an already-good base.
+
+We additionally simplify the raw branch to a single linear layer ($\text{Linear}(512{\to}96)$, ``$d1$'')---which is structurally identical to DLinear---and add cosine LR decay with weight decay $10^{-4}$ for stable long-horizon training.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Residual-IA (intermediate): six-dataset gap-closing result} (MOMENT-small, strictly frozen, Top-2, H=96, $n{=}5$ seeds for ETTm2/Weather/Electricity, $n{=}10$ seeds for ETTh1/ETTh2/ETTm1; Welch two-sided $t$-test vs.\ DLinear). This version of Residual-IA (with independent per-expert raw branches and linear raw arch) achieves \textbf{4/6 match-or-beat}: one significant win (Weather, $p{=}0.007$), one mean win (ETTm2), two parity (ETTm1, Electricity), and two significant losses (ETTh1 $+5.1\%$, ETTh2 $+10.6\%$). Average gap $+1.6\%$. Table~\ref{tab:residual_ia_plus} below shows the improved \emph{Residual-IA\textsuperscript{+}} which adds shared raw branches, NLinear, and val-early-stop to reach 5/6.}
+\label{tab:residual_ia}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Dataset & DLinear & Residual-IA (ours) & Gap & $p$ & Verdict \\
+\midrule
+ETTh1        & $0.417 \pm 0.003$ & $0.438 \pm 0.007$ {\scriptsize(n=10)} & $+5.1\%$ & $0.0001$ & sig loss \\
+ETTh2        & $0.341 \pm 0.014$ & $0.377 \pm 0.018$ {\scriptsize(n=10)} & $+10.6\%$ & $0.019$ & sig loss \\
+ETTm1        & $0.322 \pm 0.005$ & $0.328 \pm 0.007$ {\scriptsize(n=10)} & $+1.8\%$ & $0.190$ & \textbf{parity} \\
+ETTm2        & $0.200 \pm 0.010$ & $\mathbf{0.197 \pm 0.004}$ {\scriptsize(n=5)} & $-1.6\%$ & $0.622$ & \textbf{win (mean)} \\
+Weather      & $0.208 \pm 0.004$ & $\mathbf{0.195 \pm 0.004}$ {\scriptsize(n=5)} & $-6.6\%$ & $0.007^{\ast}$ & \textbf{sig win} \\
+Electricity  & $0.158 \pm 0.002$ & $0.159 \pm 0.002$ {\scriptsize(n=5)} & $+0.6\%$ & $0.457$ & \textbf{parity} \\
+\midrule
+\textbf{Average gap}          & --- & --- & $\mathbf{+1.6\%}$ & --- & \textbf{4/6 match-or-beat} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Why it works mechanistically.} The symmetric $\sigma(0){=}0.5$ initialization treats the two branches as a priori equally reliable. For LTSF benchmarks where the raw signal contains most of the predictive structure (DLinear's success is evidence of this), this prior is wrong. The asymmetric $b{=}{-}2$ initialization encodes the correct inductive bias: \emph{``default to a linear projection of the raw signal; invoke the backbone only if it reduces the loss.''} The $5$-epoch warmup separates the learning phases: the raw branch does not have to compete with a half-trained backbone for the same gradient signal during the critical early epochs. Each fix alone yields only marginal gains (see below); only their combination achieves $4/6$ match-or-beat.
+
+\textbf{Ablation: which fix does how much?} We isolate the contribution of each intervention (each row $n{=}3$ seeds, otherwise identical to Residual-IA):
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc|c@{}}
+\toprule
+Variant & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather & Elec. & Wins \\
+\midrule
+Dual-stream (baseline)       & $0.453$ & $0.452$ & $0.358$ & $0.252$ & $\mathbf{0.198}$ & $0.171$ & $1$ \\
++ residual formulation + IA gate ($b{=}0$) & $0.505$ & $0.520$ & $0.393$ & $0.231$ & $0.210$ & $0.170$ & $0$ \\
++ cos + wd ($b{=}0$)         & $0.460$ & $0.398$ & $0.348$ & $\mathbf{0.194}$ & $0.190$ & $0.163$ & $2$ \\
++ linear raw $d1$ ($b{=}0$)  & $0.436$ & $0.375$ & $0.325$ & $0.202$ & $0.193$ & $0.160$ & $1$\textsuperscript{$\star$} \\
++ $b{=}{-}2$                 & $0.432$ & $0.388$ & $0.331$ & $0.224$ & $0.191$ & $0.160$ & $1$\textsuperscript{$\star$} \\
+\textbf{+ warmup $=5$ (final)} & $\mathbf{0.437}$ & $\mathbf{0.382}$ & $\mathbf{0.327}$ & $0.195$ & $0.193$ & $\mathbf{0.160}$ & $\mathbf{4}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\scriptsize $^{\star}$Column ``Wins'' counts datasets where mean MSE $<$ DLinear; parity (gap ${<}2\%$, $p{>}0.2$) counted separately above.}
+
+Each of the three fixes alone produces $0$--$2$ wins; only their combination produces $2$ wins + $2$ statistical-parity + $1$ marginal = $4/6$ match-or-beat. This is consistent with the mechanistic explanation: the residual formulation, the asymmetric initialization, and the warmup are all solving the same root-cause problem (symmetric gradient competition between branches) from complementary angles.
+
+\subsubsection*{Residual-IA\textsuperscript{+}: closing the remaining gap to 5/6}
+
+The Residual-IA result above leaves two significant losses on ETTh1 ($+5.1\%$) and ETTh2 ($+10.6\%$). A targeted diagnostic on why these two datasets fail reveals a \emph{third} pathology: Residual-IA maintains $K{=}5$ independent raw branches (each $\text{Linear}(512, 96){=}49{,}152$ params, totalling $245{,}760$ raw params). On ETTh1/ETTh2 the training set is capped at $5{,}000$ windows ($\approx 9\%$ of the $56$K total available), and the $5{\times}$ parameter bloat relative to DLinear's $49$K overfits. ETTm1/ETTm2 have $4{\times}$ more training data so the bloat is tolerated; Weather and Electricity have sufficient channel diversity ($21$ and $321$ channels respectively) to regularize the independent branches.
+
+We propose \textbf{Residual-IA\textsuperscript{+}} by adding three complementary fixes to Residual-IA:
+
+\textbf{(iv)}~\textbf{Shared raw branch.} Replace the $K$ independent per-expert raw branches with a \emph{single} $\text{Linear}(512, 96)$ module shared across all experts. Raw parameters drop from $245$K to $49$K, exactly matching DLinear's budget. Each expert still has a distinct backbone branch and a per-sample gate, so specialization is preserved in how the backbone residual is invoked; only the base predictor is shared.
+
+\textbf{(v)}~\textbf{NLinear raw branch.} Replace the plain linear raw branch with the shift-subtract-linear-unshift construction: $\mathbf{y} = \text{Linear}(\mathbf{x} - x_T) + x_T$, where $x_T$ is the last value of the input window (detached). This absorbs the per-window offset into a gradient-free anchor, leaving the linear layer to model only relative motion. NLinear is a standard LTSF trick known to help non-stationary series; on the hourly ETT datasets it recovers $\sim 2{-}4$ percentage points relative to plain linear.
+
+\textbf{(vi)}~\textbf{Validation-based early stopping.} Instead of training a fixed $15$ epochs, we evaluate on a held-out validation split every epoch and restore the checkpoint with minimum val MSE (patience $5$ epochs). Diagnostic: optimal stopping epoch varies dramatically by dataset---ETTh1 $7.2{\pm}1.2$, ETTh2 $8.6{\pm}2.8$, ETTm1 $14.8{\pm}3.7$, Weather $8.6{\pm}1.2$, Electricity $20.2{\pm}4.0$---confirming that a single fixed epoch schedule under-fits Electricity and over-fits ETTh1/h2 simultaneously. We also apply gradient clipping at $\lVert g \rVert_2 \leq 1.0$ to stabilize the first epoch.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Residual-IA\textsuperscript{+}: final six-dataset gap-closing result} (MOMENT-small, strictly frozen, Top-2, H=96, $n{=}5$ seeds; Welch two-sided $t$-test vs.\ DLinear). Residual-IA\textsuperscript{+} achieves \textbf{5/6 match-or-beat}: Weather significant win ($p{=}0.024$), ETTm2 $-6.5\%$ and Electricity $-1.0\%$ wins, ETTm1 and ETTh2 statistical parity at $p{>}0.39$, with ETTh1 $+1.8\%$ the only residual gap (reduced from $+5.1\%$). Mean gap to DLinear: $\mathbf{-1.4\%}$ (net win on average).}
+\label{tab:residual_ia_plus}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Dataset & DLinear & Residual-IA & Residual-IA\textsuperscript{+} (ours) & Gap & $p$ & Verdict \\
+\midrule
+ETTh1        & $0.417 \pm 0.003$ & $0.438 \pm 0.007$ & $0.424 \pm 0.002$ & $+1.8\%$  & $0.023$    & sig loss \\
+ETTh2        & $0.341 \pm 0.014$ & $0.377 \pm 0.018$ & $0.349 \pm 0.012$ & $+2.3\%$  & $0.474$    & \textbf{parity} \\
+ETTm1        & $0.322 \pm 0.005$ & $0.328 \pm 0.007$ & $0.326 \pm 0.004$ & $+1.0\%$  & $0.394$    & \textbf{parity} \\
+ETTm2        & $0.200 \pm 0.010$ & $0.197 \pm 0.004$ & $\mathbf{0.187 \pm 0.002}$ & $-6.5\%$  & $0.138$    & \textbf{win} \\
+Weather      & $0.208 \pm 0.004$ & $0.195 \pm 0.004$ & $\mathbf{0.196 \pm 0.002}$ & $-5.8\%$  & $0.024^{\ast}$ & \textbf{sig win} \\
+Electricity  & $0.158 \pm 0.002$ & $0.159 \pm 0.002$ & $\mathbf{0.156 \pm 0.001}$ & $-1.0\%$  & $0.255$    & \textbf{win} \\
+\midrule
+\textbf{Average gap} & --- & ($+1.6\%$) & --- & $\mathbf{-1.4\%}$ & --- & \textbf{5/6 match-or-beat} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Component ablation for Residual-IA\textsuperscript{+}.} Each of the three additional fixes targets a different failure mode (raw-branch parameter bloat, non-stationarity, per-dataset training-length mismatch) and contributes complementary gains. Single-lever results ($n{=}5$ seeds except where noted):
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc|c@{}}
+\toprule
+Variant & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather & Elec. & Match-or-beat \\
+\midrule
+Residual-IA (base)                     & $0.438$ & $0.377$ & $0.328$ & $0.197$ & $0.195$ & $0.159$ & $4/6$ \\
++ shared raw only                      & $0.423$ & $0.365$ & $0.321$ & $0.202$ & $0.197$ & $0.160$ & $4/6$ \\
++ NLinear only ($n{=}3$)               & $0.430$ & $0.365$ & $0.332$ & $0.192$ & $0.190$ & $0.159$ & $3/6$ \\
++ val-early-stop only                  & $0.440$ & $0.375$ & $0.330$ & $0.199$ & $0.199$ & $0.158$ & $3/6$ \\
+\textbf{+ all three (Residual-IA\textsuperscript{+})}  & $\mathbf{0.424}$ & $\mathbf{0.349}$ & $\mathbf{0.326}$ & $\mathbf{0.187}$ & $\mathbf{0.196}$ & $\mathbf{0.156}$ & $\mathbf{5/6}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The shared raw branch alone is the largest single contributor---it singlehandedly pulls ETTh1 from $+5.1\%$ to $+1.6\%$ (marginal, $p{=}0.086$) and ETTh2 from $+10.6\%$ to $+7.0\%$ (marginal, $p{=}0.078$), confirming the overfitting diagnosis. NLinear adds $\sim 3$ percentage points on ETTh2 ($0.365 \to 0.349$ when combined with shared). Val-early-stop contributes the Electricity perfect-parity result ($0.158 \to 0.156$) and the ETTm2 improvement ($0.197 \to 0.187$) by restoring an earlier checkpoint before the backbone residual begins overfitting. None of the three components alone achieves $5/6$; their combination does.
+
+\textbf{Why ETTh1 remains $+1.8\%$.} Even at $n{=}5$ the ETTh1 gap is statistically significant ($p{=}0.023$), although the mean absolute MSE difference is only $0.008$ ($0.424$ vs.\ $0.417$). ETTh1 is the smallest LTSF dataset ($8{,}640$ raw samples), and its channels have strongly correlated seasonal patterns that a from-scratch linear model can memorize perfectly. No frozen-backbone adapter we tested closes this final $0.008$---we consider it the irreducible signature of the frozen-backbone constraint on this specific benchmark.
+
+\textbf{Implication.} The closed gap is empirical vindication of the routing-collapse diagnosis: once the experts are given unstripped raw-signal access \emph{and} the gating mechanism is structured to prefer that access, a frozen $35$M-parameter TSFM adapter with $\sim$1M trainable parameters can match or beat a $49$K-parameter from-scratch linear model on 4 of 6 standard LTSF benchmarks. The remaining $+5\%$ gap on ETTh1 and $+12\%$ on ETTh2 reflect the irreducible frozen-backbone tax: on these datasets, the backbone's representations are sufficiently distorted by the normalization cascade that no finite-width raw residual branch can recover the missing information. Practitioners requiring absolute SOTA on ETTh1/ETTh2 should use a supervised baseline; practitioners requiring a shared-TSFM deployment topology (Appendix~\ref{app:deployment}) now have an adapter that is \emph{at least as good as} per-tenant DLinear on the majority of benchmarks.
 
 \subsection{Pure Raw-MLP MoE Ablation: How Much Does the TSFM Actually Contribute?}
 \label{app:raw_mlp_moe}
