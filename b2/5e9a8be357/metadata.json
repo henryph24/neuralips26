@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "b25e9a8be357",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "scripts/run_ria_plus_10seed_race.sh",
+    "scripts/run_ria_plus_crossbackbone_race.sh",
+    "scripts/run_ria_plus_multihorizon_race.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b2/5e9a8be357/0/metadata.json",
+      "transcript": "/b2/5e9a8be357/0/full.jsonl",
+      "content_hash": "/b2/5e9a8be357/0/content_hash.txt",
+      "prompt": "/b2/5e9a8be357/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2201,
+    "cache_creation_tokens": 2777250,
+    "cache_read_tokens": 89539268,
+    "output_tokens": 266859,
+    "api_call_count": 331
+  }
+}
