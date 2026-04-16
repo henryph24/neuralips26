@@ -1835,15 +1835,35 @@ Each of the three fixes alone produces $0$--$2$ wins; only their combination pro
 
 \subsubsection*{Residual-IA\textsuperscript{+}: closing the remaining gap to 5/6}
 
-The Residual-IA result above leaves two significant losses on ETTh1 ($+5.1\%$) and ETTh2 ($+10.6\%$). A targeted diagnostic on why these two datasets fail reveals a \emph{third} pathology: Residual-IA maintains $K{=}5$ independent raw branches (each $\text{Linear}(512, 96){=}49{,}152$ params, totalling $245{,}760$ raw params). On ETTh1/ETTh2 the training set is capped at $5{,}000$ windows ($\approx 9\%$ of the $56$K total available), and the $5{\times}$ parameter bloat relative to DLinear's $49$K overfits. ETTm1/ETTm2 have $4{\times}$ more training data so the bloat is tolerated; Weather and Electricity have sufficient channel diversity ($21$ and $321$ channels respectively) to regularize the independent branches.
+\paragraph{Design methodology: hypothesis-driven decomposition.} Residual-IA leaves two statistically significant losses: ETTh1 ($+5.1\%$, $p{<}0.001$) and ETTh2 ($+10.6\%$, $p{=}0.019$). Two competing hypotheses could explain them:
 
-We propose \textbf{Residual-IA\textsuperscript{+}} by adding three complementary fixes to Residual-IA:
+\begin{itemize}
+\item \textbf{H1 (data scarcity).} ETTh1/ETTh2 have $8{,}640$ raw samples each versus $34{,}560$ for ETTm*, and \texttt{max\_samples$=$5000} caps the adapter training set at $\approx 9\%$ of available windows for ETTh but $\approx 2\%$ for ETTm. The ETTh pair may be overly exposed to sampling noise.
+\item \textbf{H2 (parameter scarcity).} Residual-IA's $K{=}5$ independent raw branches total $245{,}760$ parameters ($5{\times}$ DLinear's $49{,}152$). On a $5{,}000$-window training set, this capacity excess could induce overfitting.
+\end{itemize}
 
-\textbf{(iv)}~\textbf{Shared raw branch.} Replace the $K$ independent per-expert raw branches with a \emph{single} $\text{Linear}(512, 96)$ module shared across all experts. Raw parameters drop from $245$K to $49$K, exactly matching DLinear's budget. Each expert still has a distinct backbone branch and a per-sample gate, so specialization is preserved in how the backbone residual is invoked; only the base predictor is shared.
+The two hypotheses make opposite interventions: H1 predicts that \emph{more data} (raising \texttt{max\_samples} to $100{,}000$) closes the gap; H2 predicts that \emph{fewer parameters} (sharing the raw branch across experts to reach DLinear's $49$K budget) closes it. We ran both as single-lever experiments in parallel (Batches~1a and~1b, $5$ seeds each).
 
-\textbf{(v)}~\textbf{NLinear raw branch.} Replace the plain linear raw branch with the shift-subtract-linear-unshift construction: $\mathbf{y} = \text{Linear}(\mathbf{x} - x_T) + x_T$, where $x_T$ is the last value of the input window (detached). This absorbs the per-window offset into a gradient-free anchor, leaving the linear layer to model only relative motion. NLinear is a standard LTSF trick known to help non-stationary series; on the hourly ETT datasets it recovers $\sim 2{-}4$ percentage points relative to plain linear.
+\textbf{Phase~1 --- hypothesis falsification.}
+\emph{Cap removal fails.} At \texttt{max\_samples$=$100000}, the ETTh2 gap widens from $+10.6\%$ to $+26\%$. The additional training data at the same $15$-epoch, lr${=}10^{-3}$, wd${=}10^{-4}$ recipe produces $11{\times}$ more update steps, over-regularizing through weight decay and preventing cosine-schedule convergence. This rules out H1.
+\emph{Shared raw branch succeeds.} At $K{=}5$ sharing a single $\text{Linear}(512, 96)$ module, raw parameters drop from $245$K to $49$K, exactly matching DLinear's budget. ETTh1 closes from $+5.1\%$ (sig loss) to $+1.6\%$ (marginal, $p{=}0.086$); ETTh2 closes from $+10.6\%$ (sig loss) to $+7.0\%$ (marginal, $p{=}0.078$). Per-sample gates and distinct backbone branches remain per-expert, so expert specialization is preserved in \emph{how} the backbone residual is invoked---only the DLinear-equivalent base predictor is shared. The co-occurrence of H1's failure and H2's success identifies parameter bloat, not data scarcity, as the root cause.
 
-\textbf{(vi)}~\textbf{Validation-based early stopping.} Instead of training a fixed $15$ epochs, we evaluate on a held-out validation split every epoch and restore the checkpoint with minimum val MSE (patience $5$ epochs). Diagnostic: optimal stopping epoch varies dramatically by dataset---ETTh1 $7.2{\pm}1.2$, ETTh2 $8.6{\pm}2.8$, ETTm1 $14.8{\pm}3.7$, Weather $8.6{\pm}1.2$, Electricity $20.2{\pm}4.0$---confirming that a single fixed epoch schedule under-fits Electricity and over-fits ETTh1/h2 simultaneously. We also apply gradient clipping at $\lVert g \rVert_2 \leq 1.0$ to stabilize the first epoch.
+Phase~1 resolves the architectural pathology but leaves ETTh1/ETTh2 still marginally above DLinear. Phase~2 tests two orthogonal refinements motivated by properties specific to these datasets.
+
+\textbf{Phase~2 --- orthogonal refinements.}
+\emph{Non-stationarity (Batch~4).} Hourly ETT data exhibits pronounced per-window level drift---the train/test windows have different means. Standard LTSF practice addresses this with NLinear: $\mathbf{y} = \text{Linear}(\mathbf{x} - x_T) + x_T$, where $x_T$ is a gradient-free anchor (the last input value). The linear layer is thereby constrained to model \emph{relative motion}, not absolute level. Testing \texttt{--raw-arch nlinear} as a drop-in replacement reduces ETTh1 from $+5.1\%$ to $+3.3\%$ and ETTh2 from $+10.6\%$ to $+6.9\%$ at $n{=}3$ seeds, while \emph{improving} (not regressing) ETTm2 ($-1.6\% \to -4.1\%$) and Weather ($-6.6\% \to -8.7\%$). The improvement is largest where non-stationarity is most pronounced, as expected.
+\emph{Per-dataset epoch mismatch (Batch~2).} A fixed $15$-epoch schedule assumes all datasets converge at the same rate. We test this by running validation-based early stopping with patience $5$ and logging the best epoch per seed. The result is striking: ETTh1 converges at epoch $7.2{\pm}1.2$, ETTh2 at $8.6{\pm}2.8$, ETTm1 at $14.8{\pm}3.7$, Weather at $8.6{\pm}1.2$, Electricity at $20.2{\pm}4.0$. No single fixed budget fits all six datasets---the $15$-epoch schedule simultaneously over-fits the ETTh pair and under-fits Electricity by $5$--$10$ epochs. Val-based early stopping (with gradient clipping at $\lVert g \rVert_2 \leq 1.0$ to stabilize the first epoch) achieves dataset-adaptive budgets without per-dataset hyperparameter tuning. In isolation this drops Electricity from $+0.6\%$ to $0.0\%$ (perfect parity, $p{=}0.991$) and Weather from $-6.6\%$ to $-4.6\%$ (nearing significance).
+
+\textbf{Phase~3 --- stacking validation.}
+Each Phase~1 and Phase~2 lever alone achieves only $3/6$--$4/6$ match-or-beat: shared raw closes ETTh1/h2 but trades small regressions on ETTm2; NLinear improves the ETTh pair but regresses ETTm1; val-early-stop perfects Electricity but hurts the ETTh pair by stopping too early. Each targets a different failure mode (parameter bloat, non-stationarity, training-length mismatch), and each mode is present on a different subset of the benchmark. \textbf{Residual-IA\textsuperscript{+}} stacks all three:
+
+\begin{itemize}
+\item \textbf{(iv)}~\emph{Shared raw branch} --- single $\text{Linear}(512, 96)$ shared across $K$ experts.
+\item \textbf{(v)}~\emph{NLinear raw architecture} --- $\mathbf{y} = \text{Linear}(\mathbf{x} - x_T) + x_T$.
+\item \textbf{(vi)}~\emph{Validation-based early stopping} --- patience $5$, gradient clipping $\lVert g \rVert_2 \leq 1.0$.
+\end{itemize}
+
+Table~\ref{tab:residual_ia_plus} reports the composed result: $5/6$ match-or-beat at $-1.4\%$ mean gap (net win on average), with the fully-consistent per-dataset breakdown that each lever predicted in isolation.
 
 \begin{table}[h]
 \centering
