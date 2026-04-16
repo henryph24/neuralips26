@@ -1,0 +1,191 @@
+audit this indepedent review: "Based on a comprehensive analysis of the provided manuscript, **I estimate the probability of this paper being accepted at NeurIPS 2026 to be Very High (85% - 90%).** In a standard NeurIPS scoring system, this paper warrants an **8/10 (Strong Accept)** and is a highly competitive candidate for a **Spotlight or Oral presentation**.
+
+This paper is a masterclass in empirical machine learning research. Instead of falling into the common trap of merely proposing a new architecture and showing that "number goes up," it conducts a rigorous scientific investigation. It identifies a catastrophic failure mode, theoretically diagnoses the root cause, validates the theory via extensive causal controls, and proposes a mathematically motivated fix. Furthermore, the inclusion of brutally honest ablations demonstrates a level of scientific maturity that NeurIPS Area Chairs (ACs) specifically look to reward.
+
+Here is a detailed, Area Chair-style breakdown of the paper's strengths, potential reviewer attack vectors, and its fit for NeurIPS.
+
+---
+
+### **1. Summary of the Paper**
+The paper investigates why applying standard Mixture-of-Experts (MoE) routing to adapters on Time Series Foundation Models (TSFMs) fails catastrophically (routing entropy collapses to exactly 0). The authors diagnose the root cause: instance-level normalization (specifically RevIN) strips the per-window mean and scale statistics that the router fundamentally relies on to differentiate temporal windows. Stripped of this signal, gradient co-adaptation drives the system to collapse to a single expert. 
+
+To solve this, the authors propose **Raw-Routed Mixture of Adapters (RR-MoA)**, which feeds the *raw, pre-normalization* input to a lightweight router while the frozen TSFM backbone computes embeddings for the experts. This simple architectural split consistently prevents collapse, outperforming standard fine-tuning, LoRA, and independent ensembles across 54/54 configurations.
+
+---
+
+### **2. Major Strengths (Why Reviewers Will Champion It)**
+
+**A. Brilliant, Mechanistic Diagnosis & Causal Controls**
+The paper uncovers a fundamental tension between normalization and conditional routing. To prove their hypothesis, the authors execute a watertight diagnostic process:
+*   **720-Run Sweep of "Standard Fixes":** They test 11 standard MoE rescue mechanisms (e.g., Z-loss, expert-choice routing) across 720 runs to prove that standard optimization tricks *cannot* fix the collapse because the required information is structurally absent.
+*   **Negative Controls:** They test TSFMs that lack instance normalization (Chronos, Timer-XL) and show that routing does not collapse on them, perfectly isolating the causal variable.
+*   **Cross-Modality Control (Appendix Q.1):** They ingeniously test a Vision MoE to show that in image tasks, normalization actually *prevents* collapse. This proves their theory that collapse only happens when the stripped statistics directly overlap with the required routing signal.
+
+**B. Elegant Theoretical Grounding**
+Proposition 2 formalizes the information loss beautifully using a mutual-information (MI) decomposition. More importantly, the theory is actionable: the authors use the derived routing signal ratio $R(D)$ to successfully predict exactly which datasets will benefit from raw routing ($\rho = -0.88$), effectively turning an empirical observation into a predictive science.
+
+**C. Masterclass in Intellectual Honesty**
+Reviewers at top-tier venues are highly sensitive to "hype" and hidden weaknesses. This paper disarms skeptical reviewers through radical transparency:
+*   The authors openly acknowledge the **"DLinear gap"**—the fact that massive TSFMs still often lose to a simple 49K-parameter linear model trained from scratch.
+*   In **Appendix .1**, they include a "Pure Raw-MLP MoE" ablation (removing the 35M-parameter TSFM entirely) and admit that it matches their complex system on half the datasets. By framing this explicitly under the heading *"Why we report this rather than hide it,"* they preemptively neutralize the harshest "gotcha" attacks and reframe the finding as a nuanced scientific contribution about when TSFMs are actually useful.
+
+**D. The "Frozen Paradox"**
+The observation that frozen backbones outperform fully fine-tuned ones by 12–79% specifically under instance-normalized MoEs reverses a standard parameter-efficient fine-tuning (PEFT) heuristic. This is a memorable, counter-intuitive finding that gives the paper lasting conceptual value.
+
+---
+
+### **3. Weaknesses & Vulnerabilities (Where Reviewers Will Attack)**
+
+Despite its brilliance, the paper will likely face pushback from at least one skeptical reviewer (the classic "Reviewer 2").
+
+**A. The "Existential TSFM" Question:**
+*   *The Attack:* A strict reviewer will look at the DLinear baselines and the Raw-MLP ablation and argue: *"If a simple linear model beats your TSFM on several datasets, and a pure MLP-MoE without the foundation model matches it on the rest, then the entire premise of adapting TSFMs is practically useless. This paper fixes a routing problem for an architecture we shouldn't even be using."*
+*   *Why it won't sink the paper:* The authors successfully defend against this by outlining real-world deployment constraints (Appendix X: Multi-tenant cloud serving and zero-shot onboarding make training $O(N)$ separate DLinear models impossible; hot-swapping 2MB adapters in VRAM is required). A good AC will step in to defend the paper here, noting that the absolute performance of TSFMs is a field-wide issue, and this paper makes a massive contribution to the *mechanistic understanding* of adapter routing regardless of the baseline.
+
+**B. Scope Creep and Density:**
+*   *The Attack:* The paper packs a massive amount of information into 9 pages. The LLM-guided Adapter Architecture Search (AAS) component (Appendix G/H) feels like a completely different paper bolted onto this one just to select the expert pool.
+*   *Why it won't sink the paper:* It is relegated to the appendix. Reviewers may suggest cutting the AAS framing to simplify the narrative, but it will not be a grounds for rejection.
+
+**C. Theoretical Limitations:** 
+*   *The Attack:* Proposition 1 (Gradient Co-Adaptation) is only proven for linear backbones.
+*   *Why it won't sink the paper:* The authors admit this explicitly in the Limitations section and provide empirical proof (Figure 2b) that the mechanism holds in non-linear transformers. For an empirical/systems ML track at NeurIPS, this is more than sufficient.
+
+---
+
+### **4. Simulated NeurIPS Reviewer Breakdown**
+
+If I were an Area Chair synthesizing the reviews for this paper, I would expect a spread like this:
+
+*   **Reviewer 1 (The Empiricist / PEFT Expert): 8/10 (Strong Accept).** *"The experiments are incredibly thorough. 54/54 wins across multiple freeze levels and the ablation of standard MoE stabilization tricks is exactly what the community needs. The multi-tenant deployment framing makes this highly relevant."*
+*   **Reviewer 2 (The Theorist): 8/10 (Strong Accept).** *"Brilliant diagnosis of a subtle architectural flaw. Proposition 2 is well-formulated, and the empirical correlation ($\rho=-0.88$) is a highly satisfying validation of the MI decomposition."*
+*   **Reviewer 3 (The Skeptic / SOTA-Chaser): 5/10 (Borderline).** *"The diagnostic work is sound, but DLinear and the author's own Raw-MLP ablation show that foundation models are largely unnecessary for these benchmarks. It's an elegant fix to a problem we shouldn't be having."*
+
+**AC Final Decision:** The Area Chair will override Reviewer 3's skepticism regarding TSFMs as a whole, focusing on the rigorous, undeniable scientific contribution the paper makes to the mechanics of routing and normalization. 
+
+**Conclusion: Accept (Spotlight).**"
+
+---
+
+algorithmic, architectural tweak, further experiments based on findings that drive acceptance to 90+, and offload them to our RACE VM to keep our GPUs busy
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+monitor every 15 minutes
+
+---
+
+<task-notification>
+<task-id>boe9jnsur</task-id>
+<tool-use-id>toolu_0145bjHaFot6DhMes5gAYe6K</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/a34b6199-9b61-4012-9e65-841a686ad2b1/tasks/boe9jnsur.output</output-file>
+<status>completed</status>
+<summary>Background command "Start background monitor every 15 min" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+ETA please
+
+---
+
+we have one full nights of 8 hours, let plan out more potentially helpful experiments that closed the D Linear gaps
+
+make sure fully queued the GPUs for next 8 hours
+
+---
+
+continue
+
+---
+
+continue where we left off
+
+---
+
+<task-notification>
+<task-id>by6520yih</task-id>
+<tool-use-id>toolu_01NAgVy1TAYhTnFZ6LHoZoDe</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/a34b6199-9b61-4012-9e65-841a686ad2b1/tasks/by6520yih.output</output-file>
+<status>failed</status>
+<summary>Background command "Rsync and check current state" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+try again to queued the experiments
+
+---
+
+monitor every 15 min
+
+---
+
+how is everything ?
+
+---
+
+Let's think deeper on the experiment that can potentially beat D-linear, maybe you know, adapt a bit more.
+
+---
+
+how is everything
+
+---
+
+awesome so we closed really an important gap ? How did we do that
+
+---
+
+so was this due to our empirical findings (thanks to findings that we designed it ?)
+
+---
+
+incorporate it into the paper as we kept waiting for the result
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+let invest deeper in experiments that likely make us win on all cylinders, keep the GPUs busy
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+how has the result so far been
+
+---
+
+how has the result so far been
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+let incorporate results
+
+---
+
+/commit-push
