@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "04db9d8c705f",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 25,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_beat_dlinear_race.sh",
+    "scripts/run_etth_closing_batch1.sh",
+    "scripts/run_etth_closing_batch2.sh",
+    "scripts/run_etth_closing_batch3.sh",
+    "scripts/run_etth_closing_batch4.sh",
+    "scripts/run_final_beat_race.sh",
+    "scripts/run_gap_closing.py",
+    "scripts/run_overnight_gap_closing_race.sh",
+    "scripts/run_residual_ia_race.sh",
+    "scripts/run_router_arch_race.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/04/db9d8c705f/0/metadata.json",
+      "transcript": "/04/db9d8c705f/0/full.jsonl",
+      "content_hash": "/04/db9d8c705f/0/content_hash.txt",
+      "prompt": "/04/db9d8c705f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1727,
+    "cache_creation_tokens": 1658220,
+    "cache_read_tokens": 67314679,
+    "output_tokens": 213462,
+    "api_call_count": 285
+  }
+}

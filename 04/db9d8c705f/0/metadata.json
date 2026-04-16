@@ -1,0 +1,43 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "04db9d8c705f",
+  "session_id": "c5a9377e-2658-48ae-871b-1af5067c1578",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-16T09:20:08.349473Z",
+  "branch": "main",
+  "checkpoints_count": 25,
+  "files_touched": [
+    "main.tex",
+    "scripts/run_beat_dlinear_race.sh",
+    "scripts/run_etth_closing_batch1.sh",
+    "scripts/run_etth_closing_batch2.sh",
+    "scripts/run_etth_closing_batch3.sh",
+    "scripts/run_etth_closing_batch4.sh",
+    "scripts/run_final_beat_race.sh",
+    "scripts/run_gap_closing.py",
+    "scripts/run_overnight_gap_closing_race.sh",
+    "scripts/run_residual_ia_race.sh",
+    "scripts/run_router_arch_race.sh"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e99101462dca",
+  "token_usage": {
+    "input_tokens": 1727,
+    "cache_creation_tokens": 1658220,
+    "cache_read_tokens": 67314679,
+    "output_tokens": 213462,
+    "api_call_count": 285
+  },
+  "session_metrics": {
+    "turn_count": 25
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-16T09:20:03.99634Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 11,
+    "human_removed": 4686,
+    "total_committed": 1394,
+    "agent_percentage": 0
+  }
+}
