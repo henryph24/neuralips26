@@ -257,3 +257,7 @@ GPU utilisation at our RACE VM ? How many experiments are we running ?
 ---
 
 Analyze the results first to see if they significantly strengthen our paper.
+
+---
+
+Yes let's incorporate those into the paper while making sure that the main content remains strictly at 9 pages.
