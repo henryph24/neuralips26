@@ -233,3 +233,7 @@ GPU utilisation at our RACE VM ? How many experiments are we running ?
 ---
 
 Analyze the results first to see if they significantly strengthen our paper.
+
+---
+
+let incorporate relevant ones into the paper
