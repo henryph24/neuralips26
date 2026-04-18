@@ -47,6 +47,8 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=15)
     p.add_argument("--device", default="cuda")
+    p.add_argument("--noise-sigma", type=float, default=0.0,
+                   help="Gaussian noise sigma added to test input (robustness ablation)")
     args = p.parse_args()
 
     os.makedirs("results/dlinear", exist_ok=True)
@@ -87,10 +89,14 @@ def main():
             optimizer.step()
     elapsed = time.time() - start
 
-    # Test evaluation
+    # Test evaluation (optionally with noise perturbation)
     model.eval()
+    X_test_eval = X_test.copy()
+    if args.noise_sigma > 0:
+        rng = np.random.default_rng(args.seed)
+        X_test_eval = X_test_eval + rng.normal(0, args.noise_sigma, X_test_eval.shape).astype(np.float32)
     test_loader = DataLoader(TensorDataset(
-        torch.from_numpy(X_test).float(),
+        torch.from_numpy(X_test_eval).float(),
         torch.from_numpy(Y_test).float(),
     ), batch_size=128)
 
@@ -133,7 +139,8 @@ def main():
         "elapsed": elapsed,
         "scaler": scaler_info,
     }
-    path = "results/dlinear/%s_H%d_%d.json" % (args.dataset, args.horizon, args.seed)
+    noise_suffix = "_noise-%.3g" % args.noise_sigma if args.noise_sigma > 0 else ""
+    path = "results/dlinear/%s_H%d_%d%s.json" % (args.dataset, args.horizon, args.seed, noise_suffix)
     with open(path, "w") as f:
         json.dump(out, f, indent=2, default=str)
     print("Saved to %s" % path)

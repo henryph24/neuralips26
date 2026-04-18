@@ -739,6 +739,8 @@ def main():
                         help="Epochs without val improvement before early stop")
     parser.add_argument("--grad-clip", type=float, default=0.0,
                         help="Max grad norm (0 = no clipping)")
+    parser.add_argument("--noise-sigma", type=float, default=0.0,
+                        help="Gaussian noise sigma added to test input (robustness ablation)")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -777,6 +779,12 @@ def main():
     X_val, Y_val = splits.get("val", (None, None))
     test_ch = splits.get("test_ch")
     scaler = splits.get("_scaler")
+    # Noise robustness: add Gaussian noise to test input
+    if args.noise_sigma > 0:
+        rng = np.random.default_rng(args.seed)
+        X_test = X_test + rng.normal(0, args.noise_sigma, X_test.shape).astype(np.float32)
+        print(f"  NOISE: sigma={args.noise_sigma} applied to test input")
+
     print(f"  Data: train={len(X_train)} val={0 if X_val is None else len(X_val)} test={len(X_test)} max_samples={args.max_samples}")
 
     t0 = time.time()
@@ -849,6 +857,8 @@ def main():
         hp_parts.append(f"gc{args.grad_clip:g}")
     if args.K != 5:
         hp_parts.append(f"K{args.K}")
+    if args.noise_sigma > 0:
+        hp_parts.append(f"noise-{args.noise_sigma:g}")
     hp_suffix = "_" + "_".join(hp_parts) if hp_parts else ""
     out_path = f"results/gap_closing/{args.variant}_{args.dataset}_H{args.horizon}_{args.seed}{unfreeze_suffix}{bb_suffix}{rh_suffix}{hp_suffix}.json"
     with open(out_path, "w") as f:
