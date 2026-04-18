@@ -1,0 +1,50 @@
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+plan strategic fixes for: "  Vulnerabilities (what keeps you out)
+
+  1. "The fix is trivially obvious" — Once you diagnose the problem, "just route on raw input" is a
+  one-line fix. Reviewers who focus on method novelty (vs. diagnosis novelty) will score 4-5 here.
+  2. DLinear gap + Raw-MLP MoE — The TSFM backbone contributes ~0.4% over a raw MLP ensemble. A
+  skeptical reviewer asks: "Why bother with a foundation model at all?" The deployment-regime
+  argument is reasonable but not a slam-dunk.
+  3. Proposition 2 is MI chain rule — A theory-focused reviewer will note that the core math is
+  standard information theory, not a novel bound. The hand-wavy Part (iv) constant weakens this
+  further.
+  4. Page compliance — At ~2057 lines, the main body may still be tight. Desk rejection risk is real
+   if the body spills past 9 pages.". Design and run more experiments if necessary. We had GPU at our Race VM (recall from memory), keep GPUs busy
+
+---
+
+<task-notification>
+<task-id>b8h5azxxj</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/90c2cc67-cdbd-4b56-a4e4-7100d5fdab59/tasks/b8h5azxxj.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for V1 completion" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+let invest deeper in experiments that likely strneghthen our papers more significantly, keep the GPUs busy (our RACE VM has GPU, recall from memory)
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+in the meantime recompile and proofcheck the main tex document. I find the appendix enumerating wrongly (empty sections)
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+continue where we left off
+
+---
+
+did the paper update the above results ?
