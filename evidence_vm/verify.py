@@ -124,10 +124,10 @@ TAB_BACKBONE_PCT = {
 # Only the cells explicitly named in the body text at lines 510 and 958 are
 # checked here; the full 12-cell horizon grid is out of scope.
 TAB_HORIZON_GAP = {
-    ("ETTh1",   96):  (0.690, 0.417, 66),   # was +83 pre-audit (2026-04-10)
-    ("ETTh1",  720):  (0.838, 0.566, 48),
-    ("Weather", 96):  (0.329, 0.208, 58),
-    ("Weather",720):  (0.400, 0.350, 14),
+    ("ETTh1",   96):  (0.680, 0.420, 62),   # 5-seed update (was 0.690/0.417/66)
+    ("ETTh1",  720):  (0.816, 0.553, 48),   # 5-seed update (was 0.838/0.566/48)
+    ("Weather", 96):  (0.276, 0.207, 33),   # 5-seed update (was 0.329/0.208/58)
+    ("Weather",720):  (0.401, 0.350, 15),   # 5-seed update (was 0.400/0.350/14)
 }
 
 # --- Baseline comparison LoRA row (tab:baselines, line 343) ---

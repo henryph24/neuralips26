@@ -816,6 +816,8 @@ def main():
         bb_suffix = "_bb-moirai"
     elif "chronos" in bb_lower:
         bb_suffix = "_bb-chronos"
+    elif "timer" in bb_lower:
+        bb_suffix = "_bb-timer-base-84m"
     elif "moment" in bb_lower and "large" in bb_lower:
         bb_suffix = "_bb-moment-large"
     unfreeze_suffix = f"_{args.unfreeze}" if args.unfreeze != "frozen" else ""

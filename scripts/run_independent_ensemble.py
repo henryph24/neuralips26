@@ -174,8 +174,18 @@ def main():
         "expert_names": HEAD_NAMES,
         "elapsed": elapsed,
     }
-    path = "results/independent_ensemble/%s_H%d_%s_%d.json" % (
-        args.dataset, args.horizon, args.unfreeze, args.seed)
+    bb_suffix = ""
+    bb_lower = args.backbone.lower()
+    if "moment" in bb_lower and "large" in bb_lower:
+        bb_suffix = "_bb-moment-large"
+    elif "moirai" in bb_lower:
+        bb_suffix = "_bb-moirai"
+    elif "chronos" in bb_lower:
+        bb_suffix = "_bb-chronos"
+    elif "timer" in bb_lower:
+        bb_suffix = "_bb-timer-base-84m"
+    path = "results/independent_ensemble/%s_H%d_%s_%d%s.json" % (
+        args.dataset, args.horizon, args.unfreeze, args.seed, bb_suffix)
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)
     print("Saved to %s" % path)
