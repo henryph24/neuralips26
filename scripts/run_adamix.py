@@ -120,6 +120,9 @@ class AdaMix(nn.Module):
         for reproducibility of prior paper Table 2 numbers)
       - load_balance_variant="argmax":    correct Switch Transformer Eq. 4-6
         (f_i uses argmax indicator, P_i the mean softmax probability)
+
+    router_input="hidden" (default): routes on mean-pooled hidden states.
+    router_input="raw": routes on raw pre-normalization input (Exp D ablation).
     """
     def __init__(self, d_model, output_dim, K=5, hidden=64, router_hidden=32,
                  router_type="softmax",
@@ -128,11 +131,14 @@ class AdaMix(nn.Module):
                  entropy_reg_coef=0.0,
                  z_loss_coef=0.0,
                  relu_l1_coef=0.0,
-                 capacity_factor=2.0):
+                 capacity_factor=2.0,
+                 router_input="hidden",
+                 input_len=512):
         super().__init__()
         self.K = K
         self.d_model = d_model
         self.router_type = router_type
+        self.router_input = router_input
         self.load_balance_coef = load_balance_coef
         self.load_balance_variant = load_balance_variant
         self.entropy_reg_coef = entropy_reg_coef
@@ -150,18 +156,32 @@ class AdaMix(nn.Module):
         ])
 
         # Instance-level router
-        self.router = nn.Sequential(
-            nn.Linear(d_model, router_hidden),
-            nn.GELU(),
-            nn.Linear(router_hidden, K),
-        )
+        if router_input == "raw":
+            # Exp D: Conv1d raw-input router (same architecture as RR-MoA)
+            self.raw_router = nn.Sequential(
+                nn.Conv1d(1, 16, kernel_size=32, stride=16, padding=8),
+                nn.GELU(),
+                nn.AdaptiveAvgPool1d(4),
+            )
+            self.router = nn.Linear(64, K)
+        else:
+            self.router = nn.Sequential(
+                nn.Linear(d_model, router_hidden),
+                nn.GELU(),
+                nn.Linear(router_hidden, K),
+            )
 
     # ------------------------------------------------------------------ #
     #  Routing primitives                                                #
     # ------------------------------------------------------------------ #
 
-    def _compute_logits(self, hidden_states):
-        """Shared: mean-pool to (B, d_model) and project to (B, K)."""
+    def _compute_logits(self, hidden_states, raw_input=None):
+        """Shared: mean-pool to (B, d_model) and project to (B, K).
+        If router_input='raw', uses raw_input instead of hidden_states."""
+        if self.router_input == "raw" and raw_input is not None:
+            x = raw_input.unsqueeze(1)  # (B, 1, L)
+            feat = self.raw_router(x).flatten(1)  # (B, 64)
+            return self.router(feat)
         h_summary = hidden_states.mean(dim=1)
         return self.router(h_summary)  # (B, K)
 
@@ -213,18 +233,19 @@ class AdaMix(nn.Module):
 
         raise ValueError("Unknown router_type: %s" % self.router_type)
 
-    def forward(self, hidden_states):
-        logits = self._compute_logits(hidden_states)
+    def forward(self, hidden_states, raw_input=None):
+        self._last_raw_input = raw_input  # cache for aux losses
+        logits = self._compute_logits(hidden_states, raw_input)
         weights = self._compute_weights(logits)  # (B, K)
 
         outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)  # (B, K, H)
         mixed = (weights.unsqueeze(-1) * outputs).sum(dim=1)  # (B, H)
         return mixed
 
-    def get_routing_stats(self, hidden_states):
+    def get_routing_stats(self, hidden_states, raw_input=None):
         """Return (B, K) mixture weights for analysis (no grad)."""
         with torch.no_grad():
-            logits = self._compute_logits(hidden_states)
+            logits = self._compute_logits(hidden_states, raw_input)
             weights = self._compute_weights(logits)
         return weights
 
@@ -244,7 +265,8 @@ class AdaMix(nn.Module):
           where f_i uses the non-differentiable argmax indicator while P_i
           remains the differentiable mean probability.
         """
-        logits = self._compute_logits(hidden_states)
+        raw = getattr(self, '_last_raw_input', None)
+        logits = self._compute_logits(hidden_states, raw)
         probs = F.softmax(logits, dim=-1)          # (B, K)
         P_i = probs.mean(dim=0)                    # (K,)
         if self.load_balance_variant == "argmax":
@@ -262,7 +284,8 @@ class AdaMix(nn.Module):
         training-loop combination line stays the simple pattern
             loss = mse + coef * term.
         """
-        logits = self._compute_logits(hidden_states)
+        raw = getattr(self, '_last_raw_input', None)
+        logits = self._compute_logits(hidden_states, raw)
         probs = F.softmax(logits, dim=-1)
         H = -(probs * torch.log(probs.clamp_min(1e-10))).sum(dim=-1).mean()
         return -H
@@ -273,7 +296,8 @@ class AdaMix(nn.Module):
 
         Penalizes large router logit magnitudes; empirically stabilizes
         bfloat16 training and the routing distribution."""
-        logits = self._compute_logits(hidden_states)
+        raw = getattr(self, '_last_raw_input', None)
+        logits = self._compute_logits(hidden_states, raw)
         lse = torch.logsumexp(logits, dim=-1)      # (B,)
         return (lse ** 2).mean()
 
@@ -287,7 +311,8 @@ class AdaMix(nn.Module):
         constant once experts are used."""
         if self.router_type != "relu":
             return hidden_states.new_zeros(())
-        logits = self._compute_logits(hidden_states)
+        raw = getattr(self, '_last_raw_input', None)
+        logits = self._compute_logits(hidden_states, raw)
         raw = F.relu(logits)                       # (B, K)
         # Non-differentiable f_{l,e} = (K / k*B) * count(raw > 0) [k=1 default].
         active = (raw > 0).float()
@@ -324,7 +349,8 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
                  entropy_reg_coef=0.0,
                  z_loss_coef=0.0,
                  relu_l1_coef=0.0,
-                 capacity_factor=2.0):
+                 capacity_factor=2.0,
+                 router_input="hidden"):
     """Train AdaMix adapter.
 
     If ``trajectory_path`` is not None, writes a JSONL file with per-step
@@ -347,6 +373,7 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
         z_loss_coef=z_loss_coef,
         relu_l1_coef=relu_l1_coef,
         capacity_factor=capacity_factor,
+        router_input=router_input,
     ).to(device)
 
     # Collect trainable params (adapter + unfrozen backbone)
@@ -381,11 +408,13 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
     for epoch in range(n_epochs):
         model.train(); adapter.train()
         for bx, by in train_loader:
-            bx, by = bx.to(device).unsqueeze(1), by.to(device)
+            raw_flat = bx.to(device)  # (B, L) — raw input before unsqueeze
+            bx, by = raw_flat.unsqueeze(1), by.to(device)
             mask = torch.ones(bx.shape[0], bx.shape[2], device=device)
             with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
                 feat = _extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)
-                pred = adapter(feat)
+                raw_for_router = raw_flat if router_input == "raw" else None
+                pred = adapter(feat, raw_input=raw_for_router)
                 loss = mse_fn(pred, by) + adapter.total_aux_loss(feat)
             optimizer.zero_grad()
             loss.backward()
@@ -450,12 +479,14 @@ def train_adamix(model, blocks, X_train, Y_train, X_val, Y_val, X_test, Y_test,
     all_routing_weights = []
     with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
         for bx, by in test_loader:
-            bx, by = bx.to(device).unsqueeze(1), by.to(device)
+            raw_flat = bx.to(device)
+            bx, by = raw_flat.unsqueeze(1), by.to(device)
             mask = torch.ones(bx.shape[0], bx.shape[2], device=device)
             feat = _extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)
-            preds.append(adapter(feat).float().cpu())
+            raw_for_router = raw_flat if router_input == "raw" else None
+            preds.append(adapter(feat, raw_input=raw_for_router).float().cpu())
             tgts.append(by.cpu())
-            all_routing_weights.append(adapter.get_routing_stats(feat).cpu())
+            all_routing_weights.append(adapter.get_routing_stats(feat, raw_input=raw_for_router).cpu())
 
     preds, tgts = torch.cat(preds), torch.cat(tgts)
     routing = torch.cat(all_routing_weights)
@@ -552,6 +583,11 @@ def main():
     parser.add_argument("--capacity-factor", type=float, default=2.0,
                         help="Expert-choice routing capacity factor c. "
                              "k = B*c/K tokens per expert (Zhou et al. 2022).")
+    parser.add_argument("--router-input", default="hidden",
+                        choices=["hidden", "raw"],
+                        help="Router input source. hidden=mean-pooled hidden states "
+                             "(default AdaMix). raw=pre-normalization raw input "
+                             "(Exp D: proves diagnosis is architecture-agnostic).")
     parser.add_argument("--results-dir", default="results/adamix",
                         help="Output directory. Rescue sweep writes to "
                              "results/adamix_rescue/.")
@@ -630,6 +666,7 @@ def main():
         z_loss_coef=args.z_loss_coef,
         relu_l1_coef=args.relu_l1_coef,
         capacity_factor=args.capacity_factor,
+        router_input=args.router_input,
     )
     elapsed = time.time() - start
 
@@ -727,6 +764,7 @@ def main():
     }
     revin_suffix = "_no_revin" if args.disable_revin else ""
     norm_suffix = "_%s" % args.norm_type if args.norm_type != "revin" else ""
+    raw_suffix = "_rawrouter" if args.router_input == "raw" else ""
     # Encode the rescue configuration in the filename so concurrent sweeps
     # never collide on the same output file.
     if rescue_active:
@@ -737,9 +775,9 @@ def main():
         )
     else:
         rescue_tag = ""
-    path = "%s/%s_H%d_K%d_%s_%d%s%s%s.json" % (
+    path = "%s/%s_H%d_K%d_%s_%d%s%s%s%s.json" % (
         results_dir, args.dataset, args.horizon, args.K, args.unfreeze,
-        args.seed, revin_suffix, norm_suffix, rescue_tag,
+        args.seed, revin_suffix, norm_suffix, raw_suffix, rescue_tag,
     )
     with open(path, "w") as f:
         json.dump(save_data, f, indent=2, default=str)

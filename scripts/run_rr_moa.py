@@ -158,6 +158,11 @@ class RawRoutedMoA(nn.Module):
             )
             self.router_fft_proj = nn.Linear(32, 32)
             self.router_head = nn.Linear(96, K)  # 64 time + 32 spectral
+        elif router_arch == "linear":
+            # Naive linear router: single Linear(input_len, K), no temporal conv
+            # V1 ablation: tests whether raw signal alone suffices without
+            # temporal feature extraction
+            self.router_head = nn.Linear(input_len, K)
         else:
             # Default conv router
             self.router = nn.Sequential(
@@ -233,6 +238,9 @@ class RawRoutedMoA(nn.Module):
             fft_top = fft_amp[:, 1:33]  # skip DC component, take bins 1-32
             spec_feat = F.gelu(self.router_fft_proj(fft_top))  # (B, 32)
             return self.router_head(torch.cat([time_feat, spec_feat], dim=-1))
+
+        if self.router_arch == "linear":
+            return self.router_head(x)  # (B, input_len) -> (B, K) directly
 
         # Default conv router
         x = x.unsqueeze(1)  # (B, 1, input_len)
@@ -329,7 +337,7 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  router_input_mode="raw", test_ch=None, scaler=None,
                  expert_pool="canonical", entropy_reg_coef=0.0, router_temp=1.0,
                  router_arch="conv", expert_dropout=0.0, rdgf=False,
-                 saib_coef=0.0):
+                 saib_coef=0.0, freeze_router=False):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
     adapter = RawRoutedMoA(
@@ -340,7 +348,13 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
         rdgf=rdgf, saib_coef=saib_coef,
     ).to(device)
 
-    trainable = list(adapter.parameters())
+    # V1 ablation: freeze router at random init
+    if freeze_router:
+        for name, p in adapter.named_parameters():
+            if "router" in name:
+                p.requires_grad = False
+
+    trainable = list(p for p in adapter.parameters() if p.requires_grad)
     pids = {id(p) for p in trainable}
     for p in model.parameters():
         if p.requires_grad and id(p) not in pids:
@@ -501,8 +515,10 @@ def main():
     parser.add_argument("--router-temp", type=float, default=1.0,
                         help="Router softmax temperature (>1 softer, <1 sharper)")
     parser.add_argument("--router-arch", default="conv",
-                        choices=["conv", "stats", "multiscale", "ssr", "fft"],
-                        help="Router architecture: conv (default), stats (hand-crafted), multiscale, fft (spectral-temporal)")
+                        choices=["conv", "stats", "multiscale", "ssr", "fft", "linear"],
+                        help="Router architecture: conv (default), stats (hand-crafted), multiscale, fft (spectral-temporal), linear (naive V1 ablation)")
+    parser.add_argument("--freeze-router", action="store_true",
+                        help="Freeze router weights at random init (V1 ablation: tests whether router must learn)")
     parser.add_argument("--saib-coef", type=float, default=0.0,
                         help="SAIB auxiliary loss coefficient (0 = disabled). Forces router latent to encode window mu/sigma.")
     parser.add_argument("--expert-dropout", type=float, default=0.0,
@@ -554,7 +570,8 @@ def main():
                           router_arch=args.router_arch,
                           expert_dropout=args.expert_dropout,
                           rdgf=args.rdgf,
-                          saib_coef=args.saib_coef)
+                          saib_coef=args.saib_coef,
+                          freeze_router=args.freeze_router)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -646,6 +663,8 @@ def main():
         suffixes.append("edrop-%.2g" % args.expert_dropout)
     if args.rdgf:
         suffixes.append("rdgf")
+    if args.freeze_router:
+        suffixes.append("frozenrouter")
     if args.saib_coef > 0:
         suffixes.append("saib-%.3g" % args.saib_coef)
     # Backbone suffix for non-default backbones
