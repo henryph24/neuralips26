@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "76fd3982ffd8",
+  "session_id": "73aa526d-b2de-42af-9096-dd737fc6c36e",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T12:05:05.761926Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "evidence_vm/verify.py",
+    "main.tex",
+    "scripts/compute_exact_mi_loss.py",
+    "scripts/plot_mi_tightness.py",
+    "scripts/synthetic_mi_tightness.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "68d8d83d8566",
+  "token_usage": {
+    "input_tokens": 182,
+    "cache_creation_tokens": 162340,
+    "cache_read_tokens": 17823203,
+    "output_tokens": 61664,
+    "api_call_count": 138
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T12:05:05.54599Z",
+    "agent_lines": 1110,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1110,
+    "agent_percentage": 100
+  }
+}
