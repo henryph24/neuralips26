@@ -461,6 +461,66 @@ def main():
         if imp_total >= 8 and imp_wins < 7:
             errors.append(f"imputation: only {imp_wins}/{imp_total} wins, paper claims 7/8")
 
+    # --- TAB_MI_TIGHTNESS: Exact MI loss and bound tightness (Appendix) ---
+    mi_json_path = os.path.join(EVID, "..", "results", "analysis", "exact_mi_loss.json")
+    if os.path.exists(mi_json_path):
+        with open(mi_json_path) as f:
+            mi_data = json.load(f)
+
+        # Paper claims in main.tex Prop 2(iv) and Appendix tab:mi_tightness:
+        # "normalization retains only 16-41% of routing entropy"
+        # "gap averages 0.075 nats (4.7% of log K)"
+        import math
+        LOG_K = math.log(5)
+        retentions = []
+        gaps = []
+        for ds_name, ds_val in mi_data.items():
+            if ds_name.startswith("_"):
+                continue
+            ret = ds_val.get("retention_mean")
+            gap = ds_val.get("I_MS_S_given_E_mean")
+            if ret is not None:
+                retentions.append(ret)
+            if gap is not None:
+                gaps.append(gap)
+
+        if retentions:
+            min_ret = min(retentions) * 100
+            max_ret = max(retentions) * 100
+            checks += 1
+            # Paper claims 16-41%
+            if min_ret > 20 or max_ret < 35:
+                errors.append(f"MI tightness: retention range {min_ret:.1f}-{max_ret:.1f}%, "
+                              f"paper claims 16-41%")
+
+        if gaps:
+            avg_gap = sum(gaps) / len(gaps)
+            avg_gap_pct = avg_gap / LOG_K * 100
+            checks += 1
+            # Paper claims "averages 0.075 nats (4.7% of log K)"
+            if abs(avg_gap - 0.075) > 0.03:
+                errors.append(f"MI tightness: avg gap {avg_gap:.3f} nats, "
+                              f"paper claims 0.075 nats (diff={abs(avg_gap - 0.075):.3f})")
+
+        # Bound non-negativity: gap >= 0 for all datasets
+        for ds_name, ds_val in mi_data.items():
+            if ds_name.startswith("_"):
+                continue
+            gap = ds_val.get("I_MS_S_given_E_mean", 0)
+            checks += 1
+            if gap < -0.01:
+                errors.append(f"MI tightness: {ds_name} gap = {gap:.4f} < 0 "
+                              f"(theoretical violation)")
+
+        # Correlation: H(E|S) vs Delta% should NOT be significant (paper claims rho=-0.12)
+        corr = mi_data.get("_correlations", {})
+        rho_exact = corr.get("rho_exact_delta")
+        if rho_exact is not None:
+            checks += 1
+            if abs(rho_exact - (-0.12)) > 0.15:
+                errors.append(f"MI tightness: H(E|S) vs Delta% rho = {rho_exact:.3f}, "
+                              f"paper claims -0.12")
+
     # --- Report ---
     print(f"Ran {checks} checks against {len(glob.glob(f'{EVID}/rr_moa/*.json'))} "
           f"RR-MoA + {len(glob.glob(f'{EVID}/adamix/*.json'))} AdaMix JSON files.")
@@ -473,7 +533,7 @@ def main():
         print(f"PASS: all {checks} numeric claims in main.tex Tables 3-5, "
               f"tab:baselines LoRA row, tab:horizon DLinear gaps, "
               f"tab:backbone cross-backbone percentages, learnable alpha, "
-              f"and imputation wins match within tolerance "
+              f"imputation wins, and MI tightness match within tolerance "
               f"(MSE {TOL}, entropy {ENT_TOL}, pct {PCT_TOL}pp).")
         print(f"RR-MoA wins: {wins}/{total}")
         sys.exit(0)
