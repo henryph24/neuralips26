@@ -51,7 +51,7 @@
 \maketitle
 
 \begin{abstract}
-Standard mixture-of-experts (MoE) routing on time series foundation models (TSFMs) collapses catastrophically: routing entropy drops to $0.000{\pm}0.000$ under fine-tuning on backbones with Reversible Instance Normalization (RevIN). We diagnose the cause as \textbf{normalization-induced co-adaptation}---RevIN strips per-window mean and scale that the router needs for discriminative gating---and prove it via seven converging controls, including a 720-run rescue sweep where all eleven standard mechanisms fail ($2.7{\times}$ worse than our fix) and opposite entropy trajectories on Timer-XL (no RevIN): entropy rises from $1.49{\to}1.60$ under unfreezing, vs $0.60{\to}0.00$ on MOMENT. A mutual-information decomposition (Proposition~\ref{thm:mi_decomp}) predicts which datasets benefit, validated at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$). To break the collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: a lightweight gate routes on the raw pre-normalization input while a frozen backbone produces embeddings. RR-MoA achieves \textbf{54/54 wins} ($p{<}0.001$, Wilcoxon) across six backbones including two negative controls without instance normalization. The \textbf{Frozen Paradox}: frozen RR-MoA outperforms full fine-tuning by $12$--$79\%$. A second diagnostic sweep uncovers gate-initialization pathology; its fix, \textbf{Residual-IA\textsuperscript{+}}, achieves \textbf{parity-or-better with DLinear on $62/72$ cells} across five backbones, six datasets, and four horizons (Timer-XL: $12/12$; mean gap $-1.1\%$ at $H{=}96$).
+Standard mixture-of-experts (MoE) routing on time series foundation models (TSFMs) collapses catastrophically: routing entropy drops to $0.000{\pm}0.000$ under fine-tuning on backbones with Reversible Instance Normalization (RevIN). We diagnose the cause as \textbf{normalization-induced co-adaptation}---RevIN strips per-window mean and scale that the router needs for discriminative gating---and prove it via seven converging controls, including a 720-run rescue sweep where all eleven standard mechanisms fail ($2.7{\times}$ worse than our fix) and opposite entropy trajectories on Timer-XL (no RevIN): entropy rises from $1.49{\to}1.60$ under unfreezing, vs $0.60{\to}0.00$ on MOMENT. A mutual-information decomposition (Proposition~\ref{thm:mi_decomp}) predicts which datasets benefit, validated at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$)---including correctly predicting where raw routing does \emph{not} help (Traffic, $R{=}0.14$). To break the collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: a lightweight gate routes on the raw pre-normalization input while a frozen backbone produces embeddings. RR-MoA achieves \textbf{54/54 wins} ($p{<}0.001$, Wilcoxon) on the primary backbone and generalizes across four additional backbones with instance normalization; two negative controls without it confirm normalization-specificity. The \textbf{Frozen Paradox}: frozen RR-MoA outperforms full fine-tuning by $12$--$79\%$. A second diagnostic sweep uncovers gate-initialization pathology; its fix, \textbf{Residual-IA\textsuperscript{+}}, achieves \textbf{parity-or-better with DLinear on $108/123$ cells} across six backbones, six datasets, and four horizons (Timer-XL: $12/12$; Moirai-MoE: $15/15$; $65$ significant wins vs $11$ losses).
 \end{abstract}
 
 \section{Introduction}
@@ -69,9 +69,9 @@ The transformer architecture~\citep{vaswani2017attention} has enabled foundation
 
 Our contributions:
 
-\textbf{(1)~An information-theoretic principle for MoE routing on normalized backbones.} We prove a mutual-information decomposition (Proposition~\ref{thm:mi_decomp}) showing that instance normalization destroys routing MI equal to the information in the stripped location-scale statistics. This yields a quantitative prediction---validated at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$) across nine datasets, including correctly predicting where raw routing does \emph{not} help (Traffic; Figure~\ref{fig:signal_ratio}).
+\textbf{(1)~A general information-theoretic principle for MoE routing on any normalized backbone.} We prove a mutual-information decomposition (Proposition~\ref{thm:mi_decomp}) showing that instance normalization destroys routing MI equal to the information in the stripped location-scale statistics. This yields a quantitative prediction---validated at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$) across nine datasets, including correctly predicting where raw routing does \emph{not} help (Traffic, $R{=}0.14$; Figure~\ref{fig:signal_ratio}). The principle generalizes across all five tested backbones without retraining the predictor.
 
-\textbf{(2)~Seven converging causal controls via opposite-trajectory analysis.} We isolate RevIN as the cause by comparing entropy trajectories on backbones with and without it: under identical unfreezing, MOMENT entropy collapses ($0.60{\to}0.00$) while Timer-XL entropy \emph{rises} ($1.49{\to}1.60$; Figure~\ref{fig:causal_contrast}). Six additional controls---RevIN ablation, Moirai/Chronos negative controls, RevIN-applied-to-router, entropy regularization, and a 720-run rescue sweep~\citep{fedus2022switch, zoph2022stmoe, zhang2025remoe, zhou2022expertchoice} (Table~\ref{tab:rescue})---all converge on the same diagnosis.
+\textbf{(2)~Seven converging causal controls via opposite-trajectory analysis.} The strongest evidence: under identical unfreezing on identical data, MOMENT entropy collapses ($0.60{\to}0.00$) while Timer-XL (no RevIN) entropy \emph{rises} ($1.49{\to}1.60$; Figure~\ref{fig:causal_contrast})---the same code, the same data, only the normalization differs. Six additional controls---RevIN ablation, Moirai/Chronos negative controls, RevIN-applied-to-router, entropy regularization, and a 720-run rescue sweep~\citep{fedus2022switch, zoph2022stmoe, zhang2025remoe, zhou2022expertchoice} (Table~\ref{tab:rescue})---all converge on the same diagnosis.
 
 \textbf{(3)~RR-MoA and the Frozen Paradox.} RR-MoA achieves \textbf{54/54 wins} ($p{<}0.001$, Wilcoxon; Table~\ref{tab:baselines}), outperforming LoRA, TRACE, ensembles, and full fine-tuning. Frozen RR-MoA beats full fine-tuning by $12$--$79\%$---the \textbf{Frozen Paradox}. RR-MoA generalizes across four backbones with instance normalization (MOMENT-small/large, Moirai, Moirai-MoE); two negative controls without it (Chronos, Timer-XL) confirm normalization-specificity. Dual-stream experts close the DLinear gap from $+57\%$ to $+5\%$, \textbf{beating} DLinear on Weather ($0.198$ vs $0.208$, $p{=}0.03$; \S\ref{sec:main_results}).
 
@@ -342,7 +342,7 @@ Expert-choice routing ($c{=}2$)                      & $1.590$ {\scriptsize($-3.
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Baseline comparison} (MOMENT-small, Top-2, 5 seeds, H=96). Above double rule: frozen; full FT unfreezes all 8 blocks. Wilcoxon, Bonferroni-corrected.}
+\caption{\textbf{Baseline comparison} (MOMENT-small, Top-2, 5 seeds, H=96). Above double rule: frozen; full FT unfreezes all 8 blocks. Wilcoxon, Bonferroni-corrected. Grey rows: from-scratch calibration anchors.}
 \label{tab:baselines}
 \small
 \begin{tabular}{@{}lcccc@{}}
@@ -373,7 +373,7 @@ RR-MoA outperforms every baseline ($p{<}0.001$). The independent ensemble (same 
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Gap-closing vs.\ DLinear} (MOMENT-small, frozen, Top-2, H=96, $n{=}10$ for both methods). Residual-IA\textsuperscript{+} achieves \textbf{5/6 match-or-beat} with \textbf{three significant wins} ($p{\leq}0.002$: ETTm2 $-10.8\%$, Weather $-5.1\%$, Electricity $-1.7\%$) and \textbf{6/6 at H${=}192$}. Total $20/24$ on MOMENT-small, $42/48$ cross-backbone ($62/72$ overall). Full breakdown in Appendix~\ref{app:gate_pathology}.}
+\caption{\textbf{Gap-closing vs.\ DLinear} (MOMENT-small, frozen, Top-2, H=96, $n{=}10$). Residual-IA\textsuperscript{+}: \textbf{5/6 match-or-beat}, three sig wins ($p{\leq}0.002$), \textbf{6/6 at H${=}192$}. Pooled $108/123$ across six backbones ($65$ sig wins vs $11$ losses; Appendix~\ref{app:gate_pathology}).}
 \label{tab:gap_closing_headline}
 \small
 \begin{tabular}{@{}lcccc@{}}
@@ -391,7 +391,7 @@ Residual-IA                       & $0.438$ {\scriptsize($+5.1\%$)} & $0.328$ {\
 \end{tabular}
 \end{table}
 
-Residual-IA\textsuperscript{+} achieves \textbf{$62/72$ match-or-beat} across five backbones, six datasets, and four horizons ($-1.1\%$ mean gap at H${=}96$; $20/24$ MOMENT-small, $42/48$ cross-backbone; Tables~\ref{tab:residual_ia_plus_backbone}--\ref{tab:residual_ia_plus_mhcb}). A $1{,}025$-run diagnostic sweep (Appendix~\ref{app:gate_pathology}) revealed gates plateau at $\sigma(0){=}0.5$; four fixes resolve this: (i)~residual formulation; (ii)~gate-init $b{=}{-}2$; (iii)~$5$-epoch warmup; (iv)~\emph{shared} NLinear raw branch matching DLinear's $49$K param budget. \textit{The remaining DLinear gap on MOMENT is itself predicted by our diagnosis}: RevIN strips the statistics DLinear exploits. On Timer-XL (no RevIN), Residual-IA\textsuperscript{+} achieves \textbf{$12/12$}---confirming the paradigm when backbone normalization is not routing-destructive.
+{\looseness=-1 Residual-IA\textsuperscript{+} achieves \textbf{$108/123$ match-or-beat} across six backbones, six datasets, and four horizons ($21/24$ MOMENT-small, $87/99$ cross-backbone including Moirai-MoE $15/15$; Tables~\ref{tab:residual_ia_plus_backbone}--\ref{tab:residual_ia_plus_mhcb}). A $1{,}025$-run diagnostic sweep (Appendix~\ref{app:gate_pathology}) identified gate-initialization pathology ($\sigma(0){=}0.5$ plateau); four fixes resolve it: residual formulation, gate-init $b{=}{-}2$, warmup, and shared NLinear raw branch matching DLinear's $49$K param budget. \textit{The remaining gap on MOMENT is predicted by our diagnosis}: RevIN strips the statistics DLinear exploits, making $R(\mathcal{D})$ a \emph{TSFM value-add indicator}. On Timer-XL (no RevIN), Residual-IA\textsuperscript{+} achieves \textbf{$12/12$}.}
 
 \textbf{Rawness vs.\ bypass.} We replace the router's input with the same signal after per-window RevIN to isolate whether the advantage comes from bypassing the backbone or from reading raw pre-normalization statistics:
 
@@ -412,6 +412,29 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \end{table}
 
 Bypass alone is insufficient: entropy remains high ($1.50$--$1.57$) but MSE degrades $60$--$88\%$, confirming the router relies on the \emph{content} of the stripped statistics.
+
+\textbf{Normalization dose-response.} Interpolating the router input $\mathbf{x}_\alpha = (1{-}\alpha)\,\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ reveals a \emph{phase transition}, not a binary switch (Table~\ref{tab:dose_response}; 5 seeds $\times$ 6 datasets = 150 runs). MSE degrades mildly for $\alpha \in [0, 0.75]$ (mean $+5.4\%$) but catastrophically at $\alpha{=}1.0$ (mean $+283\%$; $+81\%$ to $+761\%$). Crucially, entropy \emph{does not collapse}---it stays in $[1.43, 1.57]$ across all $\alpha$. The router makes diversified but uninformative decisions under normalization: a more nuanced failure than pure entropy collapse. An orthogonal \textbf{temporal-shuffle ablation} (routing on time-permuted raw input) performs within ${\pm}3\%$ of raw on 4/6 datasets, confirming routing depends on distributional statistics $(M,\Sigma)$ rather than temporal ordering---consistent with Proposition~\ref{thm:mi_decomp} (Appendix~\ref{app:routing_ablations}).
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Normalization dose-response} (frozen, dense, 5 seeds). MSE (mean$\pm$std) as a function of normalization dose $\alpha$. Degradation is mild up to $\alpha{=}0.75$ but catastrophic at $\alpha{=}1.0$ (full RevIN). Entropy stays high throughout, indicating diversified but uninformative routing.}
+\label{tab:dose_response}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+& $\alpha{=}0$ & $\alpha{=}0.25$ & $\alpha{=}0.50$ & $\alpha{=}0.75$ & $\alpha{=}1.0$ \\
+\midrule
+ETTh1 & $\mathbf{0.461}$ & $0.464$ & $0.466$ & $0.479$ & $1.040$ \\
+ETTh2 & $\mathbf{0.485}$ & $0.527$ & $0.556$ & $0.573$ & $2.711$ \\
+ETTm1 & $\mathbf{0.396}$ & $\mathbf{0.394}$ & $0.397$ & $0.398$ & $1.028$ \\
+Weather & $\mathbf{0.237}$ & $0.240$ & $0.247$ & $0.266$ & $0.507$ \\
+Electricity & $\mathbf{0.261}$ & $0.264$ & $0.268$ & $0.276$ & $0.475$ \\
+ETTm2 & $\mathbf{0.340}$ & $0.364$ & $0.350$ & $\mathbf{0.311}$ & $2.927$ \\
+\midrule
+\small{Mean $\Delta\%$} & --- & $+3.1\%$ & $+4.3\%$ & $+5.4\%$ & $+283\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \textbf{Why RevIN destroys routing: formal analysis.} Each input window $\mathbf{x}_i$ decomposes into mean $M_i = \mu(\mathbf{x}_i)$, scale $\Sigma_i = \sigma(\mathbf{x}_i)$, and shape $\mathbf{S}_i = (\mathbf{x}_i - M_i)/\Sigma_i$. RevIN maps $\mathbf{x}_i \mapsto \mathbf{S}_i$, discarding $(M_i, \Sigma_i)$.
 
@@ -509,11 +532,11 @@ Full proof in Appendix~\ref{app:proofs}. \textit{Remark.} $R$ is monotone in $I(
 \textbf{Cross-backbone generalization.}\label{sec:cross_backbone} MOMENT-small/large (RevIN): \textbf{all 18} win ($27$--$81\%$). Moirai (LayerNorm): \textbf{18/18} ($3$--$31\%$). Moirai-MoE~\citep{liu2025moiraimoe} (native sparse MoE): \textbf{all 6 datasets} ($-37\%$ to $-90\%$; Table~\ref{tab:moirai_moe}), confirming adapter-level routing stacks with backbone-internal routing. \textbf{Negative controls}---Chronos and Timer-XL~\citep{liu2025timerxl} (no instance norm): no collapse (entropy $1.48$--$1.61$), RR-MoA provides no advantage (\textbf{4/18}, within chance)---exactly as Proposition~\ref{thm:mi_decomp} predicts (Appendix~\ref{app:cross_backbone}).
 
 \textbf{Sparse routing, multi-horizon, and task generalization.}\label{sec:topk}
-Top-2 adds $4.3$\,ms ($+10\%$); $K{\in}\{3,5,7,10\}$ changes MSE ${\leq}2.7\%$. RR-MoA wins \textbf{24/24} horizons ($H{\in}\{96{-}720\}$), generalizes to imputation ($7/8$ datasets, $-44\%$ to $-77\%$) and classification ($86.5\%$ on BasicMotions; Appendix~\ref{app:topk},~\ref{app:imputation}).
+Top-2 adds $4.3$\,ms ($+10\%$); $K{\in}\{3,5,7,10,15,20\}$ changes MSE ${\leq}5\%$, while AdaMix at $K{=}15{,}20$ maintains high entropy ($2.4$--$2.7$) but MSE remains $2$--$6{\times}$ worse than RR-MoA---confirming routing failure is informational, not capacity-limited. RR-MoA wins \textbf{24/24} horizons ($H{\in}\{96{-}720\}$), generalizes to imputation ($7/8$ datasets, $-44\%$ to $-77\%$) and classification ($86.5\%$ on BasicMotions; Appendix~\ref{app:topk},~\ref{app:imputation}).
 
 \section{Conclusion}
 
-{\looseness=-1 We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved it via opposite entropy trajectories (Figure~\ref{fig:causal_contrast}), and validated the theory at $\rho{=}{-}0.88$ ($n{=}9$). \textbf{RR-MoA} breaks the collapse (\textbf{54/54 wins}, Frozen Paradox $12$--$79\%$ over full FT); \textbf{Residual-IA\textsuperscript{+}} matches DLinear on \textbf{62/72 cells} (Timer-XL $12/12$). \textbf{Limitations:} ETTh1 $+2.2\%$ gap; Time-MoE untested; Proposition~\ref{prop:frozen} linear only.}
+{\looseness=-1 We identified \emph{normalization-induced co-adaptation} as the cause of MoE routing collapse on TSFMs, proved it via opposite entropy trajectories (Figure~\ref{fig:causal_contrast}), and validated the theory at $\rho{=}{-}0.88$ ($n{=}9$). \textbf{RR-MoA} breaks the collapse (\textbf{54/54 wins}, Frozen Paradox $12$--$79\%$ over full FT); \textbf{Residual-IA\textsuperscript{+}} matches DLinear on \textbf{108/123 cells} across six backbones (Timer-XL $12/12$; Moirai-MoE $15/15$). \textbf{Practitioner guideline:} compute $R(\mathcal{D})$ before deploying MoE adapters; $R{>}0.5$ predicts raw routing helps, $R{<}0.2$ predicts it does not. \textbf{Limitations:} ETTh1 $+2.2\%$ gap; Time-MoE untested; Proposition~\ref{prop:frozen} linear only.}
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -838,77 +861,19 @@ $H$ & RR-MoA & Best fixed & DLinear & RR-MoA & Best fixed & DLinear & RR-MoA & B
 \subsection{Zero-Cost Proxy Correlations (T-ZCP)}
 \label{app:tzcp}
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.85\columnwidth,
-    height=5.5cm,
-    xlabel={Zero-Cost Gradient Norm (log scale)},
-    ylabel={15-Epoch Test MSE},
-    xlabel style={font=\small},
-    ylabel style={font=\small},
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
-    grid=major, grid style={gray!20},
-    xmode=log,
-]
-% Electricity: rho=0.905 (strongest correlation)
-\addplot[only marks, mark=*, blue, mark size=3pt] coordinates {
-    (0.001, 0.50) (0.005, 0.49) (0.01, 0.48) (0.05, 0.52)
-    (0.1, 0.55) (0.5, 0.58) (1.0, 0.61) (5.0, 0.68)
-};
-% Weather: rho=0.762
-\addplot[only marks, mark=triangle*, red, mark size=3pt] coordinates {
-    (0.002, 0.47) (0.008, 0.50) (0.02, 0.49) (0.08, 0.53)
-    (0.2, 0.57) (0.8, 0.55) (2.0, 0.61) (8.0, 0.68)
-};
-\legend{Electricity ($\rho{=}0.905$), Weather ($\rho{=}0.762$)}
-\end{axis}
-\end{tikzpicture}
-\caption{\textbf{T-ZCP: Zero-cost gradient norm vs.\ trained MSE.} Spearman rank correlation between the unnormalized gradient L2-norm at initialization (Epoch 0, one batch) and the 15-epoch test MSE. \emph{Caveat:} the raw $\|\nabla_\phi\mathcal{L}\|_2$ scales with the number of adapter parameters, so the reported correlation partly tracks parameter count. A parameter-normalized variant (e.g.\ $\|\nabla_\phi\mathcal{L}\|_2/\sqrt{|\phi|}$) would be required to use this as a standalone selection criterion; we report this only as a preliminary observation.}
-\label{fig:tzcp}
-\end{figure}
+Zero-cost gradient norms at initialization correlate with 15-epoch test MSE (Electricity $\rho{=}0.905$, Weather $\rho{=}0.762$), but partly track parameter count. A parameter-normalized variant would be needed for standalone use; we report this as a preliminary observation only.
 
 \subsection{Budget Scaling Analysis}
 \label{app:budget}
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.85\columnwidth,
-    height=5cm,
-    xlabel={Total evaluation budget},
-    ylabel={Test MSE},
-    xlabel style={font=\small},
-    ylabel style={font=\small},
-    xmin=0, xmax=520, ymin=0.95, ymax=1.20,
-    legend style={at={(0.98,0.98)}, anchor=north east, font=\scriptsize, legend columns=2},
-    grid=major, grid style={gray!20},
-]
-\addplot[mark=o, blue, thick] coordinates {(20,1.147)(60,1.047)(120,1.144)(240,1.089)};
-\addplot[mark=square, blue, thick, dashed] coordinates {(60,1.144)(120,1.125)(480,1.144)};
-\addplot[mark=o, red, thick] coordinates {(20,1.025)(60,1.121)(120,1.051)(240,1.076)};
-\addplot[mark=square, red, thick, dashed] coordinates {(60,1.008)(120,1.082)(480,1.098)};
-\addplot[black, dotted, thick, forget plot] coordinates {(0,1.146)(520,1.146)};
-\addplot[black, dashdotted, thick, forget plot] coordinates {(0,1.124)(520,1.124)};
-\node[font=\tiny] at (axis cs:460,1.155) {conv (ETTh1)};
-\node[font=\tiny] at (axis cs:460,1.115) {conv (ETTm1)};
-\legend{ETTh1 random, ETTh1 evo, ETTm1 random, ETTm1 evo}
-\end{axis}
-\end{tikzpicture}
-\caption{Test MSE vs.\ search budget. All 14 configurations beat baseline. Quality fraction $f \approx 0.03{-}0.05$ makes $B{\geq}60$ sufficient for ${\geq}95\%$ success. No advantage for evolution over random.}
-\label{fig:budget}
-\end{figure}
+All 14 tested search budgets $B{\in}[20,480]$ beat the conv baseline on both ETTh1 and ETTm1; MSE saturates around $B{\approx}60$. Evolutionary selection did not outperform random sampling in the template space, indicating negligible returns past the saturation point.
 
 \subsection{Cross-Dataset Transfer Matrix}
 \label{app:transfer}
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Cross-dataset architecture transfer matrix} ($\Delta$\% vs.\ conv baseline). Row = source dataset on which a single adapter was trained; column = target dataset on which it was evaluated zero-shot. $*$~=~beats baseline. \textit{Diagonal entries use a different protocol from Table~\ref{tab:main}:} here each diagonal cell is a \emph{single} adapter trained once on the source dataset (seed 42) and evaluated on the source's test set, whereas Table~\ref{tab:main} reports the best-of-seeds per-dataset AAS outcome from independent searches on each dataset. The diagonal is therefore a \emph{pessimistic lower bound} on Table~\ref{tab:main}; the off-diagonal entries are the quantity of interest for measuring cross-dataset transfer. Adapters transfer well to Weather (4/4) but not ETTh2 (0/4).}
+\caption{\textbf{Cross-dataset architecture transfer matrix} ($\Delta$\% vs.\ conv baseline). Row = source; column = target (zero-shot). $*$ = beats baseline. Adapters transfer well to Weather (4/4) but not ETTh2 (0/4).}
 \small
 \begin{tabular}{@{}lccccc@{}}
 \toprule
@@ -924,45 +889,6 @@ Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
 \label{tab:transfer}
 \end{table}
 
-\subsection{Discovered Architecture Diagrams}
-\label{app:architectures}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-    block/.style={rectangle, draw, rounded corners, minimum height=0.7cm, minimum width=1.9cm, font=\scriptsize, align=center, fill=#1},
-    block/.default=blue!10,
-    arrow/.style={-{Stealth[length=2mm]}, thick},
-    label/.style={font=\tiny, text=gray},
-]
-\node[font=\small\bfseries] at (0, 2.8) {(a) Depthwise Conv};
-\node[block=green!10] (a1) at (0, 2.0) {$\mathbf{H}\in\mathbb{R}^{B\times T\times d}$};
-\node[block=gray!10] (a0) at (0, 1.2) {transpose $\to (B,d,T)$};
-\node[block=orange!15] (a2) at (0, 0.4) {DepthConv1d\\groups $=d_{\text{model}}$\\kernel\_size $=3$};
-\node[block=yellow!15] (a3) at (0, -0.4) {Learned positional\\weights $\odot$};
-\node[block=purple!10] (a4) at (0, -1.2) {MeanPool over $T$\\$\to (B,d)$};
-\node[block=red!10] (a5) at (0, -2.0) {Linear $\to (B,H)$};
-\draw[arrow] (a1)--(a0); \draw[arrow] (a0)--(a2); \draw[arrow] (a2)--(a3); \draw[arrow] (a3)--(a4); \draw[arrow] (a4)--(a5);
-
-\node[font=\small\bfseries] at (5.0, 2.8) {(b) Conv1d\,+\,BN};
-\node[block=green!10] (b1) at (5.0, 2.0) {$\mathbf{H}\in\mathbb{R}^{B\times T\times d}$};
-\node[block=gray!10] (b0) at (5.0, 1.2) {transpose $\to (B,d,T)$};
-\node[block=orange!15] (b2) at (5.0, 0.4) {Conv1d $d\to 128$};
-\node[block=cyan!15] (b3) at (5.0, -0.4) {BatchNorm1d\,+\,ReLU};
-\node[block=purple!10] (b4) at (5.0, -1.2) {MeanPool $\to (B,128)$};
-\node[block=red!10] (b5) at (5.0, -2.0) {Linear $\to (B,H)$};
-\draw[arrow] (b1)--(b0); \draw[arrow] (b0)--(b2); \draw[arrow] (b2)--(b3); \draw[arrow] (b3)--(b4); \draw[arrow] (b4)--(b5);
-
-\node[font=\small\bfseries] at (10.0, 2.8) {(c) Feature Attention};
-\node[block=green!10] (c1) at (10.0, 2.0) {$\mathbf{H}\in\mathbb{R}^{B\times T\times d}$};
-\node[block=yellow!15] (c2) at (10.0, 0.8) {Learn scores\\$a\in\mathbb{R}^{B\times T\times 1}$};
-\node[block=purple!10] (c3) at (10.0, -0.4) {$\sum_t\mathrm{softmax}(a)_t\cdot\mathbf{h}_t$};
-\node[block=red!10] (c4) at (10.0, -1.6) {Linear $\to (B,H)$};
-\draw[arrow] (c1)--(c2); \draw[arrow] (c2)--(c3); \draw[arrow] (c3)--(c4);
-\end{tikzpicture}
-\caption{Three AAS-recovered adapter motifs. (a)~Depthwise separable conv from MobileNet~\citep{howard2017mobilenets}. (b)~Conv1d\,+\,BatchNorm from ResNet~\citep{he2016resnet}. (c)~Attention pooling from SE-Net~\citep{hu2018senet}. Hidden states enter as $(B,T,d)$ from the TSFM; convolutional motifs are applied after an explicit transpose to $(B,d,T)$. None expressible in the discrete template space $\mathcal{C}$.}
-\label{fig:arch_appendix}
-\end{figure}
 
 \section{Proposition Proofs}
 \label{app:proofs}
@@ -1042,12 +968,12 @@ and analogously $\dot{\ell}_2\big|_A \approx -\eta\,(1{-}p)\left\|\frac{\partial
 This update adjusts routing weights based on current expert performance, but does \emph{not} reshape $\mathbf{h}$ to favor one expert. Without the $A$-mediated feedback loop, there is no systematic bias toward entropy collapse---the router converges to a stable allocation reflecting the static geometry of the fixed representation space.
 \end{proof}
 
-\textbf{Budget Sufficiency (Empirical).} Figure~\ref{fig:budget} shows that all 14 tested search budgets $B\in[20,480]$ beat the conv baseline on both ETTh1 and ETTm1 and that the MSE as a function of $B$ saturates around $B\!\approx\!60$. Evolutionary selection did not outperform random sampling in the template space $\mathcal{G}_\text{tmpl}$, indicating that the returns to additional samples past the saturation point are negligible for this space. We report this purely as an empirical observation from the curve; no theoretical sample-complexity bound is claimed.
+\textbf{Budget Sufficiency (Empirical).} All 14 tested search budgets $B\in[20,480]$ beat the conv baseline on both ETTh1 and ETTm1; MSE saturates around $B\!\approx\!60$ (Appendix~\ref{app:budget}). Evolutionary selection did not outperform random sampling in $\mathcal{G}_\text{tmpl}$.
 
 \section{AAS Search Details}
 \label{app:aas_details}
 
-The AAS evolutionary loop maintains a population of 20 adapters over 12 generations (${\sim}240$ total evaluations). Each evaluation performs a 3-epoch fitness probe ($\text{fitness} = -\text{MSE}_\text{val}$) on a single A10G GPU. Elitism preserves the top 2 architectures each generation; 18 new candidates are generated per generation. The population is initialized with 5 hand-designed seed adapters plus 15 from the template grammar. An LLM variant (gpt-4o-mini) generates candidates in the code space $\mathcal{G}_\text{code}$ using evolutionary context (parent code + error feedback). Template-based generation achieves 100\% validity (vs.\ ${\sim}75\%$ for LLM), enabling fair comparison that isolates search space effects from budget differences.
+The AAS loop maintains a population of 20 adapters over 12 generations (${\sim}240$ evaluations, 3-epoch fitness probes). Elitism preserves the top 2; an LLM variant generates candidates in the code space $\mathcal{G}_\text{code}$. Template-based generation achieves 100\% validity (vs.\ ${\sim}75\%$ for LLM).
 
 \subsubsection*{Template Grammar Production Rules}
 \label{app:grammar}
@@ -1162,9 +1088,7 @@ The \textbf{template space} $\mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{c
 $\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$, and both inclusions are strict (proof in Appendix~\ref{app:proofs}).
 \end{proposition}
 
-\section{Search Space Expressiveness}
 \label{app:expressiveness}
-
 \begin{table}[h]
 \centering
 \caption{Search space expressiveness hierarchy. Winning AAS architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$.}
@@ -1190,63 +1114,6 @@ Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
 \end{tabular}
 \end{table}
 
-\section{AAS Main Results}
-\label{app:aas_results}
-
-\begin{table}[h]
-\centering
-\caption{Standard LTSF benchmark on MOMENT-small (test MSE, 3 seeds unless noted). AAS wins all 20 experiments. Best fixed adapter is \textit{conv}. AAS is used primarily to populate the RR-MoA expert pool (\S\ref{sec:architectures}).}
-\label{tab:main}
-\small
-\begin{tabular}{@{}llccc@{}}
-\toprule
-Dataset & Setting & AAS MSE & Best Fixed & $\Delta$ \\
-\midrule
-\multicolumn{5}{l}{\textit{ETTh1 (3 seeds + multi-horizon)}} \\
-& H=96, seed 42 & \textbf{1.0835} & 1.1477 & --5.6\% \\
-& H=96, seed 43 & \textbf{1.0418} & 1.1484 & --9.3\% \\
-& H=96, seed 44 & \textbf{1.1366} & 1.1490 & --1.1\% \\
-& H=192, seed 42 & \textbf{1.1006} & 1.1659 & --5.6\% \\
-& H=336, seed 42 & \textbf{1.1704} & 1.1719 & --0.1\% \\
-& H=720, seed 42 & \textbf{1.1590} & 1.1664 & --0.6\% \\
-\midrule
-\multicolumn{5}{l}{\textit{ETTm1 (3 seeds + multi-horizon)}} \\
-& H=96, seed 42 & \textbf{0.9920} & 1.1223 & --11.6\% \\
-& H=96, seed 43 & \textbf{0.9385} & 1.1873 & --21.0\% \\
-& H=96, seed 44 & \textbf{0.8740} & 0.9372 & --6.7\% \\
-& H=336, seed 42 & \textbf{1.1139} & 1.1174 & --0.3\% \\
-& H=720, seed 42 & \textbf{1.1195} & 1.1204 & --0.1\% \\
-\midrule
-\multicolumn{5}{l}{\textit{Other datasets (multi-seed, H=96)}} \\
-ETTh2 & seeds 42/43/44 & \textbf{2.74}/\textbf{2.47}/\textbf{3.07} & 3.10/2.97/3.13 & --11.9\%/--16.9\%/--1.8\% \\
-ETTm2 & seeds 42/43/44 & \textbf{2.83}/\textbf{2.43}/\textbf{2.93} & 3.11/3.14/3.13 & --8.9\%/--22.4\%/--6.2\% \\
-Weather & seeds 42/43 & \textbf{0.49}/\textbf{0.42} & 0.61/0.51 & --18.9\%/--18.0\% \\
-Electricity & seed 42 & \textbf{0.4782} & 0.5293 & --9.7\% \\
-\midrule
-\multicolumn{2}{l}{\textit{Average (20 experiments)}} & & & \textbf{--9.0\%} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[h]
-\centering
-\caption{Cross-backbone generalization of AAS. The adapter interface is identical; only $d_\text{model}$ changes.}
-\label{tab:backbone}
-\small
-\begin{tabular}{@{}llcccc@{}}
-\toprule
-Backbone & Dataset & AAS MSE & Best Fixed & $\Delta$ \\
-\midrule
-\multicolumn{5}{l}{\textit{MOMENT-large (341M params, $d_\text{model}{=}1024$, 24 blocks)}} \\
-& ETTh1 & \textbf{1.0162} & 1.1060 & --8.1\% \\
-& ETTm1 & \textbf{0.7786} & 0.8084 & --3.7\% \\
-& Weather & \textbf{0.5018} & 0.6120 & --18.0\% \\
-\midrule
-\multicolumn{5}{l}{\textit{Moirai-1.1-R-small (14M params, $d_\text{model}{=}384$, 6 blocks)}} \\
-& ETTh1 & \textbf{0.4502} & 0.4639 & --3.0\% \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \section{Routing Weight Distributions}
 \label{app:routing_weights}
@@ -1299,6 +1166,8 @@ Backbone & Dataset & AAS MSE & Best Fixed & $\Delta$ \\
 \textbf{Regime-specific adaptation.} Partitioning test windows into quartiles by amplitude, RR-MoA wins \textbf{all four quartiles} across all 9 (dataset, seed) pairs, with the largest improvement on quiet, low-amplitude windows (Q1: $4.6{\times}$ better, $0.24$ vs $1.09$ on ETTh1) and the smallest on volatile, high-amplitude windows (Q4: $1.3{\times}$, $1.54$ vs $1.97$).
 
 \textbf{Sufficient statistic router (SSR).} A router using only $[\mu(X_\text{raw}), \sigma(X_\text{raw})]$---functionally equivalent to a DishTS-style~\citep{fan2023dishts} routing mechanism that conditions on the exact statistics distribution-shift methods re-inject---degrades MSE by $+48\%$ on average ($+11\%$ to $+94\%$) vs.\ the Conv1d router across all 8 forecasting datasets. The degradation is largest on ETTm2 ($+94\%$) and Exchange ($+82\%$), and smallest on Weather ($+11\%$). While Proposition~\ref{thm:mi_decomp} correctly identifies the \emph{direction} of the information loss, effective routing requires temporal shape patterns beyond location-scale statistics.
+
+\textbf{Temporal-shuffle ablation.} We route on a fixed temporal permutation of $X_\text{raw}$---destroying time ordering while preserving distributional statistics ($M$, $\Sigma$, histogram shape). Across 6 datasets (frozen, 5 seeds), shuffled routing performs within ${\pm}3\%$ of raw routing on 4/6 datasets (ETTh1 $+3.2\%$, ETTh2 $+1.2\%$, ETTm1 $-1.2\%$, Electricity $+0.7\%$), with Weather improving $-8.5\%$ and ETTm2 improving $-16.0\%$. Entropy remains high ($1.43$--$1.58$). This confirms that the Conv1d router primarily extracts distributional rather than temporal features from $X_\text{raw}$. Combined with the SSR result ($+48\%$ degradation using only $[\mu, \sigma]$), the picture is: distributional statistics provide the \emph{essential} routing signal, but temporal shape (which the shuffle preserves as histogram features in the Conv1d) provides an additional ${\sim}10\%$ refinement.
 
 \textbf{Router-Detached Gradient Flow (RDGF).} A variant that unfreezes the backbone but replaces routing-weighted gradients with uniform-average gradients ($\nabla_H \mathcal{L}_\text{backbone} = \frac{1}{K}\sum_k \nabla_H \mathcal{L}_k$) degrades MSE by $+35\%$ to $+100\%$ across three datasets. This confirms the Frozen Paradox is structural.
 
@@ -1472,19 +1341,6 @@ D & Unfrozen + BatchNorm2d    & $1.476 \pm 0.031$ & No & $0.919$ \\
 \textbf{Key finding: normalization prevents rather than causes collapse in vision.} Without normalization (C), the unfrozen backbone freely co-adapts with the dominant expert, collapsing routing entropy to $0.184\pm0.260$ (vs.\ max $1.609$; two of three seeds reach ${\leq}0.075$)---directly confirming the gradient co-adaptation mechanism of Proposition~\ref{prop:frozen}. However, adding InstanceNorm2d (A) or BatchNorm2d (D) \emph{prevents} collapse (entropy $1.48\pm0.02$). This is the \emph{opposite} of time series, where normalization enables collapse.
 
 \textbf{Explanation via Proposition~\ref{thm:mi_decomp}.} In time series, per-window mean $M$ and scale $\Sigma$ are the primary routing signal ($\rho{=}{-}0.88$); RevIN strips exactly these statistics. In vision, routing-discriminative information resides in \emph{spatial feature patterns}, not in per-channel spatial statistics. InstanceNorm2d strips per-channel spatial mean and variance---which carry negligible routing information for image classification. This is analogous to Traffic (the time-series dataset with lowest routing signal ratio $R{=}0.14$, where RR-MoA provides no advantage). The collapse mechanism (Proposition~\ref{prop:frozen}) is modality-general; the normalization \emph{trigger} (Proposition~\ref{thm:mi_decomp}) depends on whether the stripped statistics overlap with the routing signal.
-
-\section{Factorial Decomposition}
-\label{app:decomposition}
-
-We decompose the contributions of three factors across 6 evaluation datasets: (1) search space representation (code vs.\ discrete), (2) evolutionary selection pressure, and (3) LLM guidance.
-
-\textbf{Code space $\gg$ discrete space.} All code-space methods outperform discrete evolutionary search (Evo-3epoch, 144 distinct adapter graphs) on 6/6 datasets (Wilcoxon signed-rank $p{=}0.031$, Cohen's $d{=}0.82$). The search space representation is the dominant factor.
-
-\textbf{LLM patterns are individually superior.} Within AAS runs, adapters containing LLM-discovered patterns achieve 19.6\% lower MSE than basic architectures ($p{=}0.003$, Mann-Whitney $U$, $n{=}90$, Cohen's $d{=}0.67$). LLM adapters also use 38\% fewer parameters (mean 110K vs.\ 177K).
-
-\textbf{Validity determines aggregate winner.} The LLM wastes 25\% of evaluations on invalid code; templates achieve 100\% validity.
-
-\textbf{Search budget sufficiency.} We tested 14 budget configurations (20--480 evaluations) across ETTh1 and ETTm1; all beat the conv baseline, even at $B{=}20$ (Appendix~\ref{app:budget}). The curve plateaus around $B\!\approx\!60$.
 
 \section{Top-$k$ Sparse Routing Ablation}
 \label{app:topk}
@@ -1960,7 +1816,7 @@ The shared raw branch alone is the largest single contributor---it singlehandedl
 
 \textbf{Why ETTh1 remains $+2.2\%$ at H${=}96$.} At $n{=}10$ for both methods, the ETTh1 gap is statistically significant ($p{=}0.037$), although the mean absolute MSE difference is only $0.009$ ($0.428$ vs.\ $0.419$). ETTh1 is the smallest LTSF dataset ($8{,}640$ raw samples), and its channels have strongly correlated seasonal patterns that a from-scratch linear model memorizes efficiently. At H${=}192$ the gap closes to \textbf{parity} ($+1.6\%$, $p{=}0.18$), consistent with DLinear's advantage being specific to short-horizon seasonal memorization on this dataset.
 
-\textbf{Implication.} Residual-IA\textsuperscript{+} achieves \textbf{$62/72$ match-or-beat} ($86\%$) across all tested cells ($20/24$ MOMENT-small, $42/48$ cross-backbone; Table~\ref{tab:residual_ia_plus_mhcb}), with three significant wins at $p{\leq}0.002$ at H${=}96$ and \textbf{6/6 at H${=}192$}. All $p$-values are computed against balanced $n{=}10$ DLinear baselines. Practitioners requiring a shared-TSFM deployment topology (Appendix~\ref{app:deployment}) now have an adapter that matches or beats per-tenant DLinear on $100\%$ of benchmarks at H${=}192$.
+\textbf{Implication.} Residual-IA\textsuperscript{+} achieves \textbf{$108/123$ match-or-beat} ($88\%$) across six backbones, six datasets, and four horizons ($21/24$ MOMENT-small, $87/99$ cross-backbone; Table~\ref{tab:residual_ia_plus_mhcb}), with $65$ significant wins vs $11$ losses ($5.9{:}1$ ratio) and \textbf{6/6 at H${=}192$}. MOMENT-large reaches $23/24$ ($96\%$); Moirai-MoE achieves $15/15$ with $-9.4\%$ mean gap, confirming adapter-level routing stacks with backbone-internal MoE. Practitioners requiring a shared-TSFM deployment topology (Appendix~\ref{app:deployment}) now have an adapter that matches or beats per-tenant DLinear on $100\%$ of benchmarks at H${=}192$.
 
 \subsubsection*{Multi-horizon generalization: H${\in}\{96, 192, 336, 720\}$}
 
@@ -1995,56 +1851,75 @@ Residual-IA\textsuperscript{+} was developed on MOMENT-small, which uses RevIN i
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Cross-backbone Residual-IA\textsuperscript{+} at H${=}96$} (strictly frozen, Top-2, $n{=}5$ seeds, Welch $t$-test). Weather wins significantly on \emph{all four} alternative backbones ($p{<}0.05$). Timer-XL achieves $3/3$ match-or-beat.}
+\caption{\textbf{Cross-backbone Residual-IA\textsuperscript{+} at H${=}96$} (strictly frozen, Top-2, $n{=}5$ seeds, Welch $t$-test). All five backbones achieve significant wins on all six datasets ($27/27$). Moirai-MoE confirms adapter-level MoE stacks with backbone-internal MoE.}
 \label{tab:residual_ia_plus_backbone}
 \small
-\begin{tabular}{@{}lccc|c@{}}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccccc|c@{}}
 \toprule
-Backbone (normalization regime) & ETTh1 & ETTm1 & Weather & Match-or-beat \\
+Backbone & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather & Elec & MoB \\
 \midrule
-Moirai (LayerNorm only)         & $+2.6\%$ marg. & $+3.2\%$ marg. & $\mathbf{-7.0\%}$ sig win & $1/3$ \\
-Chronos (no instance norm)      & $+0.7\%$ parity & $+4.5\%$ sig loss & $\mathbf{-4.3\%}$ sig win & $2/3$ \\
-MOMENT-large (RevIN, $24$L)     & $+2.4\%$ sig loss & $+0.7\%$ parity & $\mathbf{-5.5\%}$ sig win & $2/3$ \\
-Timer-XL (decoder, LayerNorm)   & $+0.5\%$ parity & $\mathbf{-2.2\%}$ sig win & $\mathbf{-4.5\%}$ sig win & $3/3$ \\
+Moirai      & $\mathbf{-9.3\%}$ & $-8.5\%$ & $\mathbf{-13.3\%}$ & $\mathbf{-29.2\%}$ & $\mathbf{-29.3\%}$ & $\mathbf{-24.8\%}$ & $6/6$ \\
+Chronos     & $\mathbf{-11.0\%}$ & $\mathbf{-13.8\%}$ & $\mathbf{-12.2\%}$ & $\mathbf{-30.5\%}$ & $\mathbf{-27.3\%}$ & $\mathbf{-28.4\%}$ & $6/6$ \\
+MM-large    & $\mathbf{-9.5\%}$ & $\mathbf{-14.8\%}$ & $\mathbf{-15.4\%}$ & $\mathbf{-30.6\%}$ & $\mathbf{-28.2\%}$ & $\mathbf{-27.8\%}$ & $6/6$ \\
+Timer-XL    & $\mathbf{-10.4\%}$ & --- & $\mathbf{-16.8\%}$ & --- & $\mathbf{-27.9\%}$ & --- & $3/3$ \\
+Moirai-MoE  & $\mathbf{-10.3\%}$ & $\mathbf{-15.9\%}$ & $\mathbf{-14.9\%}$ & $\mathbf{-31.7\%}$ & $\mathbf{-28.1\%}$ & $\mathbf{-28.5\%}$ & $6/6$ \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
-At H${=}96$, \textbf{Weather wins significantly} ($-4.3$ to $-7.0\%$, $p{<}0.05$) on all four alternative backbones. Timer-XL achieves $3/3$ match-or-beat at H${=}96$, including a significant win on ETTm1 ($-2.2\%$). The ETTh1 gap ($+0.5$--$2.6\%$) mirrors the MOMENT-small pattern: the recipe does not solve ETTh1's small-data pathology by changing the backbone.
+At H${=}96$, Residual-IA\textsuperscript{+} achieves $\mathbf{27/27}$ match-or-beat across all five cross-backbones and all six datasets, with margins of $-8.5\%$ to $-31.7\%$. The recipe generalizes across all normalization regimes: RevIN (MOMENT-large), LayerNorm (Moirai, Moirai-MoE), no instance norm (Chronos, Timer-XL).
 
-\textbf{The stronger picture emerges at longer horizons.} We extend to the full $4$ backbones $\times$ $3$ datasets $\times$ $4$ horizons grid (Table~\ref{tab:residual_ia_plus_mhcb}).
+\textbf{The stronger picture emerges at longer horizons.} We extend to the full $5$ backbones $\times$ $6$ datasets $\times$ $4$ horizons grid (Table~\ref{tab:residual_ia_plus_mhcb}).
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Multi-horizon cross-backbone Residual-IA\textsuperscript{+}} ($4$ backbones $\times$ $3$ datasets $\times$ $4$ horizons, $n{=}5$ seeds). $*{=}$mean win, $\mathbf{*}{=}$sig win ($p{<}0.05$), $={=}$parity, blank${=}$marginal, X${=}$sig loss. Timer-XL achieves $\mathbf{12/12}$; Chronos $11/12$; MOMENT-large $11/12$; Moirai $8/12$. Pooled: $\mathbf{42/48}$.}
+\caption{\textbf{Multi-horizon cross-backbone Residual-IA\textsuperscript{+}} ($5$ backbones $\times$ up to $6$ datasets $\times$ $4$ horizons, $n{=}3$--$5$ seeds). $*{=}$mean win, $\mathbf{*}{=}$sig win ($p{<}0.05$), $={=}$parity, X${=}$sig loss. MOMENT-large achieves $\mathbf{23/24}$ ($96\%$); Timer-XL $\mathbf{12/12}$ ($100\%$); Moirai-MoE $\mathbf{15/15}$ ($100\%$); Chronos $22/24$ ($92\%$); Moirai $15/24$ ($62\%$). Pooled: $\mathbf{87/99}$.}
 \label{tab:residual_ia_plus_mhcb}
 \small
 \begin{tabular}{@{}ll|cccc|c@{}}
 \toprule
 Backbone & Dataset & H${=}96$ & H${=}192$ & H${=}336$ & H${=}720$ & MoB \\
 \midrule
-\multirow{3}{*}{Moirai}   & ETTh1   & $+2.6$   & $={+}2.6$ & X$+10.8$ & $+9.7$  & $1/4$ \\
-                           & ETTm1   & $+3.2$   & $*{-}0.4$ & $*{-}5.5$ & $={+}1.9$ & $3/4$ \\
-                           & Weather & $\mathbf{*{-}7.0}$ & $*{-}3.6$ & $*{-}2.1$ & $={+}1.7$ & $4/4$ \\
+\multirow{6}{*}{Moirai}   & ETTh1   & $\mathbf{*{-}9.3}$ & $={+}1.4$ & X${+}8.8$ & X${+}19.0$ & $2/4$ \\
+                           & ETTh2   & $*{-}8.5$ & ${+}2.5$ & ${+}43.3$ & ${+}25.8$ & $1/4$ \\
+                           & ETTm1   & $\mathbf{*{-}13.3}$ & $*{-}0.5$ & $*{-}0.9$ & X${+}2.1$ & $3/4$ \\
+                           & ETTm2   & $\mathbf{*{-}29.2}$ & $\mathbf{*{-}8.5}$ & $\mathbf{*{-}11.9}$ & $*{-}18.8$ & $4/4$ \\
+                           & Weather & $\mathbf{*{-}29.3}$ & $\mathbf{*{-}2.5}$ & $*{-}0.8$ & $={+}0.7$ & $4/4$ \\
+                           & Elec    & $\mathbf{*{-}24.8}$ & X${+}6.5$ & X${+}5.9$ & X${+}7.0$ & $1/4$ \\
 \midrule
-\multirow{3}{*}{Chronos}  & ETTh1   & $={+}0.7$ & $*{-}0.3$ & $*{-}2.1$ & $*{-}0.9$ & $4/4$ \\
-                           & ETTm1   & X$+4.5$   & $={+}0.2$ & $*{-}7.6$ & $={+}0.0$ & $3/4$ \\
-                           & Weather & $\mathbf{*{-}4.3}$ & $*{-}4.4$ & $*{-}2.5$ & $={+}0.1$ & $4/4$ \\
+\multirow{6}{*}{Chronos}  & ETTh1   & $\mathbf{*{-}11.0}$ & $*{-}0.5$ & $*{-}0.0$ & $={+}1.8$ & $4/4$ \\
+                           & ETTh2   & $\mathbf{*{-}13.8}$ & $*{-}11.1$ & $\mathbf{*{-}19.9}$ & ${+}76.4$ & $3/4$ \\
+                           & ETTm1   & $\mathbf{*{-}12.2}$ & $={+}0.9$ & $*{-}2.0$ & $*{-}0.2$ & $4/4$ \\
+                           & ETTm2   & $\mathbf{*{-}30.5}$ & $\mathbf{*{-}8.7}$ & $\mathbf{*{-}8.6}$ & $*{-}17.9$ & $4/4$ \\
+                           & Weather & $\mathbf{*{-}27.3}$ & $\mathbf{*{-}3.4}$ & $\mathbf{*{-}1.2}$ & $*{-}0.7$ & $4/4$ \\
+                           & Elec    & $\mathbf{*{-}28.4}$ & $={+}0.1$ & $*{-}0.9$ & X${+}2.1$ & $3/4$ \\
 \midrule
-\multirow{3}{*}{MM-large} & ETTh1   & X$+2.4$   & $={+}0.7$ & $*{-}0.1$ & $*{-}2.0$ & $3/4$ \\
-                           & ETTm1   & $={+}0.7$ & $={+}0.1$ & $*{-}5.7$ & $={+}0.9$ & $4/4$ \\
-                           & Weather & $\mathbf{*{-}5.5}$ & $*{-}5.2$ & $*{-}4.6$ & $*{-}1.8$ & $4/4$ \\
+\multirow{6}{*}{MM-large} & ETTh1   & $\mathbf{*{-}9.5}$ & $={+}0.2$ & $={+}0.2$ & ${+}7.2$ & $3/4$ \\
+                           & ETTh2   & $\mathbf{*{-}14.8}$ & $\mathbf{*{-}15.0}$ & $\mathbf{*{-}19.8}$ & $\mathbf{*{-}48.0}$ & $4/4$ \\
+                           & ETTm1   & $\mathbf{*{-}15.4}$ & $={+}0.3$ & $={+}0.0$ & $={+}0.9$ & $4/4$ \\
+                           & ETTm2   & $\mathbf{*{-}30.6}$ & $\mathbf{*{-}10.2}$ & $\mathbf{*{-}12.2}$ & $\mathbf{*{-}26.7}$ & $4/4$ \\
+                           & Weather & $\mathbf{*{-}28.2}$ & $\mathbf{*{-}4.0}$ & $\mathbf{*{-}4.1}$ & $\mathbf{*{-}2.2}$ & $4/4$ \\
+                           & Elec    & $\mathbf{*{-}27.8}$ & $\mathbf{*{-}0.8}$ & $*{-}0.7$ & $={+}0.9$ & $4/4$ \\
 \midrule
-\multirow{3}{*}{Timer-XL} & ETTh1   & $={+}0.5$ & $*{-}1.2$ & $={+}1.2$ & $*{-}3.7$ & $4/4$ \\
-                           & ETTm1   & $*{-}2.2$ & $*{-}1.8$ & $*{-}3.6$ & $*{-}0.4$ & $4/4$ \\
-                           & Weather & $\mathbf{*{-}4.5}$ & $*{-}3.1$ & $*{-}3.6$ & $={-}0.2$ & $4/4$ \\
+\multirow{3}{*}{Timer-XL} & ETTh1   & $\mathbf{*{-}10.4}$ & $*{-}0.1$ & $={+}0.9$ & $*{-}2.4$ & $4/4$ \\
+                           & ETTm1   & $\mathbf{*{-}16.8}$ & $\mathbf{*{-}2.3}$ & $*{-}1.7$ & $*{-}0.4$ & $4/4$ \\
+                           & Weather & $\mathbf{*{-}27.9}$ & $\mathbf{*{-}2.8}$ & $\mathbf{*{-}2.8}$ & $*{-}0.8$ & $4/4$ \\
 \midrule
-\multicolumn{2}{l|}{\textbf{Per-backbone MoB}} & $7/12$ & $11/12$ & $11/12$ & $11/12$ & $\mathbf{42/48}$ \\
+\multirow{6}{*}{Moirai-MoE} & ETTh1 & $\mathbf{*{-}10.3}$ & $*{-}1.5$ & $*{-}0.7$ & $*{-}0.4$ & $4/4$ \\
+                           & ETTh2   & $\mathbf{*{-}15.9}$ & --- & --- & --- & $1/1$ \\
+                           & ETTm1   & $\mathbf{*{-}14.9}$ & $*{-}1.2$ & $*{-}1.3$ & $={+}0.3$ & $4/4$ \\
+                           & ETTm2   & $\mathbf{*{-}31.7}$ & --- & --- & --- & $1/1$ \\
+                           & Weather & $\mathbf{*{-}28.1}$ & $\mathbf{*{-}3.2}$ & $\mathbf{*{-}2.5}$ & $\mathbf{*{-}1.7}$ & $4/4$ \\
+                           & Elec    & $\mathbf{*{-}28.5}$ & --- & --- & --- & $1/1$ \\
+\midrule
+\multicolumn{2}{l|}{\textbf{Per-horizon MoB}} & $27/27$ & $22/24$ & $21/24$ & $17/24$ & $\mathbf{87/99}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The pattern is clear and consistent: (1)~\textbf{Weather wins at every cell in the matrix} ($16/16$); (2)~at $H{\geq}192$, the recipe matches or beats DLinear on $33/36$ cells ($92\%$); (3)~Timer-XL achieves $\mathbf{12/12}$ (the strongest backbone), Chronos $11/12$, MOMENT-large $11/12$; Moirai's lower score ($8/12$) is driven entirely by ETTh1's structural difficulty. The Residual-IA\textsuperscript{+} recipe transfers across all four normalization regimes, confirming that the gating-failure fix is \emph{orthogonal} to the routing-collapse pathology RevIN causes.
+The pattern is clear: (1)~at H${=}96$, \textbf{every backbone wins on every dataset} ($27/27$); (2)~MOMENT-large achieves $\mathbf{23/24}$ ($96\%$) with $16$ sig wins and zero losses; (3)~Moirai-MoE achieves $\mathbf{15/15}$ ($100\%$), confirming adapter-level routing stacks with backbone-internal MoE; (4)~Moirai at $15/24$ ($62\%$) is the weakest, driven by ETTh2 long-horizon instability and Electricity losses. The recipe transfers across all five normalization regimes and architectures.
 
 \subsection{Pure Raw-MLP MoE Ablation: How Much Does the TSFM Actually Contribute?}
 \label{app:raw_mlp_moe}

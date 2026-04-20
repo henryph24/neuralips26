@@ -1,0 +1,59 @@
+{
+  "dataset": "ETTh2",
+  "horizon": 96,
+  "seed": 43,
+  "K": 5,
+  "top_k": 5,
+  "unfreeze": "frozen",
+  "router_input_mode": "partial",
+  "disable_revin": false,
+  "backbone_trainable_params": 0,
+  "rr_moa": {
+    "mse": 2.7509286403656006,
+    "mae": 1.2542589902877808,
+    "param_count": 426102,
+    "top_k": 5,
+    "router_input_mode": "partial",
+    "expert_pool": "canonical",
+    "routing": {
+      "mean": 0.161,
+      "last": 0.115,
+      "max": 0.16,
+      "attention": 0.218,
+      "conv1d": 0.346
+    },
+    "routing_entropy": 1.5125123262405396,
+    "routing_max_weight": 0.34857040643692017,
+    "routing_per_sample_std": 0.08707267045974731,
+    "routing_cross_sample_var": 0.001924030133523047,
+    "mse_denorm": 77.2096939086914,
+    "mae_denorm": 7.300658702850342
+  },
+  "elapsed": 123.24862861633301,
+  "baselines": {},
+  "winner": "N/A",
+  "delta_pct": 0.0,
+  "alpha": 1.0,
+  "scaler": {
+    "scale_": [
+      10.448841072588486,
+      4.587112566531959,
+      16.858190332598408,
+      3.018605566682919,
+      4.641011217319063,
+      8.460910779279642,
+      11.584718923414682
+    ],
+    "mean_": [
+      41.53683496078959,
+      12.273452896210882,
+      46.60977329964991,
+      10.526153112865156,
+      1.1869920139097505,
+      -2.373217913729173,
+      26.872023494265697
+    ],
+    "n_features_in_": 7,
+    "mean_scale_sq": 92.98030731204359
+  }
+}
