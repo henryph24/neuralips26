@@ -51,7 +51,7 @@
 \maketitle
 
 \begin{abstract}
-Standard mixture-of-experts (MoE) routing on time series foundation models (TSFMs) collapses catastrophically: routing entropy drops to $0.000{\pm}0.000$ under fine-tuning on backbones with Reversible Instance Normalization (RevIN). We diagnose the cause as \textbf{normalization-induced co-adaptation}---RevIN strips per-window mean and scale that the router needs for discriminative gating---and prove it via seven converging controls, including a 720-run rescue sweep where all eleven standard mechanisms fail ($2.7{\times}$ worse than our fix) and opposite entropy trajectories on Timer-XL (no RevIN): entropy rises from $1.49{\to}1.60$ under unfreezing, vs $0.60{\to}0.00$ on MOMENT. A mutual-information decomposition (Proposition~\ref{thm:mi_decomp}) predicts which datasets benefit, validated at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$)---including correctly predicting where raw routing does \emph{not} help (Traffic, $R{=}0.14$). To break the collapse, we propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: a lightweight gate routes on the raw pre-normalization input while a frozen backbone produces embeddings. RR-MoA achieves \textbf{54/54 wins} ($p{<}0.001$, Wilcoxon) on the primary backbone and generalizes across four additional backbones with instance normalization; two negative controls without it confirm normalization-specificity. The \textbf{Frozen Paradox}: frozen RR-MoA outperforms full fine-tuning by $12$--$79\%$. A second diagnostic sweep uncovers gate-initialization pathology; its fix, \textbf{Residual-IA\textsuperscript{+}}, achieves \textbf{parity-or-better with DLinear on $108/123$ cells} across six backbones, six datasets, and four horizons (Timer-XL: $12/12$; Moirai-MoE: $15/15$; $65$ significant wins vs $11$ losses).
+We discover a fundamental incompatibility between instance normalization and mixture-of-experts (MoE) routing on time series foundation models (TSFMs): routing entropy drops to $0.000{\pm}0.000$, yet the failure is not entropy collapse---a normalization dose-response reveals that entropy stays high while MSE degrades $283\%$ (phase transition at full normalization). The cause is \textbf{normalization-induced co-adaptation}: RevIN strips per-window mean and scale that the router needs for discriminative gating. Seven converging controls isolate this, including opposite entropy trajectories on Timer-XL (no RevIN, entropy \emph{rises} $1.49{\to}1.60$) and a 720-run rescue sweep where all eleven standard mechanisms fail ($2.7{\times}$ worse). A mutual-information decomposition (Proposition~\ref{thm:mi_decomp}) predicts which datasets benefit ($\rho{=}{-}0.88$, $p{<}0.002$, $n{=}9$), including where it does \emph{not} help (Traffic, $R{=}0.14$). The diagnosis is precise enough that the fix is unambiguous: \textbf{Raw-Routed Mixture of Adapters (RR-MoA)} routes on raw pre-normalization input while the backbone stays frozen. RR-MoA achieves \textbf{54/54 wins} ($p{<}0.001$) on the primary backbone, generalizes across four additional backbones (two negative controls confirm normalization-specificity), and produces the \textbf{Frozen Paradox}: frozen beats full fine-tuning by $12$--$79\%$. \textbf{Residual-IA\textsuperscript{+}} achieves \textbf{parity-or-better with DLinear on $108/123$ cells} across six backbones (Timer-XL $12/12$; Moirai-MoE $15/15$; $65$ significant wins vs $11$ losses).
 \end{abstract}
 
 \section{Introduction}
@@ -65,7 +65,7 @@ The transformer architecture~\citep{vaswani2017attention} has enabled foundation
 
 \textbf{MoE on TSFMs collapses.} When the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}---routing on hidden states with load balancing---is applied to a TSFM with RevIN, routing entropy drops to $0.000\pm0.000$ in 7/12 unfrozen configs (Table~\ref{tab:adamix}). The cause is \textbf{normalization-induced co-adaptation}: the dominant expert receives larger gradients, reshaping the backbone to serve it better in a feedback loop within ${\sim}50$ steps (Figure~\ref{fig:trajectory}). Even when frozen, hidden-state routing underperforms because RevIN~\citep{kim2021revin} strips the statistics the router needs. RevIN applied to the router degrades MSE by $60$--$88\%$ (Table~\ref{tab:router_input}); Moirai~\citep{woo2024moirai} (no RevIN) does \emph{not} collapse (\S\ref{sec:cross_backbone}), confirming the failure is normalization-specific.
 
-\textbf{Our fix.} We propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: the router reads the raw, pre-normalization input $\mathbf{X}_\text{raw}$ while the backbone is kept strictly frozen. Only the router and five canonical expert heads are trainable. The fix's simplicity is a feature: the diagnosis is precise enough that the intervention is unambiguous---yet without it, practitioners exhaust the full optimization-side toolkit without success (Table~\ref{tab:rescue}).
+\textbf{Our fix.} We propose \textbf{Raw-Routed Mixture of Adapters (RR-MoA)}: the router reads the raw, pre-normalization input $\mathbf{X}_\text{raw}$ while the backbone is kept strictly frozen. Only the router and five canonical expert heads are trainable. The fix's simplicity is a direct consequence of the diagnosis's precision---the intervention is unambiguous once the cause is isolated. Without it, practitioners exhaust the full optimization-side toolkit without success (Table~\ref{tab:rescue}).
 
 Our contributions:
 
@@ -413,28 +413,67 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 
 Bypass alone is insufficient: entropy remains high ($1.50$--$1.57$) but MSE degrades $60$--$88\%$, confirming the router relies on the \emph{content} of the stripped statistics.
 
-\textbf{Normalization dose-response.} Interpolating the router input $\mathbf{x}_\alpha = (1{-}\alpha)\,\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ reveals a \emph{phase transition}, not a binary switch (Table~\ref{tab:dose_response}; 5 seeds $\times$ 6 datasets = 150 runs). MSE degrades mildly for $\alpha \in [0, 0.75]$ (mean $+5.4\%$) but catastrophically at $\alpha{=}1.0$ (mean $+283\%$; $+81\%$ to $+761\%$). Crucially, entropy \emph{does not collapse}---it stays in $[1.43, 1.57]$ across all $\alpha$. The router makes diversified but uninformative decisions under normalization: a more nuanced failure than pure entropy collapse. An orthogonal \textbf{temporal-shuffle ablation} (routing on time-permuted raw input) performs within ${\pm}3\%$ of raw on 4/6 datasets, confirming routing depends on distributional statistics $(M,\Sigma)$ rather than temporal ordering---consistent with Proposition~\ref{thm:mi_decomp} (Appendix~\ref{app:routing_ablations}).
+{\looseness=-1 \textbf{Normalization dose-response.} Interpolating $\mathbf{x}_\alpha = (1{-}\alpha)\,\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ reveals a \emph{phase transition} (Figure~\ref{fig:dose_response}; 150 runs). MSE degrades mildly for $\alpha{\leq}0.75$ ($+5.4\%$) but catastrophically at $\alpha{=}1.0$ ($+283\%$). Entropy \emph{does not collapse}---it stays in $[1.43, 1.57]$ at all $\alpha$: normalization renders routing uninformative without reducing diversity. A \textbf{temporal-shuffle ablation} (time-permuted raw input) performs within ${\pm}3\%$ of raw on $4/6$ datasets, confirming routing depends on $(M,\Sigma)$ statistics, not temporal ordering (Appendix~\ref{app:routing_ablations}).}
 
-\begin{table}[h]
+\begin{figure}[h]
 \centering
-\caption{\textbf{Normalization dose-response} (frozen, dense, 5 seeds). MSE (mean$\pm$std) as a function of normalization dose $\alpha$. Degradation is mild up to $\alpha{=}0.75$ but catastrophic at $\alpha{=}1.0$ (full RevIN). Entropy stays high throughout, indicating diversified but uninformative routing.}
-\label{tab:dose_response}
-\small
-\begin{tabular}{@{}lccccc@{}}
-\toprule
-& $\alpha{=}0$ & $\alpha{=}0.25$ & $\alpha{=}0.50$ & $\alpha{=}0.75$ & $\alpha{=}1.0$ \\
-\midrule
-ETTh1 & $\mathbf{0.461}$ & $0.464$ & $0.466$ & $0.479$ & $1.040$ \\
-ETTh2 & $\mathbf{0.485}$ & $0.527$ & $0.556$ & $0.573$ & $2.711$ \\
-ETTm1 & $\mathbf{0.396}$ & $\mathbf{0.394}$ & $0.397$ & $0.398$ & $1.028$ \\
-Weather & $\mathbf{0.237}$ & $0.240$ & $0.247$ & $0.266$ & $0.507$ \\
-Electricity & $\mathbf{0.261}$ & $0.264$ & $0.268$ & $0.276$ & $0.475$ \\
-ETTm2 & $\mathbf{0.340}$ & $0.364$ & $0.350$ & $\mathbf{0.311}$ & $2.927$ \\
-\midrule
-\small{Mean $\Delta\%$} & --- & $+3.1\%$ & $+4.3\%$ & $+5.4\%$ & $+283\%$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+\begin{minipage}[t]{0.54\columnwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth, height=3.8cm,
+    xlabel={Normalization dose $\alpha$},
+    ylabel={Test MSE (H=96)},
+    xlabel style={font=\scriptsize}, ylabel style={font=\scriptsize},
+    x tick label style={font=\scriptsize}, y tick label style={font=\scriptsize},
+    xmin=-0.05, xmax=1.05, ymin=0, ymax=3.2,
+    xtick={0, 0.25, 0.5, 0.75, 1.0},
+    grid=major, grid style={gray!15},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\tiny, draw=none, fill=white, fill opacity=0.8, row sep=-2pt},
+]
+\addplot[blue!80, thick, mark=square*, mark size=1.8pt] coordinates {(0,0.461) (0.25,0.464) (0.5,0.466) (0.75,0.479) (1.0,1.040)};
+\addplot[red!70, thick, mark=triangle*, mark size=2pt] coordinates {(0,0.485) (0.25,0.527) (0.5,0.556) (0.75,0.573) (1.0,2.711)};
+\addplot[green!60!black, thick, mark=o, mark size=1.5pt] coordinates {(0,0.396) (0.25,0.394) (0.5,0.397) (0.75,0.398) (1.0,1.028)};
+\addplot[orange!80, thick, mark=diamond*, mark size=2pt] coordinates {(0,0.237) (0.25,0.240) (0.5,0.247) (0.75,0.266) (1.0,0.507)};
+\addplot[purple!70, thick, mark=pentagon*, mark size=1.8pt] coordinates {(0,0.261) (0.25,0.264) (0.5,0.268) (0.75,0.276) (1.0,0.475)};
+\addplot[cyan!60!black, thick, mark=star, mark size=2pt] coordinates {(0,0.340) (0.25,0.364) (0.5,0.350) (0.75,0.311) (1.0,2.927)};
+\legend{ETTh1, ETTh2, ETTm1, Weather, Electricity, ETTm2}
+% Phase transition annotation
+\addplot[black!40, dashed, thick, forget plot] coordinates {(0.875,0) (0.875,3.1)};
+
+\end{axis}
+\end{tikzpicture}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.44\columnwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth, height=3.8cm,
+    xlabel={Normalization dose $\alpha$},
+    ylabel={Routing entropy (nats)},
+    xlabel style={font=\scriptsize}, ylabel style={font=\scriptsize},
+    x tick label style={font=\scriptsize}, y tick label style={font=\scriptsize},
+    xmin=-0.05, xmax=1.05, ymin=1.3, ymax=1.65,
+    xtick={0, 0.25, 0.5, 0.75, 1.0},
+    grid=major, grid style={gray!15},
+    legend style={at={(0.98,0.02)}, anchor=south east, font=\tiny, draw=none, fill=white, fill opacity=0.8},
+]
+\addplot[blue!80, thick, mark=square*, mark size=1.8pt] coordinates {(0,1.544) (0.25,1.545) (0.5,1.545) (0.75,1.551) (1.0,1.554)};
+\addplot[red!70, thick, mark=triangle*, mark size=2pt] coordinates {(0,1.425) (0.25,1.427) (0.5,1.433) (0.75,1.471) (1.0,1.535)};
+\addplot[green!60!black, thick, mark=o, mark size=1.5pt] coordinates {(0,1.554) (0.25,1.559) (0.5,1.564) (0.75,1.565) (1.0,1.572)};
+\addplot[orange!80, thick, mark=diamond*, mark size=2pt] coordinates {(0,1.529) (0.25,1.533) (0.5,1.541) (0.75,1.550) (1.0,1.532)};
+\addplot[purple!70, thick, mark=pentagon*, mark size=1.8pt] coordinates {(0,1.571) (0.25,1.569) (0.5,1.566) (0.75,1.565) (1.0,1.565)};
+\addplot[cyan!60!black, thick, mark=star, mark size=2pt] coordinates {(0,1.480) (0.25,1.467) (0.5,1.465) (0.75,1.475) (1.0,1.545)};
+\addplot[black, thin, dotted] coordinates {(-0.05,1.609) (1.05,1.609)};
+\node[font=\tiny, anchor=south west] at (axis cs:0.0,1.609) {$\log 5$};
+\legend{, , , , , }
+\end{axis}
+\end{tikzpicture}
+\end{minipage}
+\caption{\textbf{Normalization dose-response} (frozen, 5 seeds $\times$ 6 datasets). \textbf{Left:} MSE vs $\alpha$ ($0{=}$raw, $1{=}$RevIN). Phase transition at $\alpha{=}1.0$ ($+283\%$), mild for $\alpha{\leq}0.75$ ($+5.4\%$). \textbf{Right:} entropy stays high at all $\alpha$---normalization renders routing uninformative, not collapsed.}
+\label{fig:dose_response}
+\end{figure}
 
 \textbf{Why RevIN destroys routing: formal analysis.} Each input window $\mathbf{x}_i$ decomposes into mean $M_i = \mu(\mathbf{x}_i)$, scale $\Sigma_i = \sigma(\mathbf{x}_i)$, and shape $\mathbf{S}_i = (\mathbf{x}_i - M_i)/\Sigma_i$. RevIN maps $\mathbf{x}_i \mapsto \mathbf{S}_i$, discarding $(M_i, \Sigma_i)$.
 
@@ -1371,21 +1410,26 @@ Dense $k{=}K{=}5$ & 5/5 & 100\% & $0.550 \pm 0.029$ & --- \\
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Imputation task} (20\% masked reconstruction, test MSE mean$\pm$std over 5 seeds). RR-MoA wins 7/8 datasets; the sole loss is Solar where dense\_mlp dominates.}
+\caption{\textbf{Imputation task} (20\% masked reconstruction, MOMENT-small frozen, test MSE mean$\pm$std over 5 seeds). RR-MoA wins \textbf{7/8 datasets} ($-21\%$ to $-79\%$); the sole loss is Solar where dense\_mlp dominates.}
 \label{tab:imputation}
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
 Dataset & Best fixed adapter & \textbf{RR-MoA} & $\Delta$\% \\
 \midrule
-ETTh1     & $0.259 \pm 0.018$ & $\mathbf{0.144 \pm 0.006}$ & $-44\%$ \\
-ETTm1     & $0.194 \pm 0.017$ & $\mathbf{0.100 \pm 0.008}$ & $-49\%$ \\
-Weather   & $0.207 \pm 0.008$ & $\mathbf{0.067 \pm 0.005}$ & $-67\%$ \\
-Exchange  & $1.176 \pm 0.095$ & $\mathbf{0.266 \pm 0.259}$ & $-77\%$ \\
-Solar     & $\mathbf{0.025 \pm 0.006}$ & $0.038 \pm 0.009$ & $+55\%$ \\
+ETTh1       & $0.259 \pm 0.018$ & $\mathbf{0.144 \pm 0.006}$ & $-44\%$ \\
+ETTh2       & $0.451 \pm 0.014$ & $\mathbf{0.161 \pm 0.028}$ & $-64\%$ \\
+ETTm1       & $0.194 \pm 0.017$ & $\mathbf{0.100 \pm 0.008}$ & $-49\%$ \\
+ETTm2       & $0.498 \pm 0.020$ & $\mathbf{0.104 \pm 0.006}$ & $\mathbf{-79\%}$ \\
+Weather     & $0.207 \pm 0.008$ & $\mathbf{0.067 \pm 0.005}$ & $-67\%$ \\
+Electricity & $0.166 \pm 0.008$ & $\mathbf{0.131 \pm 0.007}$ & $-21\%$ \\
+Exchange    & $1.176 \pm 0.095$ & $\mathbf{0.266 \pm 0.259}$ & $-77\%$ \\
+Solar       & $\mathbf{0.025 \pm 0.006}$ & $0.038 \pm 0.009$ & $+55\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\textbf{Collapse is task-general.} To confirm that hidden-state routing collapse is not forecasting-specific, we run an AdaMix-style hidden-state router (mean-pooled $\mathbf{H} \to$ softmax gate) on the imputation task. Across 6 datasets $\times$ 3 seeds, \textbf{16/18 runs collapse} (entropy $< 0.3$; mean $0.143$ vs max $\log 5 = 1.61$), with the dominant expert (dense\_mlp) receiving $83$--$99.9\%$ of routing weight. AdaMix imputation MSE is $40$--$79\%$ worse than RR-MoA. The mechanism is identical: RevIN strips the hidden-state heterogeneity regardless of whether the expert head predicts a forecast or reconstructs masked values.
 
 \section{DLinear Calibration}
 \label{app:dlinear}
