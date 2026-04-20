@@ -1,0 +1,95 @@
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+plan the strategic improvements as identified as above. Our GPU is ready at our RACE VM (recall from memory), keep the GPU busy
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+let invest deeper in experiments that likely strneghthen our papers more significantly, keep the GPUs busy (our RACE VM has GPU, recall from memory)
+
+---
+
+<task-notification>
+<task-id>brfgz3jqu</task-id>
+<tool-use-id>toolu_013UH1LhBfuPyF4yrPAbfhai</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/90c2cc67-cdbd-4b56-a4e4-7100d5fdab59/tasks/brfgz3jqu.output</output-file>
+<status>failed</status>
+<summary>Background command "Run vision MoE for missing seed 44" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+Let's analyze deeply if the results significantly strengthen our paper.
+
+---
+
+ETA ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+<task-notification>
+<task-id>bklculebd</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/90c2cc67-cdbd-4b56-a4e4-7100d5fdab59/tasks/bklculebd.output</output-file>
+<status>completed</status>
+<summary>Background command "Fix Moirai contamination: rename + re-run" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+let incorporate relevant ones
+
+---
+
+let's do it
+
+---
+
+<task-notification>
+<task-id>bzk9wbrzc</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/90c2cc67-cdbd-4b56-a4e4-7100d5fdab59/tasks/bzk9wbrzc.output</output-file>
+<status>completed</status>
+<summary>Background command "Fix Moirai H&gt;=192 contamination and re-run" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+did the paper update the above results ?
+
+---
+
+recompile
+
+---
+
+number of page for main content, is it strictly 9
