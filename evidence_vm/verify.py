@@ -413,6 +413,54 @@ def main():
                     f"tab:dose_response {key}: paper={expected:.3f}, json={got_mean:.4f}"
                 )
 
+    # --- Learnable alpha: all 30 runs have final_alpha < 0.5 ---
+    alpha_dir = os.path.join(EVID, "learnable_alpha")
+    if os.path.isdir(alpha_dir):
+        alpha_files = sorted(glob.glob(f"{alpha_dir}/*.json"))
+        alpha_count = 0
+        alpha_violations = []
+        for f in alpha_files:
+            d = json.load(open(f))
+            fa = d.get("final_alpha", 1.0)
+            alpha_count += 1
+            if fa >= 0.5:
+                alpha_violations.append(
+                    f"{os.path.basename(f)}: final_alpha={fa:.4f} >= 0.5"
+                )
+        checks += 1
+        if alpha_count < 30:
+            errors.append(f"learnable_alpha: only {alpha_count}/30 files found")
+        elif alpha_violations:
+            errors.append(
+                f"learnable_alpha: {len(alpha_violations)} runs have alpha >= 0.5: "
+                + "; ".join(alpha_violations[:3])
+            )
+        # else: PASS
+
+    # --- Imputation: 7/8 wins (RR-MoA < best_head on 7 of 8 datasets) ---
+    imp_dir = os.path.join(EVID, "imputation") if os.path.isdir(
+        os.path.join(EVID, "imputation")
+    ) else os.path.join(os.path.dirname(EVID), "results", "imputation")
+    if os.path.isdir(imp_dir):
+        imp_groups = defaultdict(lambda: {"rrmoa": [], "best_head": []})
+        for f in sorted(glob.glob(f"{imp_dir}/*.json")):
+            d = json.load(open(f))
+            ds = d["dataset"]
+            imp_groups[ds]["rrmoa"].append(d["rrmoa_mse"])
+            imp_groups[ds]["best_head"].append(d["best_head_mse"])
+        imp_wins = 0
+        imp_total = 0
+        for ds in imp_groups:
+            if len(imp_groups[ds]["rrmoa"]) >= 3:
+                imp_total += 1
+                rr_mean = sum(imp_groups[ds]["rrmoa"]) / len(imp_groups[ds]["rrmoa"])
+                bh_mean = sum(imp_groups[ds]["best_head"]) / len(imp_groups[ds]["best_head"])
+                if rr_mean < bh_mean:
+                    imp_wins += 1
+        checks += 1
+        if imp_total >= 8 and imp_wins < 7:
+            errors.append(f"imputation: only {imp_wins}/{imp_total} wins, paper claims 7/8")
+
     # --- Report ---
     print(f"Ran {checks} checks against {len(glob.glob(f'{EVID}/rr_moa/*.json'))} "
           f"RR-MoA + {len(glob.glob(f'{EVID}/adamix/*.json'))} AdaMix JSON files.")
@@ -423,8 +471,9 @@ def main():
         sys.exit(1)
     else:
         print(f"PASS: all {checks} numeric claims in main.tex Tables 3-5, "
-              f"tab:baselines LoRA row, tab:horizon DLinear gaps, and "
-              f"tab:backbone cross-backbone percentages match within tolerance "
+              f"tab:baselines LoRA row, tab:horizon DLinear gaps, "
+              f"tab:backbone cross-backbone percentages, learnable alpha, "
+              f"and imputation wins match within tolerance "
               f"(MSE {TOL}, entropy {ENT_TOL}, pct {PCT_TOL}pp).")
         print(f"RR-MoA wins: {wins}/{total}")
         sys.exit(0)
