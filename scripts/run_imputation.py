@@ -137,6 +137,45 @@ class ImputationRRMoA(nn.Module):
         return self.K * (f_i * F.softmax(logits, dim=-1).mean(dim=0)).sum()
 
 
+class ImputationAdaMix(nn.Module):
+    """AdaMix for imputation: routes on HIDDEN STATES (mean-pooled).
+    This is the collapse-control: demonstrates that hidden-state routing
+    collapses on imputation too, not just forecasting."""
+    def __init__(self, d_model, seq_len=512, K=5, hidden=128):
+        super().__init__()
+        self.K = K
+        self.adapters = nn.ModuleList([
+            IMPUTATION_HEADS[i % len(IMPUTATION_HEADS)](d_model, seq_len=seq_len, hidden=hidden)
+            for i in range(K)
+        ])
+        # Hidden-state router (same as run_adamix.py)
+        self.router = nn.Sequential(
+            nn.Linear(d_model, 32),
+            nn.GELU(),
+            nn.Linear(32, K),
+        )
+        self.load_balance_coeff = 0.01
+
+    def forward(self, hidden_states, raw_input=None):
+        h_summary = hidden_states.mean(dim=1)  # (B, d_model)
+        logits = self.router(h_summary)         # (B, K)
+        weights = F.softmax(logits, dim=-1)     # (B, K)
+        outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)
+        return (weights.unsqueeze(-1) * outputs).sum(dim=1)
+
+    def get_routing_stats(self, hidden_states):
+        with torch.no_grad():
+            h_summary = hidden_states.mean(dim=1)
+            return F.softmax(self.router(h_summary), dim=-1)
+
+    def load_balance_loss(self, hidden_states):
+        h_summary = hidden_states.mean(dim=1)
+        logits = self.router(h_summary)
+        weights = F.softmax(logits, dim=-1)
+        f_i = weights.mean(dim=0)
+        return self.K * (f_i * F.softmax(logits, dim=-1).mean(dim=0)).sum()
+
+
 def create_imputation_data(X, mask_ratio=0.2, seed=42):
     """Create imputation dataset: mask random timesteps."""
     rng = np.random.default_rng(seed)
@@ -305,8 +344,44 @@ def main():
     routing = rrmoa.get_routing_stats(torch.from_numpy(X_test_masked[:32]).float().to(args.device))
     mean_routing = routing.mean(dim=0).cpu().tolist()
 
-    print("  RR-MoA:       MSE=%.6f  routing=%s" % (
-        rrmoa_mse, {IMPUTATION_NAMES[i]: round(w, 3) for i, w in enumerate(mean_routing)}))
+    rrmoa_entropy = -(routing * torch.log(routing + 1e-10)).sum(dim=-1).mean().item()
+    print("  RR-MoA:       MSE=%.6f  entropy=%.3f  routing=%s" % (
+        rrmoa_mse, rrmoa_entropy,
+        {IMPUTATION_NAMES[i]: round(w, 3) for i, w in enumerate(mean_routing)}))
+
+    # === Test AdaMix (hidden-state routing) for imputation ===
+    print("\n--- AdaMix Imputation (hidden-state router, collapse control) ---")
+    model_fresh2 = load_backbone(args.backbone, args.device)
+    _disable_gradient_checkpointing(model_fresh2)
+    blocks_fresh2 = _get_encoder_blocks(model_fresh2)
+    for p in model_fresh2.parameters():
+        p.requires_grad = False
+    for i in range(max(0, len(blocks_fresh2)-4), len(blocks_fresh2)):
+        for p in blocks_fresh2[i].parameters():
+            p.requires_grad = True
+
+    adamix_imp = ImputationAdaMix(hdim, seq_len=512, K=5).to(args.device)
+    adamix_imp = train_imputation(model_fresh2, blocks_fresh2, adamix_imp,
+                                  X_train_masked, X_train_target, mask_train,
+                                  args.device, n_epochs=15, backbone_type=bb_type)
+    adamix_mse = evaluate_imputation(model_fresh2, blocks_fresh2, adamix_imp,
+                                     X_test_masked, X_test_target, mask_test,
+                                     args.device, backbone_type=bb_type)
+    # Get AdaMix routing stats via hidden states
+    with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=args.device=="cuda"):
+        test_batch = torch.from_numpy(X_test_masked[:32]).float().to(args.device)
+        test_enc = test_batch.unsqueeze(1)
+        test_mask = torch.ones(test_enc.shape[0], test_enc.shape[2], device=args.device)
+        test_feat = _extract_features_batch(model_fresh2, blocks_fresh2, test_enc, test_mask, backbone_type=bb_type)
+        adamix_routing = adamix_imp.get_routing_stats(test_feat)
+    adamix_mean_routing = adamix_routing.mean(dim=0).cpu().tolist()
+    adamix_entropy = -(adamix_routing * torch.log(adamix_routing + 1e-10)).sum(dim=-1).mean().item()
+
+    print("  AdaMix:       MSE=%.6f  entropy=%.3f  routing=%s" % (
+        adamix_mse, adamix_entropy,
+        {IMPUTATION_NAMES[i]: round(w, 3) for i, w in enumerate(adamix_mean_routing)}))
+    print("  Collapse?     %s (entropy %.3f vs max %.3f)" % (
+        "YES" if adamix_entropy < 0.3 else "NO", adamix_entropy, np.log(5)))
 
     # === Summary ===
     best_head = min(head_results, key=head_results.get)
@@ -335,7 +410,11 @@ def main():
         "dataset": args.dataset, "mask_ratio": args.mask_ratio, "seed": args.seed,
         "head_results": head_results,
         "rrmoa_mse": rrmoa_mse,
+        "rrmoa_entropy": rrmoa_entropy,
         "rrmoa_routing": {IMPUTATION_NAMES[i]: round(w, 3) for i, w in enumerate(mean_routing)},
+        "adamix_mse": adamix_mse,
+        "adamix_entropy": adamix_entropy,
+        "adamix_routing": {IMPUTATION_NAMES[i]: round(w, 3) for i, w in enumerate(adamix_mean_routing)},
         "best_head": best_head,
         "best_head_mse": best_head_mse,
     }
