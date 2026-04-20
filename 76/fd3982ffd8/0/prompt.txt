@@ -3,3 +3,7 @@ reasoning through our paper, how likely is it an accepted one into neurips 2026
 ---
 
 plan these out: " A tighter theoretical bound would neutralize the R4 risk — but this is hard to do in 2 week". We have RACE VM with GPUs ready (recall from memory)
+
+---
+
+/commit-push
