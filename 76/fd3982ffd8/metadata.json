@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "76fd3982ffd8",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "evidence_vm/verify.py",
+    "main.tex",
+    "scripts/compute_exact_mi_loss.py",
+    "scripts/plot_mi_tightness.py",
+    "scripts/synthetic_mi_tightness.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/76/fd3982ffd8/0/metadata.json",
+      "transcript": "/76/fd3982ffd8/0/full.jsonl",
+      "content_hash": "/76/fd3982ffd8/0/content_hash.txt",
+      "prompt": "/76/fd3982ffd8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 182,
+    "cache_creation_tokens": 162340,
+    "cache_read_tokens": 17823203,
+    "output_tokens": 61664,
+    "api_call_count": 138
+  }
+}
