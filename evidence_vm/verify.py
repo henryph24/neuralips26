@@ -378,6 +378,41 @@ def main():
                     f"main.tex has {got}"
                 )
 
+    # --- Table 7: Dose-response (tab:dose_response) ---
+    TAB_DOSE = {
+        # (dataset, alpha) -> claimed MSE mean (rounded to 3dp in table)
+        ("ETTh1", 0.0): 0.461, ("ETTh1", 0.25): 0.464, ("ETTh1", 0.50): 0.466,
+        ("ETTh1", 0.75): 0.479, ("ETTh1", 1.0): 1.040,
+        ("ETTh2", 0.0): 0.485, ("ETTh2", 0.25): 0.527, ("ETTh2", 0.50): 0.556,
+        ("ETTh2", 0.75): 0.573, ("ETTh2", 1.0): 2.711,
+        ("ETTm1", 0.0): 0.396, ("ETTm1", 0.25): 0.394, ("ETTm1", 0.50): 0.397,
+        ("ETTm1", 0.75): 0.398, ("ETTm1", 1.0): 1.028,
+        ("Weather", 0.0): 0.237, ("Weather", 0.25): 0.240, ("Weather", 0.50): 0.247,
+        ("Weather", 0.75): 0.266, ("Weather", 1.0): 0.507,
+        ("Electricity", 0.0): 0.261, ("Electricity", 0.25): 0.264, ("Electricity", 0.50): 0.268,
+        ("Electricity", 0.75): 0.276, ("Electricity", 1.0): 0.475,
+        ("ETTm2", 0.0): 0.340, ("ETTm2", 0.25): 0.364, ("ETTm2", 0.50): 0.350,
+        ("ETTm2", 0.75): 0.311, ("ETTm2", 1.0): 2.927,
+    }
+    dose_dir = os.path.join(EVID, "dose_response")
+    if os.path.isdir(dose_dir):
+        dose_groups = defaultdict(list)
+        for f in sorted(glob.glob(f"{dose_dir}/*partial*.json")):
+            d = json.load(open(f))
+            alpha = d.get("alpha", 0.0)
+            ds = d["dataset"]
+            dose_groups[(ds, alpha)].append(d["rr_moa"]["mse"])
+        for key, expected in TAB_DOSE.items():
+            checks += 1
+            if key not in dose_groups:
+                errors.append(f"tab:dose_response {key}: NO DATA")
+                continue
+            got_mean = sum(dose_groups[key]) / len(dose_groups[key])
+            if not close(got_mean, expected, TOL):
+                errors.append(
+                    f"tab:dose_response {key}: paper={expected:.3f}, json={got_mean:.4f}"
+                )
+
     # --- Report ---
     print(f"Ran {checks} checks against {len(glob.glob(f'{EVID}/rr_moa/*.json'))} "
           f"RR-MoA + {len(glob.glob(f'{EVID}/adamix/*.json'))} AdaMix JSON files.")

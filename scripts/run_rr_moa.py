@@ -113,7 +113,7 @@ class RawRoutedMoA(nn.Module):
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64, top_k=None,
                  router_input_mode="raw", expert_pool="canonical", entropy_reg_coef=0.0,
                  router_temp=1.0, router_arch="conv", expert_dropout=0.0,
-                 rdgf=False, saib_coef=0.0):
+                 rdgf=False, saib_coef=0.0, alpha=0.0):
         super().__init__()
         self.K = K
         self.top_k = top_k if top_k is not None else K  # default: dense
@@ -122,8 +122,9 @@ class RawRoutedMoA(nn.Module):
         self.expert_dropout = expert_dropout
         self.rdgf = rdgf
         self.output_dim = output_dim
-        assert router_input_mode in ("raw", "revin", "uniform"), router_input_mode
+        assert router_input_mode in ("raw", "revin", "uniform", "partial", "shuffled"), router_input_mode
         self.router_input_mode = router_input_mode
+        self.alpha = alpha
         self.entropy_reg_coef = entropy_reg_coef
         assert expert_pool in EXPERT_POOLS, expert_pool
         self.expert_pool = expert_pool
@@ -172,6 +173,10 @@ class RawRoutedMoA(nn.Module):
             )
             self.router_head = nn.Linear(64, K)  # 16*4 = 64
 
+        # Shuffled routing: fixed temporal permutation (seeded at init)
+        if router_input_mode == "shuffled":
+            self.register_buffer('_shuffle_perm', torch.randperm(input_len))
+
         self.load_balance_coeff = 0.01
 
         # SAIB: Statistic-Aware Information Bottleneck auxiliary loss
@@ -190,7 +195,20 @@ class RawRoutedMoA(nn.Module):
             # decision alone, not to capacity differences.
             B = raw_input.shape[0]
             return torch.zeros(B, self.K, device=raw_input.device, dtype=raw_input.dtype)
-        if self.router_input_mode == "revin":
+        if self.router_input_mode == "partial":
+            # Dose-response ablation: interpolate between raw and RevIN.
+            # alpha=0 → pure raw (RR-MoA default), alpha=1 → pure RevIN.
+            # Tests whether MI destruction is continuous and monotonic.
+            mu = raw_input.mean(dim=-1, keepdim=True)
+            sigma = raw_input.std(dim=-1, keepdim=True) + 1e-5
+            revin = (raw_input - mu) / sigma
+            x = (1 - self.alpha) * raw_input + self.alpha * revin
+        elif self.router_input_mode == "shuffled":
+            # Temporal shuffle ablation: destroys temporal ordering but
+            # preserves distributional statistics (mean, variance, scale).
+            # Tests whether routing depends on temporal patterns vs stats.
+            x = raw_input[:, self._shuffle_perm]
+        elif self.router_input_mode == "revin":
             # Per-window RevIN-style normalization: zero mean, unit variance
             # along the temporal dimension. This replicates what MOMENT's
             # internal RevIN would do if the router saw post-normalization
@@ -337,7 +355,7 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                  router_input_mode="raw", test_ch=None, scaler=None,
                  expert_pool="canonical", entropy_reg_coef=0.0, router_temp=1.0,
                  router_arch="conv", expert_dropout=0.0, rdgf=False,
-                 saib_coef=0.0, freeze_router=False):
+                 saib_coef=0.0, freeze_router=False, alpha=0.0):
     """Train RR-MoA: raw-routed mixture of adapters."""
     hdim = _get_hidden_dim(model)
     adapter = RawRoutedMoA(
@@ -345,7 +363,7 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
         router_input_mode=router_input_mode, expert_pool=expert_pool,
         entropy_reg_coef=entropy_reg_coef, router_temp=router_temp,
         router_arch=router_arch, expert_dropout=expert_dropout,
-        rdgf=rdgf, saib_coef=saib_coef,
+        rdgf=rdgf, saib_coef=saib_coef, alpha=alpha,
     ).to(device)
 
     # V1 ablation: freeze router at random init
@@ -484,11 +502,16 @@ def main():
     parser.add_argument("--top-k", type=int, default=None,
                         help="Top-K sparse routing (default: dense, all K experts)")
     parser.add_argument("--router-input-mode", default="raw",
-                        choices=["raw", "revin", "uniform"],
+                        choices=["raw", "revin", "uniform", "partial", "shuffled"],
                         help="Signal the gate reads: raw (channel-standardized input, default); "
-                             "revin (per-window zero-mean unit-variance, rawness-vs-bypass "
-                             "ablation); uniform (no routing, fixed 1/K weights, "
-                             "ensemble-vs-specialization control).")
+                             "revin (per-window zero-mean unit-variance); "
+                             "uniform (no routing, fixed 1/K weights); "
+                             "partial (alpha-interpolated raw/revin, dose-response ablation); "
+                             "shuffled (temporally permuted raw, mechanism ablation).")
+    parser.add_argument("--alpha", type=float, default=0.0,
+                        help="Normalization dose for --router-input-mode partial. "
+                             "0.0 = pure raw, 1.0 = pure RevIN. Intermediate values "
+                             "interpolate linearly.")
     parser.add_argument("--unfreeze", default="last4", choices=["frozen", "last2", "last4", "all"],
                         help="Backbone unfreezing strategy")
     parser.add_argument("--expert-pool", default="canonical",
@@ -571,7 +594,8 @@ def main():
                           expert_dropout=args.expert_dropout,
                           rdgf=args.rdgf,
                           saib_coef=args.saib_coef,
-                          freeze_router=args.freeze_router)
+                          freeze_router=args.freeze_router,
+                          alpha=args.alpha)
     elapsed = time.time() - start
 
     print("RR-MoA: MSE=%.4f  params=%d  time=%.0fs" % (result["mse"], result["param_count"], elapsed))
@@ -641,6 +665,7 @@ def main():
         "rr_moa": result, "elapsed": elapsed,
         "baselines": {k: v for k, v in baseline_results.items()},
         "winner": winner, "delta_pct": delta,
+        "alpha": args.alpha,
         "scaler": scaler_info,
     }
     # Append router mode / pool / backbone suffixes only for non-default
@@ -667,6 +692,8 @@ def main():
         suffixes.append("frozenrouter")
     if args.saib_coef > 0:
         suffixes.append("saib-%.3g" % args.saib_coef)
+    if args.router_input_mode == "partial":
+        suffixes.append("alpha-%.2f" % args.alpha)
     # Backbone suffix for non-default backbones
     bb_lower = args.backbone.lower()
     if "moment" in bb_lower and "large" in bb_lower:
