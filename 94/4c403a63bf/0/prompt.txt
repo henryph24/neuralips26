@@ -1,0 +1,97 @@
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+plan these out: " A tighter theoretical bound would neutralize the R4 risk — but this is hard to do in 2 week". We have RACE VM with GPUs ready (recall from memory)
+
+---
+
+/commit-push
+
+---
+
+plan one out, we have ready race vm with gpu (recall memory)
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+how relevant is our results having so far
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+since we are running short of pages, incorporate findings that strengthen the paper significaly only
+
+---
+
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+let invest deeper in experiments that likely strneghthen our papers more significantly by tackling the weaknesses heads-on, keep the GPUs busy (our RACE VM has GPU, recall from memory)
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+ETA please for all expriemnts to clear
+
+---
+
+ETA please for all expriemnts to clear
+
+---
+
+ETA please for all expriemnts to clear
+
+---
+
+how relevant is our results having so far
