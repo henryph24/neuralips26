@@ -90,7 +90,7 @@ Our contributions are threefold:
 \section{Method}
 \label{sec:method}
 
-\begin{figure}[t]
+\begin{figure}[t!]
 \centering
 \resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[
@@ -170,10 +170,10 @@ Our contributions are threefold:
 \draw[dataarr]  (backbone.south) -- (hidden.north);
 \draw[routearr] (router.south) -- (weights.north);
 
-% Hidden states → expert pool: gentle bend inward
-\draw[dataarr] (hidden.south) -- ++(0,-0.25) -| ([xshift=-1.2cm]pool.north);
-% Routing weights → expert pool: gentle bend inward
-\draw[routearr] (weights.south) -- ++(0,-0.25) -| ([xshift=1.2cm]pool.north);
+% Hidden states → expert pool (straight down)
+\draw[dataarr] (hidden.south) -- ([xshift=-2.7cm]pool.north);
+% Routing weights → expert pool (straight down)
+\draw[routearr] (weights.south) -- ([xshift=2.7cm]pool.north);
 
 % Expert pool → output
 \draw[outarr] (pool.south) -- (output.north);
@@ -182,7 +182,9 @@ Our contributions are threefold:
 }% end resizebox
 \caption{\textbf{RR-MoA architecture.} \textit{Path~A}: the frozen TSFM produces hidden states $\mathbf{H}$ (no gradients through $\theta$). \textit{Path~B}: a lightweight gate reads the raw pre-normalization signal and selects $k$ of $K$ experts via $\mathrm{TopK}$. Standard MoE routing on $\mathbf{H}$ collapses (entropy $0.000{\pm}0.000$; Table~\ref{tab:adamix}); RR-MoA achieves \textbf{54/54 wins} (Table~\ref{tab:rrmoa}).}
 \label{fig:framework}
+\vspace{-0.5em}
 \end{figure}
+\vspace{-1em}
 
 \subsection{Problem Formulation and Expert Pool}
 
@@ -1304,6 +1306,38 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 
 \textbf{Extreme collapse on Exchange and Solar.} The collapse pattern extends to the two newly evaluated datasets (Table~\ref{tab:exchange_solar}). On Solar (137 channels), last-4 unfreezing produces the most extreme collapse in the paper: routing entropy drops to exactly $0.000$ and MSE degrades by $+215$--$243\%$ relative to the best fixed baseline---far worse than the $+0$--$17\%$ degradation observed on the original 6 datasets. On Exchange (8 channels), last-4 AdaMix collapses to $0.000$ entropy but MSE actually improves ($-21\%$), acting as a reasonable single-expert adapter; however, RR-MoA still outperforms it by $2.7\times$ ($1.44$ vs $3.85$).
 
+\subsection{Rescue-Baseline Sweep Details}
+\label{app:rescue_details}
+
+Table~\ref{tab:rescue} reports the full rescue-baseline sweep: 11 standard MoE rescue mechanisms evaluated on MOMENT-small $+$ RevIN (AdaMix, 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $=$ 60 cells per row, 720 runs total).
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Rescue-baseline sweep} (MOMENT-small $+$ RevIN, 720 runs). ``Collapsed'' = fraction of cells with entropy $<0.3$ (max $\log K{=}1.609$). No rescue mechanism recovers routing to within $2.7\times$ of RR-MoA.}
+\label{tab:rescue}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Rescue mechanism & MSE (pooled) & Routing $H$ & Collapsed & $n/60$ \\
+\midrule
+Baseline (Switch LB $\alpha{=}0.01$)  & $1.654$ & $0.21$ & \textbf{46/60 (77\%)} & 60/60 \\
++ Entropy reg $\lambda{=}0.01$                       & $1.666$ ($+0.7\%$)  & $0.26$ & \textbf{44/60 (73\%)} & 60/60 \\
++ Entropy reg $\lambda{=}0.1$                        & $1.599$ ($-3.3\%$)  & $1.03$ & 19/60 (32\%) & 60/60 \\
++ Entropy reg $\lambda{=}1.0$                        & $1.546$ ($-6.5\%$) & $1.41$ & 7/60 (12\%) & 60/60 \\
++ Z-loss $c_z{=}0.001$ (ST-MoE)                      & $1.561$ ($-5.6\%$)  & $1.01$ & 12/60 (20\%) & 60/60 \\
++ Z-loss $c_z{=}0.01$                                & $\mathbf{1.473}$ ($\mathbf{-10.9\%}$) & $1.24$ & 3/60 (5\%) & 60/60 \\
++ Z-loss $c_z{=}0.1$                                 & $1.503$ ($-9.1\%$) & $1.26$ & 2/60 (3\%) & 60/60 \\
+Load-balance $\alpha{=}0.1$                          & $1.590$ ($-3.9\%$) & $0.89$ & 20/60 (33\%) & 60/60 \\
+Load-balance $\alpha{=}1.0$                          & $1.528$ ($-7.6\%$) & $1.28$ & 10/60 (17\%) & 60/60 \\
+Load-balance $\alpha{=}10.0$                         & $2.773$ ($+67.7\%$) & $1.10$ & 14/60 (23\%) & 60/60 \\
+ReMoE ReLU $+$ $L_1$                  & $1.586$ ($-4.1\%$) & $0.58$ & 16/60 (27\%) & 60/60 \\
+Expert-choice ($c{=}2$)                      & $1.590$ ($-3.9\%$) & $0.17$ & \textbf{44/60 (73\%)} & 60/60 \\
+\midrule
+\textbf{RR-MoA (ours)} & $\mathbf{0.540}$ (pooled) & $\mathbf{1.0\text{--}1.57}$ & \textbf{0/54 (0\%)} & 54/54 wins \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{AdaMix Implementation Details}
 \label{app:adamix_details}
 
@@ -1794,6 +1828,7 @@ The best extended schedule (50ep cosine + layer-wise LR decay) improves over the
 
 \section{Closing the DLinear Gap}
 \label{app:gap_closing}
+\label{app:gap_closing_ext}
 
 A good diagnosis should be \emph{actionable}: identifying the root cause of a performance gap should point directly to how to close it. Our diagnosis pinpoints the DLinear gap as information destruction by the normalization--encoding pipeline (\S\ref{sec:main_results}, Appendix~\ref{app:diagnostic}): experts operate on hidden states from which RevIN and patching have stripped fine-grained temporal structure. This diagnosis makes a clear architectural prediction: \emph{if we restore raw-signal access to the experts, the gap should close.} We test this prediction with three architectures.
 
