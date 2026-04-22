@@ -1,0 +1,29 @@
+main content cleanly of 9 pages
+
+---
+
+is this sentence complete: "Today, every public TSFM benchmark adapts the
+
+backbone with a single static head: pool hidden states, project to the forecast horizon"
+
+---
+
+project to the forecast horizon ...
+
+---
+
+(2.7× worse than RR-MoA across 720 runs;
+
+Table ??)
+
+Table is not being rendered correctly, showing ??
+
+---
+
+all good now. "what does """A mutual-information decomposition (Proposition 2) proves that instance
+
+normalization destroys routing MI by exactly the information in the stripped location-scale statistics.
+
+The principle makes three falsifiable predictions""""
+
+falsifiable predictions mean
