@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "686c1789fb84",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "results/dlinear/ETTh1_H192_42.json",
+    "results/dlinear/ETTh1_H192_43.json",
+    "results/dlinear/ETTh1_H192_44.json",
+    "results/dlinear/ETTh1_H336_42.json",
+    "results/dlinear/ETTh1_H336_43.json",
+    "results/dlinear/ETTh1_H336_44.json",
+    "results/dlinear/ETTh1_H720_42.json",
+    "results/dlinear/ETTh1_H720_43.json",
+    "results/dlinear/ETTh1_H720_44.json",
+    "results/dlinear/ETTm1_H192_42.json",
+    "results/dlinear/ETTm1_H192_43.json",
+    "results/dlinear/ETTm1_H192_44.json",
+    "results/dlinear/ETTm1_H336_42.json",
+    "results/dlinear/ETTm1_H336_43.json",
+    "results/dlinear/ETTm1_H336_44.json",
+    "results/dlinear/ETTm1_H720_42.json",
+    "results/dlinear/ETTm1_H720_43.json",
+    "results/dlinear/ETTm1_H720_44.json",
+    "results/dlinear/Weather_H192_42.json",
+    "results/dlinear/Weather_H192_43.json",
+    "results/dlinear/Weather_H192_44.json",
+    "results/dlinear/Weather_H336_42.json",
+    "results/dlinear/Weather_H336_43.json",
+    "results/dlinear/Weather_H336_44.json",
+    "results/dlinear/Weather_H720_42.json",
+    "results/dlinear/Weather_H720_43.json",
+    "results/dlinear/Weather_H720_44.json",
+    "results/imputation/ETTh1_42.json",
+    "results/imputation/ETTm1_42.json",
+    "results/imputation/Weather_42.json",
+    "results/trace_baseline/ETTh1_H96_42.json",
+    "results/trace_baseline/ETTh2_H96_42.json",
+    "results/trace_baseline/ETTm1_H96_42.json",
+    "results/trace_baseline/Weather_H96_42.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/68/6c1789fb84/0/metadata.json",
+      "transcript": "/68/6c1789fb84/0/full.jsonl",
+      "content_hash": "/68/6c1789fb84/0/content_hash.txt",
+      "prompt": "/68/6c1789fb84/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 3383,
+    "cache_creation_tokens": 1201457,
+    "cache_read_tokens": 73930364,
+    "output_tokens": 125094,
+    "api_call_count": 293
+  }
+}
