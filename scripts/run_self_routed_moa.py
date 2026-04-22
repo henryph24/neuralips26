@@ -117,19 +117,21 @@ class SelfRoutedMoA(nn.Module):
             self.adapters.append(cls(d_model, output_dim, hidden))
             self._expert_names.append(HEAD_NAMES[i % len(HEAD_NAMES)])
 
-        # Self-routing components
+        # Self-routing components — gate input dim depends on routing source
+        gate_in_dim = d_model if routing_input == "hidden" else input_len
+
         if routing_mode == "gated":
             # Each expert has its own gate: raw_input -> scalar activation
             self.gates = nn.ModuleList()
             for _ in range(K):
                 if gate_hidden > 1:
                     gate = nn.Sequential(
-                        nn.Linear(input_len, gate_hidden),
+                        nn.Linear(gate_in_dim, gate_hidden),
                         nn.GELU(),
                         nn.Linear(gate_hidden, 1),
                     )
                 else:
-                    gate = nn.Linear(input_len, 1)
+                    gate = nn.Linear(gate_in_dim, 1)
                 self.gates.append(gate)
             # Initialize gate bias
             if gate_init_bias != 0.0:
@@ -139,7 +141,7 @@ class SelfRoutedMoA(nn.Module):
 
         elif routing_mode in ("eigenbasis", "hybrid"):
             # Shared projection + per-expert learned basis vectors
-            self.input_proj = nn.Linear(input_len, basis_dim)
+            self.input_proj = nn.Linear(gate_in_dim, basis_dim)
             self.basis_vectors = nn.Parameter(torch.empty(K, basis_dim))
             # Initialize orthogonally for diversity
             if K <= basis_dim:
@@ -198,16 +200,18 @@ class SelfRoutedMoA(nn.Module):
         outputs = torch.stack([a(hidden_states) for a in self.adapters], dim=1)  # (B, K, H)
         return (weights.unsqueeze(-1) * outputs).sum(dim=1)  # (B, H)
 
-    def get_routing_stats(self, raw_input):
+    def get_routing_stats(self, raw_input, hidden_states=None):
         """Return normalized routing weights for diagnostics."""
+        routing_in = hidden_states.mean(dim=1) if self.routing_input == "hidden" and hidden_states is not None else raw_input
         with torch.no_grad():
-            weights, _ = self._compute_weights(raw_input)
+            weights, _ = self._compute_weights(routing_in)
         return weights
 
-    def get_gate_diagnostics(self, raw_input):
+    def get_gate_diagnostics(self, raw_input, hidden_states=None):
         """Return raw gate values and detailed diagnostics."""
+        routing_in = hidden_states.mean(dim=1) if self.routing_input == "hidden" and hidden_states is not None else raw_input
         with torch.no_grad():
-            weights, raw_gates = self._compute_weights(raw_input)
+            weights, raw_gates = self._compute_weights(routing_in)
         return {
             "weights": weights,
             "raw_gates": raw_gates,
@@ -295,7 +299,7 @@ def train_self_routed_moa(model, blocks, X_train, Y_train, X_test, Y_test,
             feat = _extract_features_batch(model, blocks, bx_enc, mask, backbone_type=backbone_type)
             preds.append(adapter(feat, bx_raw).float().cpu())
             tgts.append(by.cpu())
-            diag = adapter.get_gate_diagnostics(bx_raw)
+            diag = adapter.get_gate_diagnostics(bx_raw, hidden_states=feat)
             all_weights.append(diag["weights"].cpu())
             all_raw_gates.append(diag["raw_gates"].cpu())
 

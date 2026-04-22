@@ -6,10 +6,10 @@
   "input_len": 512,
   "dlinear_mse": 0.4049158990383148,
   "dlinear_mae": 0.419660747051239,
-  "dlinear_mse_denorm": 9.586490631103516,
-  "dlinear_mae_denorm": 1.6517064571380615,
+  "dlinear_mse_denorm": 9.5864896774292,
+  "dlinear_mae_denorm": 1.651706576347351,
   "param_count": 172368,
-  "elapsed": 0.4743950366973877,
+  "elapsed": 1.6242015361785889,
   "scaler": {
     "scale_": [
       5.833092669188608,

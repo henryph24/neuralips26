@@ -10,12 +10,22 @@
     "residual_conv": 0.25018711592507065
   },
   "rrmoa_mse": 0.061317650962837845,
+  "rrmoa_entropy": 1.537644863128662,
   "rrmoa_routing": {
     "linear": 0.17,
     "dense_mlp": 0.307,
     "conv": 0.209,
     "attention": 0.192,
     "residual_conv": 0.123
+  },
+  "adamix_mse": 0.22098602751253357,
+  "adamix_entropy": 0.006928868591785431,
+  "adamix_routing": {
+    "linear": 0.0,
+    "dense_mlp": 0.999,
+    "conv": 0.0,
+    "attention": 0.0,
+    "residual_conv": 0.0
   },
   "best_head": "dense_mlp",
   "best_head_mse": 0.19533917017610913
