@@ -1,0 +1,145 @@
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+conduct a bit more academic research with Exa MCP (academic paper) to find inspirations for potential heads-on method that is powerful, invest more in such designs and experiments and keep our GPUs at Race VM (recall from memory) busy
+
+---
+
+if all results are good, how much more strengthened our pare become
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+how relevant are new findings and should they be re-added
+
+---
+
+how relevant are new findings and should they be added to our paper now
+
+---
+
+let's do it
+
+---
+
+let invest deeper in experiments that likely strneghthen our papers more significantly by tackling the weaknesses heads-on, keep the GPUs busy (our RACE VM has GPU, recall from memory)
+
+---
+
+GPU utilisation at our RACE VM ? How many experiments are we running ?
+
+---
+
+ETA
+
+---
+
+in the meantime, [Image #1] 
+
+figure 1 is really ugly, particularly the arrows, think deeply and redesign it
+
+---
+
+recompile locally
+
+---
+
+Improve readability of the main content. Sentences currently read quite abrupt
+
+---
+
+Improve readability of the main content. Sentences currently read quite abrupt. Even first few sentences of the abstract reads quite without context, making it really hard for even experts to grasp
+
+---
+
+try to reconnect to VM
+
+---
+
+earlier we faced this issue and we need to restart the VM
+
+---
+
+plan comprehensive writing that improves readability of main content
+
+---
+
+is the main content now highly readable while maintaining scholarly substance where necessary
+
+---
+
+recompile locally and look for formatting errors
+
+---
+
+shall we fix them all
+
+---
+
+did main content ended strictly on page 9
+
+---
+
+let's do that
+
+---
+
+/commit-push
+
+---
+
+<task-notification>
+<task-id>b8x05a9xx</task-id>
+<tool-use-id>toolu_01JfKqgY2P64gcqcmczV7Yte</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/950afe9d-51e4-4401-8ff6-3f00569d50c3/tasks/b8x05a9xx.output</output-file>
+<status>failed</status>
+<summary>Background command "Quick deep sweep status" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bsh0nmas1</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/950afe9d-51e4-4401-8ff6-3f00569d50c3/tasks/bsh0nmas1.output</output-file>
+<status>failed</status>
+<summary>Background command "Quick RACE status" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>by1ngez45</task-id>
+<tool-use-id>toolu_017nJt5jkvFVH81g6iTjjuPf</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/950afe9d-51e4-4401-8ff6-3f00569d50c3/tasks/by1ngez45.output</output-file>
+<status>failed</status>
+<summary>Background command "RACE VM status check" failed with exit code 255</summary>
+</task-notification>
+
+---
+
+recompile the manuscript
+
+---
+
+[Image #2] some arrows are still messing
+
+---
+
+web search for Latex Native library for visualisation and plotting of diagram, best in April 2026
+
+---
+
+render, take a targetted screenshot and review it
+
+---
+
+try it out. then iteratively review all other figures, images or tables
