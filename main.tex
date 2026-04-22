@@ -122,41 +122,41 @@ Our contributions are threefold:
 };
 
 % ====== ROW 1: PATH LABELS ======
-\node[pathlabel, text=blue!60] (labA) at (-2.7, -0.75) {Path A: Deep Semantics};
-\node[pathlabel, text=orange!70] (labB) at (2.7, -0.75) {Path B: Raw-Signal Routing};
+\node[pathlabel, text=blue!60] (labA) at (-2.7, -0.9) {Path A: Deep Semantics};
+\node[pathlabel, text=orange!70] (labB) at (2.7, -0.9) {Path B: Raw-Signal Routing};
 
 % ====== ROW 2: PROCESSING BLOCKS ======
-\node[pathbox=blue] (backbone) at (-2.7, -1.55) {
+\node[pathbox=blue] (backbone) at (-2.7, -1.85) {
     \textbf{Frozen TSFM}~~$f_{\theta}$\\[-2pt]
     {\scriptsize RevIN $\;\to\;$ patch $\;\to\;$ encoder}
 };
-\node[pathbox=orange] (router) at (2.7, -1.55) {
+\node[pathbox=orange] (router) at (2.7, -1.85) {
     \textbf{Raw-Signal Router}~~$G_\psi$\\[-2pt]
     {\scriptsize Conv1d $\;\to\;$ Pool $\;\to\;$ Linear}
 };
 
 % ====== ROW 3: OUTPUTS OF EACH PATH ======
-\node[resultbox=blue] (hidden) at (-2.7, -2.75) {
+\node[resultbox=blue] (hidden) at (-2.7, -3.1) {
     $\mathbf{H} \in \mathbb{R}^{B \times T \times d}$
     \quad {\scriptsize\color{red!65} \ding{55}\;routing on $\mathbf{H}$ collapses}
 };
-\node[resultbox=orange] (weights) at (2.7, -2.75) {
+\node[resultbox=orange] (weights) at (2.7, -3.1) {
     $\mathbf{w} \in \Delta^K$
     \quad {\scriptsize\color{green!50!black} \cmark\;diverse routing}
 };
 
 % ====== ROW 4: EXPERT POOL ======
-\node[poolframe] (pool) at (0, -4.15) {};
+\node[poolframe] (pool) at (0, -4.7) {};
 \node[font=\small\bfseries, text=violet!70, fill=white, inner sep=2pt] at ([xshift=1.2cm]pool.north west) {Expert Pool $(K{=}5)$};
 % Individual expert boxes
-\node[expertbox] (e1) at (-3.8, -4.4) {Mean};
-\node[expertbox] (e2) at (-1.9, -4.4) {Last};
-\node[expertbox] (e3) at ( 0.0, -4.4) {Max};
-\node[expertbox] (e4) at ( 1.9, -4.4) {Attn};
-\node[expertbox] (e5) at ( 3.8, -4.4) {Conv1d};
+\node[expertbox] (e1) at (-3.8, -4.95) {Mean};
+\node[expertbox] (e2) at (-1.9, -4.95) {Last};
+\node[expertbox] (e3) at ( 0.0, -4.95) {Max};
+\node[expertbox] (e4) at ( 1.9, -4.95) {Attn};
+\node[expertbox] (e5) at ( 3.8, -4.95) {Conv1d};
 
 % ====== ROW 5: OUTPUT ======
-\node[outputnode] (output) at (0, -5.5) {
+\node[outputnode] (output) at (0, -6.1) {
     $\displaystyle \mathbf{Y} = \sum_{k \in \mathrm{TopK}(\mathbf{w})} \widetilde{w}_k \cdot \mathrm{Expert}_k(\mathbf{H})$
     \qquad {\small\bfseries 54/54 wins, $p{<}0.001$}
 };
