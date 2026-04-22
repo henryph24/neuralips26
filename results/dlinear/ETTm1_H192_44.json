@@ -4,12 +4,12 @@
   "seed": 44,
   "epochs": 15,
   "input_len": 512,
-  "dlinear_mse": 0.3798638880252838,
-  "dlinear_mae": 0.4163423776626587,
-  "dlinear_mse_denorm": 9.233363151550293,
+  "dlinear_mse": 0.3798638582229614,
+  "dlinear_mae": 0.4163424074649811,
+  "dlinear_mse_denorm": 9.233362197875977,
   "dlinear_mae_denorm": 1.6878635883331299,
   "param_count": 98496,
-  "elapsed": 0.42092108726501465,
+  "elapsed": 1.6131439208984375,
   "scaler": {
     "scale_": [
       5.833092669188608,

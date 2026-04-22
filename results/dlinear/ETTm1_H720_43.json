@@ -9,7 +9,7 @@
   "dlinear_mse_denorm": 10.845005989074707,
   "dlinear_mae_denorm": 1.7425851821899414,
   "param_count": 369360,
-  "elapsed": 0.6626031398773193,
+  "elapsed": 1.697862148284912,
   "scaler": {
     "scale_": [
       5.833092669188608,
