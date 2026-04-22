@@ -1,0 +1,34 @@
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+let invest deeper in experiments that likely strneghthen our papers more significantly by tackling the weaknesses heads-on, keep the GPUs busy (our RACE VM has GPU, recall from memory)
+
+---
+
+how relevant are new findings and should they be added to our paper now
+
+---
+
+let's do that
+
+---
+
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+plan a jump in improvements for: "DLinear gap — still 108/123. The SR-MoA sweep doesn't touch
+  this.
+  - Core novelty — the paper is still "diagnose RevIN kills
+  routing → route on raw input." No amount of ablations changes
+  the conceptual simplicity.
+  - Prop 2 — still chain-rule MI decomposition, not deep theory."
+
+---
+
+reasoning through our paper, how likely is it an accepted one into neurips 2026
+
+---
+
+let's address what left on the table but do not compromise readability
