@@ -162,9 +162,11 @@ Our contributions are threefold:
 };
 
 % ====== ARROWS ======
-% Input → two paths (straight down)
-\draw[dataarr]  ([xshift=-2.7cm]input.south) -- (backbone.north);
-\draw[routearr] ([xshift= 2.7cm]input.south) -- (router.north);
+% Input → path labels → processing blocks (arrows behind labels)
+\draw[dataarr]  ([xshift=-2.7cm]input.south) -- (labA.north);
+\draw[dataarr]  (labA.south) -- (backbone.north);
+\draw[routearr] ([xshift= 2.7cm]input.south) -- (labB.north);
+\draw[routearr] (labB.south) -- (router.north);
 
 % Path blocks → results (straight down)
 \draw[dataarr]  (backbone.south) -- (hidden.north);
