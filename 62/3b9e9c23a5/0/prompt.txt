@@ -1,0 +1,9 @@
+recompile
+
+---
+
+[Image #5]
+
+---
+
+[Image #6] this "Expert Pool" text  still mess with the box lines
