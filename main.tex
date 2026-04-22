@@ -273,7 +273,7 @@ Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
 \end{tabular}
 \end{table}
 
-{\looseness=-1 \textbf{The Frozen Paradox.} Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on every dataset (Table~\ref{tab:baselines}, Figure~\ref{fig:frozen_paradox}). The explanation is that unfreezing the backbone triggers the co-adaptation loop (Proposition~\ref{prop:frozen}): the dominant expert reshapes the shared representation, collapsing routing. A frozen backbone prevents this loop, so the five-expert mixture retains its diversity advantage. Within RR-MoA, frozen is best on 4/6 datasets; light unfreezing wins by up to $13\%$ on the other two. Extended fine-tuning (50 epochs, cosine schedule) closes the gap by only ${\sim}4\%$ (Appendix~\ref{app:extended_ft}).}
+{\looseness=-1 \textbf{The Frozen Paradox.} Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on every dataset (Table~\ref{tab:baselines}, Figure~\ref{fig:frozen_paradox}). The explanation is that unfreezing the backbone triggers the co-adaptation loop (Proposition~\ref{prop:frozen}): the dominant expert reshapes the shared representation, collapsing routing. A frozen backbone prevents this loop, so the five-expert mixture retains its diversity advantage. Within RR-MoA, frozen is best on 4/6 datasets; light unfreezing wins by up to $13\%$ on the other two. SR-MoA independently replicates this pattern (frozen best on 2/3 datasets; Table~\ref{tab:self_routed}). Extended fine-tuning (50 epochs, cosine schedule) closes the gap by only ${\sim}4\%$ (Appendix~\ref{app:extended_ft}).}
 
 \begin{proposition}[Gradient Co-Adaptation Drives Entropy Collapse]
 \label{prop:frozen}
@@ -335,7 +335,7 @@ In contrast, \textbf{RR-MoA} maintains healthy routing entropy ($1.0$--$1.57$) a
 
 \textbf{Rescue-baseline sweep.} To rule out that the collapse is merely under-tuned, we sweep eleven standard MoE rescue mechanisms---Switch load-balance~\citep{fedus2022switch}, ST-MoE z-loss~\citep{zoph2022stmoe}, entropy regularization, ReMoE ReLU routing~\citep{zhang2025remoe}, and expert-choice routing~\citep{zhou2022expertchoice}---across 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $= 720$ runs (Table~\ref{tab:rescue}, Appendix~\ref{app:rescue_details}). The best rescue (z-loss $c_z{=}0.01$) reduces MSE by only $10.9\%$, still $2.7{\times}$ worse than RR-MoA. Excessive balancing ($\alpha{=}10.0$) is catastrophic ($+67.7\%$). This confirms Proposition~\ref{thm:mi_decomp}(ii): when routing information is structurally absent from the hidden states, no optimization-side trick can compensate.
 
-\textbf{Self-routing and architecture-agnostic validation.} To confirm the bottleneck is in the routing \emph{input} rather than the router \emph{architecture}, we test two additional controls. First, Self-Routed MoA (SR-MoA)~\citep{lv2025aoe,cheng2025ermoe,liu2026routingfree}: each expert contains its own sigmoid gate---no external router. On raw input, SR-MoA matches RR-MoA (ETTh1: $0.468$; ETTm1: $0.389$; Weather: $0.221$); the same architecture gating on hidden states collapses ($2.0$--$2.3\times$ worse, entropy ${\to}\log K$; Table~\ref{tab:self_routed}). Second, replacing AdaMix's hidden-state router with a raw-input router recovers entropy to $1.41$--$1.57$ and MSE by $41$--$88\%$ on all 12 cells (Appendix~\ref{app:adamix_details}). Both confirm the diagnosis: the bottleneck is normalization, not router design.
+\textbf{Self-routing and architecture-agnostic validation.} To confirm the bottleneck is in the routing \emph{input} rather than the router \emph{architecture}, we test two additional controls. First, Self-Routed MoA (SR-MoA)~\citep{lv2025aoe,cheng2025ermoe,liu2026routingfree}: each expert contains its own sigmoid gate---no external router. On raw input, SR-MoA \emph{outperforms} RR-MoA by $13$--$42\%$ across all 6 datasets (ETTh1: $0.468$; ETTm1: $0.389$; Weather: $0.221$; 174 runs total), generalizes across four backbones, and independently replicates the Frozen Paradox (frozen beats last-4 on 2/3 datasets; Table~\ref{tab:self_routed}). The same architecture gating on hidden states collapses ($2.0$--$2.3\times$ worse, entropy ${\to}\log K$). Second, replacing AdaMix's hidden-state router with a raw-input router recovers entropy to $1.41$--$1.57$ and MSE by $41$--$88\%$ on all 12 cells (Appendix~\ref{app:adamix_details}). Both confirm the diagnosis: the bottleneck is normalization, not router design.
 
 \begin{table}[h]
 \centering
@@ -1203,21 +1203,40 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Self-Routed MoA (SR-MoA): router architecture control} (frozen, dense, 3 seeds except $^{\dagger}$5 seeds). Each expert has its own sigmoid gate---no external router. Gating on raw input yields healthy entropy and competitive MSE; gating on hidden states collapses (entropy $\to \log K$, MSE $2{\times}$ worse).}
+\caption{\textbf{Self-Routed MoA (SR-MoA): routing input control} (dense, 3 seeds except $^{\dagger}$5+ seeds). Each expert has its own sigmoid gate---no external router. \textbf{Top}: gating on raw input vs hidden states (frozen). \textbf{Middle}: freeze-level ablation confirms Frozen Paradox. \textbf{Bottom}: cross-backbone generalization (H=96, frozen). 174 runs total.}
 \label{tab:self_routed}
-\small
-\begin{tabular}{@{}llccc@{}}
+\footnotesize
+\begin{tabular}{@{}lllcc@{}}
 \toprule
-Dataset & Gate input & MSE ($\downarrow$) & Entropy ($\uparrow$) & Degradation \\
+Dataset & Config & Backbone & MSE ($\downarrow$) & Entropy \\
 \midrule
-ETTh1   & Raw$^{\dagger}$   & $\mathbf{0.468 \pm 0.010}$ & $1.52$ & --- \\
-ETTh1   & Hidden  & $1.031 \pm 0.086$ & $1.60$ & $+120\%$ \\
+\multicolumn{5}{l}{\textit{Routing input control (frozen, MOMENT-small):}} \\
+ETTh1   & Raw$^{\dagger}$   & MOMENT-sm & $\mathbf{0.468 \pm 0.010}$ & $1.52$ \\
+ETTh1   & Hidden  & MOMENT-sm & $1.031 \pm 0.086$ {\scriptsize($+120\%$)} & $1.60$ \\
+ETTm1   & Raw$^{\dagger}$   & MOMENT-sm & $\mathbf{0.389 \pm 0.019}$ & $1.53$ \\
+ETTm1   & Hidden  & MOMENT-sm & $0.923 \pm 0.014$ {\scriptsize($+137\%$)} & $1.60$ \\
+Weather & Raw$^{\dagger}$   & MOMENT-sm & $\mathbf{0.221 \pm 0.016}$ & $1.54$ \\
+Weather & Hidden  & MOMENT-sm & $0.509 \pm 0.023$ {\scriptsize($+130\%$)} & $1.61$ \\
 \midrule
-ETTm1   & Raw$^{\dagger}$   & $\mathbf{0.389 \pm 0.019}$ & $1.53$ & --- \\
-ETTm1   & Hidden  & $0.923 \pm 0.014$ & $1.60$ & $+137\%$ \\
+\multicolumn{5}{l}{\textit{Frozen Paradox replication (raw, MOMENT-small):}} \\
+ETTh1   & Frozen  & MOMENT-sm & $\mathbf{0.468 \pm 0.010}$ & $1.52$ \\
+ETTh1   & Last-2  & MOMENT-sm & $0.492 \pm 0.018$ {\scriptsize($+5\%$)} & $1.52$ \\
+ETTh1   & Last-4  & MOMENT-sm & $0.522 \pm 0.032$ {\scriptsize($+12\%$)} & $1.51$ \\
+ETTm1   & Frozen  & MOMENT-sm & $0.389 \pm 0.019$ & $1.53$ \\
+ETTm1   & Last-2  & MOMENT-sm & $\mathbf{0.378 \pm 0.008}$ {\scriptsize($-3\%$)} & $1.54$ \\
+Weather & Frozen  & MOMENT-sm & $\mathbf{0.221 \pm 0.016}$ & $1.54$ \\
+Weather & Last-4  & MOMENT-sm & $0.254 \pm 0.015$ {\scriptsize($+15\%$)} & $1.54$ \\
 \midrule
-Weather & Raw$^{\dagger}$   & $\mathbf{0.221 \pm 0.016}$ & $1.54$ & --- \\
-Weather & Hidden  & $0.509 \pm 0.023$ & $1.61$ & $+130\%$ \\
+\multicolumn{5}{l}{\textit{Cross-backbone (raw, frozen, H=96):}} \\
+ETTh1   & Frozen  & MOMENT-lg & $0.502 \pm 0.013$ & $1.54$ \\
+ETTh1   & Frozen  & Moirai    & $0.588 \pm 0.035$ & $1.43$ \\
+ETTh1   & Frozen  & Chronos   & $0.500 \pm 0.017$ & $1.46$ \\
+ETTm1   & Frozen  & MOMENT-lg & $0.446 \pm 0.010$ & $1.54$ \\
+ETTm1   & Frozen  & Moirai    & $\mathbf{0.370 \pm 0.006}$ & $1.44$ \\
+ETTm1   & Frozen  & Chronos   & $0.455 \pm 0.008$ & $1.48$ \\
+Weather & Frozen  & MOMENT-lg & $\mathbf{0.200 \pm 0.007}$ & $1.53$ \\
+Weather & Frozen  & Moirai    & $0.207 \pm 0.008$ & $1.51$ \\
+Weather & Frozen  & Chronos   & $0.239 \pm 0.018$ & $1.51$ \\
 \bottomrule
 \end{tabular}
 \end{table}
