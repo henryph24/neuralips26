@@ -1,0 +1,89 @@
+% Standalone TikZ: Normalization-Induced Routing Collapse Mechanism
+% Usage: \input{figures/tikz_collapse_mechanism.tex} inside a figure environment
+\begin{tikzpicture}[
+    signal/.style={draw=gray!40, rounded corners=2pt, minimum width=2.8cm, minimum height=0.7cm, inner sep=2pt},
+    expert/.style={draw=#1!60, fill=#1!8, rounded corners=3pt, minimum width=1.1cm, minimum height=0.5cm, font=\scriptsize\bfseries},
+    expertgray/.style={draw=gray!25, fill=gray!4, rounded corners=3pt, minimum width=1.0cm, minimum height=0.45cm, font=\scriptsize, text=gray!40},
+    arr/.style={-{Stealth[length=2mm, width=1.5mm]}, line width=0.6pt, #1},
+    bigarr/.style={-{Stealth[length=4mm, width=3mm]}, line width=1.5pt, gray!50},
+    lbl/.style={font=\small\bfseries, #1},
+]
+
+% === LEFT: Raw Input Space ===
+\node[lbl=black] at (0, 3.4) {Raw Input Space};
+
+% Draw 4 distinct signals with clear visual differences
+\begin{scope}[shift={(0, 2.4)}]
+    \node[signal] (s1) at (0,0) {};
+    \draw[blue!70, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.25*sin(720*\x)});
+\end{scope}
+\begin{scope}[shift={(0, 1.4)}]
+    \node[signal] (s2) at (0,0) {};
+    \draw[green!60!black, thick] plot[domain=-1.2:1.2, samples=30, smooth] (\x, {0.04*sin(360*\x) + 0.02*cos(900*\x)});
+\end{scope}
+\begin{scope}[shift={(0, 0.4)}]
+    \node[signal] (s3) at (0,0) {};
+    \draw[red!70, thick] (-1.2,-0.22) -- (1.2,0.22);
+\end{scope}
+\begin{scope}[shift={(-0.0, -0.6)}]
+    \node[signal] (s4) at (0,0) {};
+    \draw[orange!80, thick] plot[domain=-1.2:1.2, samples=50] (\x, {0.2*rand});
+\end{scope}
+
+% Expert boxes (diverse) - each directly below its signal
+\node[expert=blue]          (e1) at (-1.2, -1.7) {E1};
+\node[expert=green!60!black](e2) at (-0.1, -1.7) {E2};
+\node[expert=red]           (e3) at ( 1.0, -1.7) {E3};
+\node[expert=orange]        (e4) at ( 2.1, -1.7) {E4};
+
+% Arrows: each signal straight down to its own expert (no crossing)
+\draw[arr=blue!60]       ([xshift=-1.2cm]s1.south) -- (e1.north);
+\draw[arr=green!50!black]([xshift=-0.1cm]s2.south) -- (e2.north);
+\draw[arr=red!60]        ([xshift= 1.0cm]s3.south) -- (e3.north);
+\draw[arr=orange!70]     ([xshift= 1.3cm]s4.south) -- (e4.north);
+
+\node[font=\scriptsize\bfseries, text=green!50!black] at (0.4, -2.35) {Diverse routing};
+
+% === CENTER: Normalization arrow ===
+\node[fill=white, draw=gray!40, rounded corners=3pt, line width=0.8pt,
+      font=\scriptsize\bfseries, text=gray!70, inner sep=4pt, align=center]
+      (normlbl) at (3.4, 0.9) {Instance\\[-1pt]Normalization\\[-2pt]{\fontsize{6}{7}\selectfont strips $\mu, \sigma$}};
+\draw[bigarr] (2.0, 0.9) -- (normlbl.west);
+\draw[bigarr] (normlbl.east) -- (4.8, 0.9);
+
+% === RIGHT: Normalized Hidden Space ===
+\node[lbl=black] at (6.8, 3.4) {Normalized Space};
+
+% Draw 4 identical gray signals (all same shape)
+\begin{scope}[shift={(6.8, 2.4)}]
+    \node[signal] (n1) at (0,0) {};
+    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
+\end{scope}
+\begin{scope}[shift={(6.8, 1.4)}]
+    \node[signal] (n2) at (0,0) {};
+    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
+\end{scope}
+\begin{scope}[shift={(6.8, 0.4)}]
+    \node[signal] (n3) at (0,0) {};
+    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
+\end{scope}
+\begin{scope}[shift={(6.8, -0.6)}]
+    \node[signal] (n4) at (0,0) {};
+    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
+\end{scope}
+
+% Expert boxes (collapsed) - E1 prominent, others faded
+\node[expert=red]   (ce1) at (8.2, -1.7) {\textbf{E1}};
+\node[expertgray]   (ce2) at (5.6, -1.7) {E2};
+\node[expertgray]   (ce3) at (6.5, -1.7) {E3};
+\node[expertgray]   (ce4) at (7.4, -1.7) {E4};
+
+% All arrows converge to E1
+\draw[arr=gray!50] ([xshift=-0.5cm]n1.south) -- (ce1.north west);
+\draw[arr=gray!50] ([xshift= 0.2cm]n2.south) -- (ce1.north);
+\draw[arr=gray!50] ([xshift= 0.8cm]n3.south) -- ([xshift=0.1cm]ce1.north);
+\draw[arr=gray!50] ([xshift= 1.2cm]n4.south) -- (ce1.north east);
+
+\node[font=\scriptsize\bfseries, text=red!70] at (6.8, -2.35) {Collapse: $H \to 0.000$};
+
+\end{tikzpicture}

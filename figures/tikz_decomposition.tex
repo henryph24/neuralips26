@@ -1,0 +1,85 @@
+% Standalone TikZ: Signal Decomposition + MI Equation
+% Reproduces the conceptual diagram: X -> (mu, sigma, S) with RevIN vs Raw routing
+% Usage: \input{figures/tikz_decomposition.tex} inside a figure environment
+\begin{tikzpicture}[
+    component/.style={draw=gray!40, rounded corners=2pt, minimum width=2.0cm, minimum height=0.9cm, inner sep=2pt},
+    scenbox/.style={draw=#1!60, fill=#1!4, rounded corners=4pt, line width=0.8pt,
+                    minimum width=3.2cm, minimum height=1.8cm, inner sep=5pt},
+    arr/.style={-{Stealth[length=2mm, width=1.5mm]}, line width=0.5pt, gray!60},
+]
+
+% === TOP: Original signal X ===
+\node[draw=gray!40, rounded corners=2pt, minimum width=3.2cm, minimum height=0.9cm] (xbox) at (0, 0) {};
+\draw[blue!70, thick] plot[domain=-1.4:1.4, samples=50, smooth] (\x, {0.28*sin(360*\x) + 0.1*cos(720*\x)});
+\node[font=\small\bfseries, blue!70] at (2.1, 0.0) {$\mathbf{X}$};
+
+% === Three downward arrows ===
+\draw[arr] (-2.2, -0.55) -- (-2.2, -1.1);
+\draw[arr] (0, -0.55) -- (0, -1.1);
+\draw[arr] (2.2, -0.55) -- (2.2, -1.1);
+
+% === Three components ===
+% Mean mu
+\node[component] (mu) at (-2.2, -1.7) {};
+\draw[green!60!black, thick, dashed] (-3.1, -1.7) -- (-1.3, -1.7);
+\node[font=\scriptsize\bfseries, green!60!black] at (-2.2, -2.4) {Mean $\mu$};
+
+% Scale sigma
+\node[component] (sig) at (0, -1.7) {};
+\draw[orange!80, thick, {Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}] (0, -2.05) -- (0, -1.35);
+\node[font=\scriptsize, orange!80, anchor=west] at (0.15, -1.7) {$\sigma$};
+\node[font=\scriptsize\bfseries, orange!80] at (0, -2.4) {Scale $\sigma$};
+
+% Shape S
+\node[component] (shape) at (2.2, -1.7) {};
+\draw[violet!70, thick] plot[domain=-0.85:0.85, samples=40, smooth] ({2.2+\x}, {-1.7 + 0.22*sin(720*\x)});
+\node[font=\scriptsize\bfseries, violet!70] at (2.2, -2.4) {Shape $S$};
+
+% === Two scenario boxes ===
+
+% RevIN Router (left, red)
+\node[scenbox=red] (revbox) at (-1.8, -4.2) {};
+\node[font=\scriptsize\bfseries, red!70, anchor=north] at (-1.8, -3.4) {RevIN Router};
+\node[font=\tiny, red!50, anchor=north] at (-1.8, -3.72) {sees only Shape $S$};
+% X marks on mu, sigma; check on S
+\node[font=\large, red!70] at (-2.7, -4.55) {\ding{55}};
+\node[font=\tiny, green!60!black] at (-2.7, -4.95) {$\mu$};
+\node[font=\large, red!70] at (-1.8, -4.55) {\ding{55}};
+\node[font=\tiny, orange!80] at (-1.8, -4.95) {$\sigma$};
+\node[font=\large, violet!60] at (-0.9, -4.55) {\ding{51}};
+\node[font=\tiny, violet!70] at (-0.9, -4.95) {$S$};
+
+% Result
+\node[font=\scriptsize\bfseries, red!70] at (-1.8, -5.5) {$\to$ \textbf{Collapse}};
+
+% Raw Router (right, green)
+\node[scenbox=green!60!black] (rawbox) at (1.8, -4.2) {};
+\node[font=\scriptsize\bfseries, green!60!black, anchor=north] at (1.8, -3.4) {Raw Router (RR-MoA)};
+\node[font=\tiny, green!40!black, anchor=north] at (1.8, -3.72) {sees $\mu + \sigma + S$};
+% Checkmarks on all three
+\node[font=\large, green!60!black] at (0.9, -4.55) {\ding{51}};
+\node[font=\tiny, green!60!black] at (0.9, -4.95) {$\mu$};
+\node[font=\large, green!60!black] at (1.8, -4.55) {\ding{51}};
+\node[font=\tiny, orange!80] at (1.8, -4.95) {$\sigma$};
+\node[font=\large, green!60!black] at (2.7, -4.55) {\ding{51}};
+\node[font=\tiny, violet!70] at (2.7, -4.95) {$S$};
+
+% Result
+\node[font=\scriptsize\bfseries, green!60!black] at (1.8, -5.5) {$\to$ \textbf{Diverse routing}};
+
+% === Arrows from components to boxes ===
+% To RevIN (mu and sigma are crossed, shape goes through)
+\draw[arr, red!40] ([xshift=0.3cm]mu.south) -- ([xshift=-0.5cm]revbox.north);
+\draw[arr, red!40] ([xshift=-0.3cm]sig.south) -- ([xshift=0.1cm]revbox.north);
+\draw[arr, red!40, densely dashed] ([xshift=-0.5cm]shape.south) -- ([xshift=0.7cm]revbox.north);
+
+% To Raw (all three go through)
+\draw[arr, green!50!black] ([xshift=0.3cm]mu.south) -- ([xshift=-0.7cm]rawbox.north);
+\draw[arr, green!50!black] ([xshift=0.3cm]sig.south) -- ([xshift=0.0cm]rawbox.north);
+\draw[arr, green!50!black] ([xshift=0.5cm]shape.south) -- ([xshift=0.7cm]rawbox.north);
+
+% === Bottom: MI equation ===
+\node[font=\small, anchor=north] at (0, -6.1) {%
+    $I(X;\,E) - I(S;\,E) = \underbrace{I(\mu,\sigma;\,E \mid S)}_{\text{\scriptsize routing info destroyed by normalization}} \geq 0$};
+
+\end{tikzpicture}

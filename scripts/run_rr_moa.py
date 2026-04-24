@@ -122,7 +122,7 @@ class RawRoutedMoA(nn.Module):
         self.expert_dropout = expert_dropout
         self.rdgf = rdgf
         self.output_dim = output_dim
-        assert router_input_mode in ("raw", "revin", "uniform", "partial", "shuffled"), router_input_mode
+        assert router_input_mode in ("raw", "revin", "uniform", "partial", "shuffled", "hidden_reinjected"), router_input_mode
         self.router_input_mode = router_input_mode
         self.alpha = alpha
         self.entropy_reg_coef = entropy_reg_coef
@@ -173,6 +173,10 @@ class RawRoutedMoA(nn.Module):
             )
             self.router_head = nn.Linear(64, K)  # 16*4 = 64
 
+        # Hidden-state + statistics re-injection router
+        if router_input_mode == "hidden_reinjected":
+            self.reinjected_head = nn.Linear(d_model + 2, K)
+
         # Shuffled routing: fixed temporal permutation (seeded at init)
         if router_input_mode == "shuffled":
             self.register_buffer('_shuffle_perm', torch.randperm(input_len))
@@ -184,7 +188,16 @@ class RawRoutedMoA(nn.Module):
         if saib_coef > 0 and router_arch in ("conv", "fft"):
             self.saib_head = nn.Linear(64, 2)  # predict [mu, sigma] from router latent
 
-    def _compute_logits(self, raw_input):
+    def _compute_logits(self, raw_input, hidden_states=None):
+        if self.router_input_mode == "hidden_reinjected":
+            # Re-inject stripped statistics into hidden-state routing input.
+            # Tests: "why not just concatenate (μ, σ) to H instead of routing on raw?"
+            assert hidden_states is not None, "hidden_reinjected requires hidden_states"
+            h_mean = hidden_states.mean(dim=1)  # (B, d_model)
+            mu = raw_input.mean(dim=-1, keepdim=True)  # (B, 1)
+            sigma = raw_input.std(dim=-1, keepdim=True) + 1e-5  # (B, 1)
+            x_cat = torch.cat([h_mean, mu, sigma], dim=-1)  # (B, d_model+2)
+            return self.reinjected_head(x_cat)  # (B, K)
         if self.router_input_mode == "uniform":
             # T1.B ensemble-vs-specialization control: force a constant
             # uniform mixture by returning zero logits (softmax -> 1/K).
@@ -270,7 +283,7 @@ class RawRoutedMoA(nn.Module):
         hidden_states: (B, T, d_model) from backbone
         raw_input: (B, input_len) raw time series
         """
-        logits = self._compute_logits(raw_input)  # (B, K)
+        logits = self._compute_logits(raw_input, hidden_states=hidden_states)  # (B, K)
         if self.router_temp != 1.0:
             logits = logits / self.router_temp
 
@@ -304,14 +317,14 @@ class RawRoutedMoA(nn.Module):
 
         return result
 
-    def get_routing_stats(self, raw_input):
+    def get_routing_stats(self, raw_input, hidden_states=None):
         """Full softmax routing weights for analysis (always dense)."""
         with torch.no_grad():
-            logits = self._compute_logits(raw_input)
+            logits = self._compute_logits(raw_input, hidden_states=hidden_states)
             return F.softmax(logits, dim=-1)
 
-    def load_balance_loss(self, raw_input):
-        logits = self._compute_logits(raw_input)
+    def load_balance_loss(self, raw_input, hidden_states=None):
+        logits = self._compute_logits(raw_input, hidden_states=hidden_states)
         weights = F.softmax(logits, dim=-1)
         f_i = weights.mean(dim=0)
         p_i = F.softmax(logits, dim=-1).mean(dim=0)
@@ -320,10 +333,10 @@ class RawRoutedMoA(nn.Module):
     def param_count(self):
         return sum(p.numel() for p in self.parameters())
 
-    def entropy_regularization(self, raw_input):
+    def entropy_regularization(self, raw_input, hidden_states=None):
         """Negative entropy of the router distribution: -H(p).
         Minimizing this maximizes routing entropy (diversity)."""
-        logits = self._compute_logits(raw_input)
+        logits = self._compute_logits(raw_input, hidden_states=hidden_states)
         probs = F.softmax(logits, dim=-1)
         H = -(probs * torch.log(probs.clamp_min(1e-10))).sum(dim=-1).mean()
         return -H
@@ -408,9 +421,9 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
                 else:
                     pred = adapter(feat, bx_raw)
                     loss = mse_fn(pred, by)
-                loss = loss + adapter.load_balance_coeff * adapter.load_balance_loss(bx_raw)
+                loss = loss + adapter.load_balance_coeff * adapter.load_balance_loss(bx_raw, hidden_states=feat)
                 if adapter.entropy_reg_coef > 0:
-                    loss = loss + adapter.entropy_reg_coef * adapter.entropy_regularization(bx_raw)
+                    loss = loss + adapter.entropy_reg_coef * adapter.entropy_regularization(bx_raw, hidden_states=feat)
                 if adapter.saib_coef > 0:
                     loss = loss + adapter.saib_coef * adapter.saib_loss(bx_raw)
 
@@ -435,7 +448,7 @@ def train_rr_moa(model, blocks, X_train, Y_train, X_test, Y_test,
             feat = _extract_features_batch(model, blocks, bx_enc, mask, backbone_type=backbone_type)
             preds.append(adapter(feat, bx_raw).float().cpu())
             tgts.append(by.cpu())
-            all_routing.append(adapter.get_routing_stats(bx_raw).cpu())
+            all_routing.append(adapter.get_routing_stats(bx_raw, hidden_states=feat).cpu())
 
     preds, tgts = torch.cat(preds), torch.cat(tgts)
     routing = torch.cat(all_routing)
@@ -502,12 +515,13 @@ def main():
     parser.add_argument("--top-k", type=int, default=None,
                         help="Top-K sparse routing (default: dense, all K experts)")
     parser.add_argument("--router-input-mode", default="raw",
-                        choices=["raw", "revin", "uniform", "partial", "shuffled"],
+                        choices=["raw", "revin", "uniform", "partial", "shuffled", "hidden_reinjected"],
                         help="Signal the gate reads: raw (channel-standardized input, default); "
                              "revin (per-window zero-mean unit-variance); "
                              "uniform (no routing, fixed 1/K weights); "
                              "partial (alpha-interpolated raw/revin, dose-response ablation); "
-                             "shuffled (temporally permuted raw, mechanism ablation).")
+                             "shuffled (temporally permuted raw, mechanism ablation); "
+                             "hidden_reinjected (mean-pooled H + [mu, sigma] from raw).")
     parser.add_argument("--alpha", type=float, default=0.0,
                         help="Normalization dose for --router-input-mode partial. "
                              "0.0 = pure raw, 1.0 = pure RevIN. Intermediate values "
@@ -692,6 +706,8 @@ def main():
         suffixes.append("frozenrouter")
     if args.saib_coef > 0:
         suffixes.append("saib-%.3g" % args.saib_coef)
+    if args.epochs != 15:
+        suffixes.append("ep%d" % args.epochs)
     if args.router_input_mode == "partial":
         suffixes.append("alpha-%.2f" % args.alpha)
     # Backbone suffix for non-default backbones

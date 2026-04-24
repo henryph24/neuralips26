@@ -162,8 +162,10 @@ def main():
 def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
                       device="cuda", n_epochs=3, forecast_horizon=96, batch_size=128,
                       backbone_type="moment", eval_ch=None, scaler=None, lr=1e-4,
-                      use_cosine=False, warmup_epochs=0, layerwise_decay=1.0):
-    """Train adapter with configurable lr, cosine schedule, warmup, and layer-wise LR decay."""
+                      use_cosine=False, warmup_epochs=0, layerwise_decay=1.0,
+                      weight_decay=0.01, grad_accum_steps=1, grad_clip=0.0):
+    """Train adapter with configurable lr, cosine schedule, warmup, layer-wise LR decay,
+    weight decay, gradient accumulation, and gradient clipping."""
     from torch.utils.data import DataLoader, TensorDataset
     from feasibility.finetune import _extract_features_batch
 
@@ -183,7 +185,7 @@ def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
                 depth_from_top = n_blocks - 1 - i
                 block_lr = lr * (layerwise_decay ** depth_from_top)
                 param_groups.append({"params": block_params, "lr": block_lr})
-        optimizer = torch.optim.AdamW(param_groups, lr=lr, weight_decay=0.01)
+        optimizer = torch.optim.AdamW(param_groups, lr=lr, weight_decay=weight_decay)
     else:
         trainable = list(adapter.parameters())
         pids = {id(p) for p in trainable}
@@ -191,7 +193,7 @@ def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
             if p.requires_grad and id(p) not in pids:
                 trainable.append(p)
                 pids.add(id(p))
-        optimizer = torch.optim.Adam(trainable, lr=lr)
+        optimizer = torch.optim.AdamW(trainable, lr=lr, weight_decay=weight_decay)
 
     mse_fn = nn.MSELoss()
     use_amp = device == "cuda"
@@ -215,6 +217,7 @@ def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
         else:
             scheduler = schedulers[0]
 
+    step_in_accum = 0
     for epoch in range(n_epochs):
         model.train()
         adapter.train()
@@ -223,12 +226,18 @@ def _train_adapter_lr(code, model, blocks, X_train, Y_train, X_eval, Y_eval,
             mask = torch.ones(bx.shape[0], bx.shape[2], device=device)
             with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=use_amp):
                 feat = _extract_features_batch(model, blocks, bx, mask, backbone_type=backbone_type)
-                loss = mse_fn(adapter(feat), by)
-            optimizer.zero_grad()
+                loss = mse_fn(adapter(feat), by) / grad_accum_steps
             loss.backward()
-            optimizer.step()
-            if scheduler is not None:
-                scheduler.step()
+            step_in_accum += 1
+            if step_in_accum >= grad_accum_steps:
+                if grad_clip > 0:
+                    all_params = list(adapter.parameters()) + [p for p in model.parameters() if p.requires_grad]
+                    torch.nn.utils.clip_grad_norm_(all_params, grad_clip)
+                optimizer.step()
+                optimizer.zero_grad()
+                if scheduler is not None:
+                    scheduler.step()
+                step_in_accum = 0
 
     # Evaluate
     model.eval()
