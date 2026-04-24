@@ -1,0 +1,42 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "8be204d370bf",
+  "session_id": "281fca7c-6430-4ae0-ba1f-02aa219048d6",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-24T01:15:46.733683Z",
+  "branch": "main",
+  "checkpoints_count": 38,
+  "files_touched": [
+    "figures/tikz_collapse_mechanism.tex",
+    "figures/tikz_decomposition.tex",
+    "main.tex",
+    "scripts/run_e2_e3_race.sh",
+    "scripts/run_full_finetune.py",
+    "scripts/run_rr_moa.py",
+    "scripts/run_sr_ria.py",
+    "scripts/run_sr_ria_race.sh",
+    "scripts/run_strong_ft.py",
+    "scripts/run_strong_ft_race.sh"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "32537dedbba5",
+  "token_usage": {
+    "input_tokens": 781,
+    "cache_creation_tokens": 1676662,
+    "cache_read_tokens": 85228069,
+    "output_tokens": 138814,
+    "api_call_count": 341
+  },
+  "session_metrics": {
+    "turn_count": 39
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-24T01:15:45.498333Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 6821,
+    "total_committed": 1046,
+    "agent_percentage": 0
+  }
+}
