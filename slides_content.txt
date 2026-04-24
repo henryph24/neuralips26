@@ -1,0 +1,56 @@
+WHY THIS IS NEURIPS-WORTHY
+
+- This paper identifies a previously unknown failure mode — normalization-induced routing collapse — that silently affects every MoE adapter deployed on any TSFM with instance normalization, and the community had been attacking it from the wrong direction (optimization) for years.
+- The diagnosis is not anecdotal: eight converging causal controls isolate the mechanism with the rigor of a controlled experiment, including the striking MOMENT-vs-Timer-XL opposite-trajectory contrast that no alternative hypothesis can explain.
+- Unlike most empirical ML papers, this one makes quantitative predictions before testing them: the signal ratio R(D) predicts which datasets benefit (rho = -0.88 across 9 benchmarks), including boundary cases where the method correctly does not help — this is the difference between a finding and a principle.
+- The Frozen Paradox — that frozen adapters beat full fine-tuning by 12-79% — is genuinely counterintuitive and overturns the default assumption that more trainable parameters always helps, with a clear mechanistic explanation via gradient co-adaptation.
+- The experimental scale (5,400+ runs, 6 backbones, 9 datasets, 720-run rescue sweep, 107 machine-verified numerical claims) sets a reproducibility standard that few NeurIPS submissions match, and the self-verification script is itself a methodological contribution.
+- The finding generalizes beyond time series: a cross-modality control on ViT confirms that InstanceNorm1d causes the same collapse on vision patch embeddings, establishing this as a general principle about normalization and routing rather than a domain-specific quirk.
+
+
+---
+
+
+SLIDE 1: The Problem — MoE Adapters Catastrophically Fail on TSFMs
+
+- Time series foundation models like MOMENT and Moirai provide powerful pretrained representations, but adapting them to downstream tasks still relies on a single static head — one adapter topology for every input window.
+- A natural idea is mixture-of-expert adapters: a pool of structurally diverse heads with a learned router that selects the best expert per input window.
+- This standard MoE recipe catastrophically fails on TSFMs that use instance normalization: routing entropy collapses to exactly 0.000 in 7 out of 12 unfrozen configurations, meaning the router learns to send every sample to the same expert.
+- All five standard rescue families from the MoE literature — load balancing, z-loss, entropy regularization, ReLU routing, expert-choice — across eleven configurations fail to recover performance across a 720-run sweep, still 2.7x worse than our fix.
+- The MoE community has treated routing collapse as an optimization problem for years; we show it is actually an information problem — the router's input lacks discriminative signal, and no amount of loss regularization can create information that normalization already destroyed.
+
+
+SLIDE 2: The Diagnosis — Normalization Destroys Routing Information
+
+- The root cause is that instance normalization (RevIN) strips the per-window mean and variance before the encoder, and these are exactly the statistics the router needs to distinguish different input regimes.
+- We isolate this mechanism through eight converging causal controls, the most striking being opposite entropy trajectories on identical data: MOMENT (with RevIN) collapses from 0.60 to 0.00 in about 40 steps, while Timer-XL (without RevIN) rises from 1.49 to 1.60 — same code, same data, only the normalization differs.
+- A mutual-information decomposition formalizes the mechanism: RevIN destroys routing MI by exactly the information in the stripped location-scale statistics, and this loss is lower-bounded by a quantity we can measure.
+- The routing signal ratio R(D) serves as a predictive proxy for which datasets benefit from raw routing, validated at Spearman rho = -0.88 across nine benchmarks, including boundary cases where RR-MoA correctly does not help (Traffic, R = 0.14).
+- The diagnosis also predicts a Frozen Paradox: unfreezing the backbone triggers a gradient co-adaptation loop where the dominant expert reshapes the shared representation, collapsing routing — so frozen adapters should beat full fine-tuning.
+
+
+SLIDE 3: The Fix — Raw-Routed Mixture of Adapters (RR-MoA)
+
+- Because the diagnosis pinpoints normalization as the cause, the fix is unambiguous: route on the raw, pre-normalization input while keeping the backbone strictly frozen.
+- RR-MoA splits information into two streams: the frozen TSFM produces deep embeddings for the experts, while a lightweight Conv1d gate (only 1,100 parameters) reads the raw input to decide which of K = 5 topologically diverse experts to activate.
+- Top-2 sparse routing selects two experts per sample, achieving 40% of the dense compute while retaining 63% of the dense MSE gain, adding only 4.3 ms (10%) latency over a single adapter.
+- The fix is intentionally simple — that it follows trivially from the diagnosis is itself evidence the causal mechanism was correctly identified, unlike optimization-side tricks that attack the wrong target.
+- Self-Routed MoA (SR-MoA), where each expert has its own sigmoid gate on raw input with no external router, independently validates the principle and outperforms RR-MoA by 13-42% across all six datasets.
+
+
+SLIDE 4: Results — 54/54 Wins, Frozen Paradox, and Closing the DLinear Gap
+
+- RR-MoA wins all 54 out of 54 configurations across 6 datasets, 3 freeze levels, and 3 seeds, with improvements of 27% to 77% over the best fixed adapter (p < 0.001, Wilcoxon signed-rank).
+- The Frozen Paradox is confirmed: frozen RR-MoA beats full fine-tuning (all 8 encoder blocks unfrozen, best of 90 optimization configurations) by 12-79% on every dataset — counterintuitively, less training freedom produces better results.
+- RR-MoA generalizes across six backbones: all 21 wins on MOMENT (RevIN), 18/18 on Moirai (no RevIN, showing value beyond the RevIN diagnosis), and 37-90% improvement on Moirai-MoE where adapter-level routing stacks on top of backbone-internal routing.
+- Two negative controls validate normalization-specificity: Chronos and Timer-XL (no instance normalization) show no routing collapse and RR-MoA provides no advantage — exactly as the theory predicts.
+- A dual-stream extension restoring raw-signal access to experts matches or beats DLinear on 6 out of 6 datasets at H = 96, generalizing to 107/123 cells across six backbones and four horizons — validating the diagnosis as actionable.
+
+
+SLIDE 5: Takeaways and Broader Implications
+
+- The core contribution is a general principle: normalization destroys routing information when the stripped statistics carry the routing signal — this applies beyond RevIN to any instance-level normalization, confirmed by a cross-modality control on ViT where InstanceNorm1d causes the same collapse.
+- Practitioner guideline: before deploying MoE adapters on any normalized backbone, compute the signal ratio R(D) — values above 0.5 predict raw routing helps, below 0.2 it does not.
+- The frozen-backbone paradigm enables deployment regimes that per-dataset models cannot serve: a single TSFM in GPU memory serves thousands of tenants via lightweight adapters swapped in microseconds, eliminating the need for independent training pipelines per tenant.
+- Limitations we acknowledge: Time-MoE is untested, the Frozen Paradox proposition covers linear backbones only (though confirmed empirically on full Transformers), and R(D) uses first moments which may miss higher-order routing signals like the Solar outlier.
+- The experimental battery spans over 5,000 runs with a self-verification script that re-derives every numerical claim from raw data — all code, results, and verification will be open-sourced upon acceptance.
