@@ -1,0 +1,153 @@
+preparte me a .txt file, intended to be paste onto 5 slides to give a presentation about this paper. Bullet points that are not too brief, it should read like proper sentences.
+
+---
+
+a few points on why this can be neurips worthy
+
+---
+
+recompile the file
+
+---
+
+. Before deploying MoE adapters on any normalized backbone <- what are such backbones for instance
+
+---
+
+is the current paper title good
+
+---
+
+I need a method based title
+
+---
+
+let's go with one
+
+---
+
+for each of these slide use gemini to generate an image
+
+---
+
+gemini google nano banana 2 (key in .env)
+
+---
+
+web seach for latest image generation model by google
+
+---
+
+what does it mean by entropy collapse
+
+---
+
+I need one image that help people understand what the routing happen in the flow of TSFM, where the adapter sit
+
+---
+
+no, I need a visual on the current status quo, what happen for inference is that we need an adapter to turn TSFM into performing downstream task
+
+---
+
+[Image #1] remove the title. Visualise this vertically
+
+---
+
+adjust the visual prompt. It should properly feature time series foundation model architecture, use exa search if needed for knowledge
+
+---
+
+love it, another slide that prescribes our solution
+
+---
+
+remind me why we had 2 paths now
+
+---
+
+I mean, are you describing our two solutions (by th way, rename those solutions for me)
+
+---
+
+we called these two: "  1. RR-MoA — an external Conv1d router reads raw input, selects top-k experts from the pool
+  2. SR-MoA — no external router at all; each expert has its own sigmoid gate on raw input and self-selects (inspired by AoE/ERMoE/Routing-Free
+  MoE)" 
+
+methods or solutions ?
+
+---
+
+is the current writing accurately reflecting this
+
+---
+
+shall we re-write a bit with that in mind
+
+---
+
+I think the paper would benefit from a native latex plot that illustrate the problem with one adapter for all downstream task
+
+---
+
+recompile
+
+---
+
+"A natural remedy is a mixture of expert adapters: a pool of topologically distinct heads
+
+with a learned router that assigns each window to the most suitable expert" is this one establishe in the literature
+
+---
+
+[Image #2] look really ugly. Use Gemini to generate the visual first. then use the generated one as reference for latex native plot
+
+---
+
+recompile
+
+---
+
+let remove that figure 1
+
+---
+
+what does it mean by Enropy collapse ?
+
+---
+
+I think the abstract would be benefit if we write clearly on this. Also, starting it with MOE adapters are a natural way ... is not good
+
+---
+
+wait, are what we doing different from: "TSFM Adaptation. The standard approach to adapting a frozen TSFM is to attach a lightweight
+
+module—LoRA [20], bottleneck adapters [21], or a linear probe "
+
+---
+
+by routing we mean each windows use an adapter right ?
+
+---
+
+Did we write clearly about this enough
+
+---
+
+it does not hurt to be a bit more explicit
+
+---
+
+/commit-push
+
+---
+
+recompile
+
+---
+
+review our appendix sections, is there any parts that remain due to earlier experimentations and no longer relevant, valid of the current state of the paper
+
+---
+
+yes only keep those relevant to the current state of the paper
