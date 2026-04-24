@@ -1,0 +1,65 @@
+"routing entropy collapses to exactly 0.000 in 7 out of 12 unfrozen configurations, meaning the router learns to send every sample to the same expert"
+
+what happens to the 5 other configs
+
+---
+
+did we write clearly about this
+
+---
+
+yes please
+
+---
+
+"All eleven standard rescue mechanisms from the MoE literature — load balancing, z-loss, entropy regularization, ReLU routing, expert-choice — fail to recover performance across a 720-run sweep, still 2.7x worse than our fix."
+
+what are rescue mechanisms
+
+---
+
+did we write clearly about these 11 rescue mechanisms. Are these all based on literature
+
+---
+
+let's do that
+
+---
+
+"The MoE community has treated routing collapse as an optimization problem for years; we show it is actually an information problem"
+
+what does this mean ?
+
+---
+
+it is in the @slides_content.txt
+
+---
+
+let's do it
+
+---
+
+"We isolate this mechanism through seven converging causal controls, the most striking being opposite entropy trajectories on identical data: MOMENT (with RevIN) collapses from 0.60 to 0.00 in about 40 steps, while Timer-XL (without RevIN) rises from 1.49 to 1.60 — same code, same data, only the normalization differs"
+
+what is the 7 converging causal controls
+
+---
+
+did we have empirical results for all ?
+
+---
+
+let's do it
+
+---
+
+give me a summarising table of what those 8 causal controls does, in easy understanable language
+
+---
+
+did we write as clearly as above, have a table that summarise ?
+
+---
+
+let's do it please
