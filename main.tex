@@ -894,41 +894,6 @@ $H$ & RR-MoA & Best fix & DLin & RR-MoA & Best fix & DLin & RR-MoA & Best fix & 
 \end{tabular}
 \end{table}
 
-\section{AAS Supporting Material}
-\label{app:aas_supporting}
-
-\subsection{Zero-Cost Proxy Correlations (T-ZCP)}
-\label{app:tzcp}
-
-Zero-cost gradient norms at initialization correlate with 15-epoch test MSE (Electricity $\rho{=}0.905$, Weather $\rho{=}0.762$), but partly track parameter count. A parameter-normalized variant would be needed for standalone use; we report this as a preliminary observation only.
-
-\subsection{Budget Scaling Analysis}
-\label{app:budget}
-
-All 14 tested search budgets $B{\in}[20,480]$ beat the conv baseline on both ETTh1 and ETTm1; MSE saturates around $B{\approx}60$. Evolutionary selection did not outperform random sampling in the template space, indicating negligible returns past the saturation point.
-
-\subsection{Cross-Dataset Transfer Matrix}
-\label{app:transfer}
-
-\begin{table}[h]
-\centering
-\caption{\textbf{Cross-dataset architecture transfer matrix} ($\Delta$\% vs.\ conv baseline). Row = source; column = target (zero-shot). $*$ = beats baseline. Adapters transfer well to Weather (4/4) but not ETTh2 (0/4).}
-\small
-\begin{tabular}{@{}lccccc@{}}
-\toprule
-Source $\downarrow$ Target $\rightarrow$ & ETTh1 & ETTh2 & ETTm1 & ETTm2 & Weather \\
-\midrule
-ETTh1 & --0.4 & +12.9 & --5.4$^*$ & +1.4 & --0.1$^*$ \\
-ETTh2 & +0.4 & +3.8 & +10.8 & +10.7 & --14.8$^*$ \\
-ETTm1 & +21.5 & +10.0 & --5.2 & +0.8 & --11.4$^*$ \\
-ETTm2 & +17.4 & +3.9 & --1.7$^*$ & +3.9 & --10.8$^*$ \\
-Weather & +9.7 & +7.9 & --2.9$^*$ & +9.0 & --10.4 \\
-\bottomrule
-\end{tabular}
-\label{tab:transfer}
-\end{table}
-
-
 \section{Proposition Proofs}
 \label{app:proofs}
 
@@ -1006,16 +971,6 @@ For $\alpha < \alpha^*$, routing quality degrades continuously; for $\alpha \to 
 \textbf{Information bottleneck connection.}
 The RevIN-encoder pipeline implements a form of the information bottleneck~\citep{tishby2000ib}: it compresses $X$ into a representation $H = f_\theta(S)$ that is optimized for downstream prediction while discarding ``irrelevant'' variability (the per-window location-scale statistics). The routing MI loss from Observation~\ref{thm:mi_decomp}(i) is the price paid for this compression \emph{at the routing decision point}. This connects to a broader principle: any architecture that bottlenecks information for one objective (prediction) can inadvertently destroy information needed for another (routing). The vision cross-modality control (Appendix~\ref{app:vision_moe}) confirms this is not RevIN-specific: InstanceNorm1d on ViT patches creates the same bottleneck, while InstanceNorm2d on ResNet spatial features does not---because spatial features are not the routing signal for classification.
 
-\textbf{Proof of Proposition~\ref{prop:hierarchy}} (Strict Head-Level Hierarchy: $\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$).
-
-\begin{proof}
-\emph{$\mathcal{C}_\text{head} \subseteq \mathcal{G}_\text{tmpl}$}: Each $c \in \mathcal{C}_\text{head}$ is, by Definition~\ref{def:discrete_head}, a pooling strategy followed by an MLP head. Both components are expressible as template derivations of the form $S \to \text{Pool}\cdot\text{MLP}\cdot\text{Output}$ (Appendix~\ref{app:grammar}), so $c$ lies in $\mathcal{G}_\text{tmpl}$. \emph{Strict}: $\mathcal{G}_\text{tmpl}$ additionally admits Conv1d pooling and SiLU activations absent from $\mathcal{C}_\text{head}$.
-
-\emph{$\mathcal{G}_\text{tmpl} \subseteq \mathcal{G}_\text{code}$}: Every template derivation produces a valid Python program satisfying Definition~\ref{def:code}. \emph{Strict}: $\mathcal{G}_\text{code}$ contains depthwise convolutions, batch normalization, residual connections, and learned positional weights---none derivable from the template grammar (Table~\ref{tab:expressiveness}).
-
-\emph{Orthogonality of LoRA and bottleneck configurations.} Configurations in $\mathcal{C}\setminus\mathcal{C}_\text{head}$ modify the backbone's attention projections (LoRA) or inject residual modules between encoder blocks (bottleneck). They are not head-level adapters and are therefore not members of $\mathcal{G}_\text{tmpl}$ nor of $\mathcal{G}_\text{code}$ as defined (the code space is restricted to adapter classes operating on extracted hidden states, per Definition~\ref{def:code}). We compare against the LoRA variant separately under the strictly frozen backbone protocol in Table~\ref{tab:baselines}.
-\end{proof}
-
 \textbf{Proof of Proposition~\ref{prop:frozen}} (Gradient Co-Adaptation Drives Entropy Collapse).
 
 \begin{proof}
@@ -1042,8 +997,6 @@ and analogously $\dot{\ell}_2\big|_A \approx -\eta\,(1{-}p)\left\|\frac{\partial
 \end{equation*}
 This update adjusts routing weights based on current expert performance, but does \emph{not} reshape $\mathbf{h}$ to favor one expert. Without the $A$-mediated feedback loop, there is no systematic bias toward entropy collapse---the router converges to a stable allocation reflecting the static geometry of the fixed representation space.
 \end{proof}
-
-\textbf{Budget Sufficiency (Empirical).} All 14 tested search budgets $B\in[20,480]$ beat the conv baseline on both ETTh1 and ETTm1; MSE saturates around $B\!\approx\!60$ (Appendix~\ref{app:budget}). Evolutionary selection did not outperform random sampling in $\mathcal{G}_\text{tmpl}$.
 
 \section{AAS Search Details}
 \label{app:aas_details}
@@ -1130,65 +1083,6 @@ Dataset & Rank & Targets & Head & MSE (mean$\pm$std) \\
 \begin{definition}[Adapter]
 Given a pretrained TSFM backbone $f_\theta: \mathbb{R}^{B \times L} \rightarrow \mathbb{R}^{B \times T \times d}$ that maps input time series to encoder hidden states, an \textbf{adapter} is a parameterized module $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$ that maps hidden states to forecasts, where $\phi \in \Phi_g \subseteq \mathbb{R}^{n_g}$ are trainable weights with $n_g \leq N_\text{max}$ (we set $N_\text{max} = 500{,}000$).
 \end{definition}
-
-\begin{definition}[Architecture Space]
-An \textbf{architecture space} $\mathcal{G}$ is a set of adapter specifications, where each $g \in \mathcal{G}$ determines: (i) a parameter space $\Phi_g$ and its dimensionality $n_g$, (ii) a computational graph defining the forward function $g_\phi(\cdot)$, and (iii) an initialization procedure for $\phi$.
-\end{definition}
-
-\begin{definition}[Discrete Configuration Space $\mathcal{C}$]
-The \textbf{discrete space} $\mathcal{C}$ is the Cartesian product of standard adapter hyperparameters:
-\begin{equation}
-\mathcal{C} = \underbrace{\{\text{lin, lora, bn}\}}_{\text{type}} \times \underbrace{\{8,16,32,64\}}_{\text{rank}} \times \underbrace{\{\text{mean, last, max, cls}\}}_{\text{pool}} \times \underbrace{\{\text{lin, mlp1, mlp2}\}}_{\text{head}} \times \cdots
-\end{equation}
-The full Cartesian product yields ${\sim}2{,}160$ configurations, of which ${\sim}144$ define distinct adapter \textit{computational graphs} when restricted to the head-only subspace.
-\end{definition}
-
-\begin{definition}[Head-Only Subspace $\mathcal{C}_\text{head}$]
-\label{def:discrete_head}
-The \textbf{head-only subspace} $\mathcal{C}_\text{head} \subset \mathcal{C}$ is the restriction of $\mathcal{C}$ to linear-probe configurations (pooling $\to$ MLP head), with LoRA rank $=0$ and no bottleneck.
-\end{definition}
-
-\begin{definition}[Code-Level Space $\mathcal{G}_\text{code}$]
-\label{def:code}
-The \textbf{code space} $\mathcal{G}_\text{code}$ is the set of all Python programs $p$ such that: (i)~$p$ defines a class \texttt{Adapter(nn.Module)} with \texttt{\_\_init\_\_(self, d\_model, output\_dim)} and \texttt{forward(self, h)} mapping $\mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$; (ii)~$n_p \leq N_\text{max}$; (iii)~$p$ uses only \texttt{\{torch, nn, F, math\}}.
-\end{definition}
-
-\begin{definition}[Template Space $\mathcal{G}_\text{tmpl}$]
-\label{def:template}
-The \textbf{template space} $\mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$ is generated by a context-free grammar over 5 pooling types, 4 activations, variable MLP depths and widths, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$ architectures (Appendix~\ref{app:grammar}).
-\end{definition}
-
-\begin{proposition}[Strict Head-Level Hierarchy]
-\label{prop:hierarchy}
-$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$, and both inclusions are strict (proof in Appendix~\ref{app:proofs}).
-\end{proposition}
-
-\label{app:expressiveness}
-\begin{table}[h]
-\centering
-\caption{Search space expressiveness hierarchy. Winning AAS architectures lie in $\mathcal{G}_\text{code} \setminus \mathcal{G}_\text{tmpl}$.}
-\label{tab:expressiveness}
-\small
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Architecture & Discrete $\mathcal{C}$ & Template $\mathcal{G}_\text{tmpl}$ & Code $\mathcal{G}_\text{code}$ & Source \\
-\midrule
-Linear probe (mean pool + linear) & \cmark & \cmark & \cmark & Standard \\
-MLP head (1--2 layer, GELU) & \cmark & \cmark & \cmark & Standard \\
-Conv1d pool + MLP & \xmark & \cmark & \cmark & Template \\
-\midrule
-\multicolumn{5}{l}{\textit{Head-level hierarchy: }$\mathcal{C}_\text{head} \subset \mathcal{G}_\text{tmpl} \subset \mathcal{G}_\text{code}$} \\
-LoRA ($r$, $\alpha$, targets) on backbone & \multicolumn{3}{c}{\emph{orthogonal axis; see Table~\ref{tab:baselines}}} & Backbone PEFT \\
-Bottleneck adapter between blocks & \multicolumn{3}{c}{\emph{orthogonal axis}} & Backbone PEFT \\
-\midrule
-Conv1d + BatchNorm + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-Depthwise conv + positional weights & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-Softmax feature attention + gating & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-Multi-scale conv + residual & \xmark & \xmark & \cmark & \textbf{Discovered} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 
 \section{Routing Weight Distributions}
 \label{app:routing_weights}
