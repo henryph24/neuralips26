@@ -135,3 +135,7 @@ Did we write clearly about this enough
 ---
 
 it does not hurt to be a bit more explicit
+
+---
+
+/commit-push
