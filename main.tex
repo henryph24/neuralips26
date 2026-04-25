@@ -95,95 +95,114 @@ Our contributions are threefold:
 \centering
 \resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[
+    >=Stealth,
     % -- Node styles --
-    inputnode/.style={rectangle, draw=gray!60, rounded corners=3pt, fill=gray!6,
-        minimum width=10.8cm, minimum height=0.85cm, font=\small, align=center, line width=0.6pt},
-    pathbox/.style={rectangle, draw=#1!50, rounded corners=4pt, fill=#1!8,
-        minimum width=4.8cm, minimum height=0.9cm, font=\small, align=center, line width=0.6pt},
-    resultbox/.style={rectangle, draw=#1!40, rounded corners=3pt, fill=#1!5,
-        minimum width=4.8cm, minimum height=0.7cm, font=\small, align=center, line width=0.5pt},
-    expertbox/.style={rectangle, draw=violet!40, rounded corners=3pt, fill=violet!4,
-        minimum width=1.6cm, minimum height=0.6cm, font=\scriptsize\bfseries, align=center, line width=0.5pt},
-    poolframe/.style={rectangle, draw=violet!50, rounded corners=5pt, fill=violet!3,
-        minimum width=10.8cm, minimum height=1.3cm, line width=0.6pt},
-    outputnode/.style={rectangle, draw=teal!50, rounded corners=4pt, fill=teal!5,
-        minimum width=10.8cm, minimum height=0.85cm, font=\small, align=center, line width=0.6pt},
+    box/.style={rectangle, draw=black!70, rounded corners=2pt, fill=white,
+        minimum height=0.75cm, font=\small, align=center, line width=0.7pt},
+    frozenbox/.style={box, draw=blue!60, fill=blue!4, minimum width=2.6cm, minimum height=1.4cm},
+    gatebox/.style={box, draw=orange!70, fill=orange!4, minimum width=2.0cm, minimum height=0.9cm},
+    hiddenbox/.style={box, draw=blue!50, fill=blue!3, minimum width=1.4cm},
+    topkbox/.style={box, draw=orange!60, fill=orange!3, minimum width=1.3cm},
+    expertactive/.style={box, draw=black!80, fill=white, minimum width=2.0cm, minimum height=0.65cm, font=\small\bfseries},
+    expertinactive/.style={box, draw=gray!35, fill=gray!6, minimum width=2.0cm, minimum height=0.65cm, font=\small, text=gray!50},
+    sumnode/.style={circle, draw=black!70, fill=white, minimum size=0.65cm, font=\normalsize, line width=0.7pt},
+    outputbox/.style={box, draw=teal!60, fill=teal!4, minimum width=1.2cm},
     % -- Arrow styles --
-    dataarr/.style={-{Stealth[length=2.8mm, width=2mm]}, line width=0.8pt, color=blue!55},
-    routearr/.style={-{Stealth[length=2.8mm, width=2mm]}, line width=0.8pt, color=orange!65, densely dashed},
-    mergearr/.style={-{Stealth[length=2.8mm, width=2mm]}, line width=0.8pt, color=violet!50},
-    outarr/.style={-{Stealth[length=2.8mm, width=2mm]}, line width=0.8pt, color=teal!60},
-    % -- Label styles --
-    pathlabel/.style={font=\scriptsize\bfseries, rounded corners=2pt, inner sep=2pt},
+    bluearr/.style={->, line width=0.8pt, color=blue!55},
+    orangearr/.style={->, line width=0.8pt, color=orange!70},
+    dashedarr/.style={->, line width=0.8pt, color=orange!70, densely dashed},
+    grayarr/.style={->, line width=0.7pt, color=gray!50},
+    outarr/.style={->, line width=0.8pt, color=teal!60},
 ]
 
-% ====== ROW 0: INPUT ======
-\node[inputnode] (input) at (0, 0) {
-    \textbf{Raw Time Series Input} \quad $\mathbf{X}_\mathrm{raw} \in \mathbb{R}^{B \times L}$
+% ====== INPUT (left) ======
+\node[box, minimum width=1.4cm, minimum height=1.0cm] (input) at (0, 0) {
+    $\mathbf{X}_\mathrm{raw}$\\[-2pt]
+    {\scriptsize raw input}\\[-2pt]
+    {\scriptsize 512 steps}
 };
 
-% ====== ROW 1: PATH LABELS ======
-\node[pathlabel, text=blue!60] (labA) at (-2.7, -0.9) {Path A: Deep Semantics};
-\node[pathlabel, text=orange!70] (labB) at (2.7, -0.9) {Path B: Raw-Signal Routing};
+% ====== PATH A: FROZEN TSFM (top) ======
+\node[frozenbox] (tsfm) at (3.5, 1.8) {
+    \textbf{Frozen TSFM}\\[-1pt]
+    \textbf{Backbone}\\[-1pt]
+    {\scriptsize\color{red!60} no gradients}
+};
+% Lock + FROZEN badge
+\node[font=\scriptsize\bfseries, text=red!65, fill=red!8, rounded corners=2pt, inner sep=1.5pt]
+    at ([yshift=0.15cm]tsfm.north) {\textsc{frozen}};
 
-% ====== ROW 2: PROCESSING BLOCKS ======
-\node[pathbox=blue] (backbone) at (-2.7, -1.85) {
-    \textbf{Frozen TSFM}~~$f_{\theta}$\\[-2pt]
-    {\scriptsize RevIN $\;\to\;$ patch $\;\to\;$ encoder}
-};
-\node[pathbox=orange] (router) at (2.7, -1.85) {
-    \textbf{Raw-Signal Router}~~$G_\psi$\\[-2pt]
-    {\scriptsize Conv1d $\;\to\;$ Pool $\;\to\;$ Linear}
-};
-
-% ====== ROW 3: OUTPUTS OF EACH PATH ======
-\node[resultbox=blue] (hidden) at (-2.7, -3.1) {
-    $\mathbf{H} \in \mathbb{R}^{B \times T \times d}$
-    \quad {\scriptsize\color{red!65} \ding{55}\;routing on $\mathbf{H}$ collapses}
-};
-\node[resultbox=orange] (weights) at (2.7, -3.1) {
-    $\mathbf{w} \in \Delta^K$
-    \quad {\scriptsize\color{green!50!black} \cmark\;diverse routing}
+% Hidden states
+\node[hiddenbox] (hidden) at (6.8, 1.8) {
+    $\mathbf{H}$\\[-2pt]
+    {\scriptsize hidden}\\[-2pt]
+    {\scriptsize states}
 };
 
-% ====== ROW 4: EXPERT POOL ======
-\node[poolframe] (pool) at (0, -4.7) {};
-\node[font=\small\bfseries, text=violet!70, fill=white, inner sep=2pt] at ([xshift=1.2cm]pool.north west) {Expert Pool $(K{=}5)$};
-% Individual expert boxes
-\node[expertbox] (e1) at (-3.8, -4.95) {Mean};
-\node[expertbox] (e2) at (-1.9, -4.95) {Last};
-\node[expertbox] (e3) at ( 0.0, -4.95) {Max};
-\node[expertbox] (e4) at ( 1.9, -4.95) {Attn};
-\node[expertbox] (e5) at ( 3.8, -4.95) {Conv1d};
-
-% ====== ROW 5: OUTPUT ======
-\node[outputnode] (output) at (0, -6.1) {
-    $\displaystyle \mathbf{Y} = \sum_{k \in \mathrm{TopK}(\mathbf{w})} \widetilde{w}_k \cdot \mathrm{Expert}_k(\mathbf{H})$
-    \qquad {\small\bfseries 54/54 wins, $p{<}0.001$}
+% ====== PATH B: CONV1D GATE (bottom) ======
+\node[gatebox] (gate) at (3.5, -1.8) {
+    \textbf{Conv1d Gate}\\[-2pt]
+    {\scriptsize 1{,}100 params}
 };
+
+% Top-K
+\node[topkbox] (topk) at (6.8, -1.8) {
+    \textbf{Top-2}\\[-2pt]
+    {\scriptsize sparse}
+};
+
+% ====== EXPERT POOL (right) ======
+\node[expertinactive] (e1) at (9.8, 3.2) {Mean Pool};
+\node[expertactive]   (e2) at (9.8, 2.0) {\textbf{Last Token}};
+\node[expertinactive] (e3) at (9.8, 0.8) {Max Pool};
+\node[expertactive]   (e4) at (9.8, -0.4) {\textbf{Attention}};
+\node[expertinactive] (e5) at (9.8, -1.6) {Conv1d};
+
+% Expert pool bracket label
+\draw[decorate, decoration={brace, amplitude=4pt, mirror}, gray!50, line width=0.5pt]
+    (11.0, 3.55) -- (11.0, -1.95)
+    node[midway, right=5pt, font=\scriptsize, text=gray!60] {$K{=}5$ experts};
+
+% ====== WEIGHTED SUM + OUTPUT ======
+\node[sumnode] (sum) at (12.5, 0.8) {$\Sigma$};
+\node[font=\tiny, text=gray!60] at (12.5, 0.2) {weighted};
+\node[outputbox] (output) at (14.3, 0.8) {
+    $\hat{\mathbf{y}}$\\[-2pt]
+    {\scriptsize forecast}
+};
+
+% ====== PATH LABELS ======
+\node[font=\scriptsize\bfseries, text=blue!55] at (1.6, 2.8) {\textsc{Path A: Embeddings}};
+\node[font=\scriptsize\bfseries, text=orange!70] at (1.6, -2.8) {\textsc{Path B: Routing}};
 
 % ====== ARROWS ======
-% Input → path labels → processing blocks (arrows behind labels)
-\draw[dataarr]  ([xshift=-2.7cm]input.south) -- (labA.north);
-\draw[dataarr]  (labA.south) -- (backbone.north);
-\draw[routearr] ([xshift= 2.7cm]input.south) -- (labB.north);
-\draw[routearr] (labB.south) -- (router.north);
+% Input splits to two paths
+\draw[bluearr]   (input.north) |- (tsfm.west);
+\draw[orangearr] (input.south) |- (gate.west);
 
-% Path blocks → results (straight down)
-\draw[dataarr]  (backbone.south) -- (hidden.north);
-\draw[routearr] (router.south) -- (weights.north);
+% Path A: TSFM → H → all experts
+\draw[bluearr] (tsfm.east) -- (hidden.west);
+\draw[grayarr] (hidden.east) -- ++(0.6,0) |- (e1.west);
+\draw[bluearr] (hidden.east) -- ++(0.6,0) |- (e2.west);
+\draw[grayarr] (hidden.east) -- ++(0.6,0) |- (e3.west);
+\draw[bluearr] (hidden.east) -- ++(0.6,0) |- (e4.west);
+\draw[grayarr] (hidden.east) -- ++(0.6,0) |- (e5.west);
 
-% Hidden states → expert pool (straight down)
-\draw[dataarr] (hidden.south) -- ([xshift=-2.7cm]pool.north);
-% Routing weights → expert pool (straight down)
-\draw[routearr] (weights.south) -- ([xshift=2.7cm]pool.north);
+% Path B: Gate → Top-2 → active experts (dashed)
+\draw[orangearr] (gate.east) -- (topk.west);
+\draw[dashedarr] (topk.east) -- ++(0.4,0) |- (e2.south west)
+    node[pos=0.35, font=\scriptsize, text=orange!70, above] {$w_2$};
+\draw[dashedarr] (topk.east) -- ++(0.4,0) |- (e4.south west)
+    node[pos=0.55, font=\scriptsize, text=orange!70, below] {$w_4$};
 
-% Expert pool → output
-\draw[outarr] (pool.south) -- (output.north);
+% Active experts → sum → output
+\draw[bluearr] (e2.east) -| (sum.north);
+\draw[bluearr] (e4.east) -| (sum.south);
+\draw[outarr]  (sum.east) -- (output.west);
 
 \end{tikzpicture}%
 }% end resizebox
-\caption{\textbf{RR-MoA architecture.} \textit{Path~A}: the frozen TSFM produces hidden states $\mathbf{H}$ (no gradients through $\theta$). \textit{Path~B}: a lightweight gate reads the raw pre-normalization signal and selects $k$ of $K$ experts via $\mathrm{TopK}$. Standard MoE routing on $\mathbf{H}$ collapses (entropy $0.000{\pm}0.000$; Table~\ref{tab:adamix}); RR-MoA achieves \textbf{54/54 wins} (Table~\ref{tab:rrmoa}).}
+\caption{\textbf{RR-MoA architecture.} \textit{Path~A} (blue): the frozen TSFM produces hidden states $\mathbf{H}$ (no gradients through $\theta$); all experts receive $\mathbf{H}$. \textit{Path~B} (orange): a lightweight Conv1d gate (1{,}100 params) reads the raw pre-normalization signal $\mathbf{X}_\mathrm{raw}$ and selects the Top-2 experts via sparse routing. Only the selected experts (bold) contribute to the output; inactive experts (gray) receive no gradient. Standard MoE routing on $\mathbf{H}$ collapses (entropy $0.000{\pm}0.000$; Table~\ref{tab:adamix}); RR-MoA achieves \textbf{54/54 wins} (Table~\ref{tab:rrmoa}).}
 \label{fig:framework}
 \vspace{-0.8em}
 \end{figure}
@@ -276,7 +295,7 @@ Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
 \end{tabular}
 \end{table}
 
-{\looseness=-1 \textbf{The Frozen Paradox.} Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on every dataset (Table~\ref{tab:baselines}, Figure~\ref{fig:frozen_paradox}). The explanation is that unfreezing the backbone triggers the co-adaptation loop (Proposition~\ref{prop:frozen}): the dominant expert reshapes the shared representation, collapsing routing. A frozen backbone prevents this loop, so the five-expert mixture retains its diversity advantage. Within RR-MoA, frozen is best on 4/6 datasets; light unfreezing wins by up to $13\%$ on the other two. SR-MoA independently replicates this pattern (frozen best on 4/6 datasets; Table~\ref{tab:self_routed}). Even with careful hyperparameter tuning---learning rates $10^{-5}$ to $10^{-6}$, 100 epochs, cosine schedule with 10-epoch warmup, layerwise LR decay, weight decay sweep, gradient accumulation up to effective batch 512 (90 configurations)---full fine-tuning still loses by $51$--$71\%$ (Appendix~\ref{app:extended_ft}).}
+{\looseness=-1 \textbf{The Frozen Paradox.} Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on every dataset (Table~\ref{tab:baselines}, Figure~\ref{fig:frozen_paradox}). Two distinct mechanisms contribute. First, \emph{within MoE adapters}, unfreezing triggers gradient co-adaptation (Proposition~\ref{prop:frozen}): the dominant expert reshapes the shared backbone, collapsing routing---freezing prevents this loop and preserves expert diversity. Second, \emph{across architectures}, the frozen five-expert mixture with learned per-sample routing provides an architectural advantage that a single unfrozen head cannot match even with full parameter access: per-sample expert selection captures input-regime structure that no single topology can represent. Within RR-MoA, frozen is best on 4/6 datasets; light unfreezing wins by up to $13\%$ on the other two. SR-MoA independently replicates this pattern (frozen best on 4/6 datasets; Table~\ref{tab:self_routed}). Even with careful hyperparameter tuning---learning rates $10^{-5}$ to $10^{-6}$, 100 epochs, cosine schedule with 10-epoch warmup, layerwise LR decay, weight decay sweep, gradient accumulation up to effective batch 512 (90 configurations)---full fine-tuning still loses by $51$--$71\%$ (Appendix~\ref{app:extended_ft}).}
 
 \begin{proposition}[Gradient Co-Adaptation Drives Entropy Collapse]
 \label{prop:frozen}
@@ -475,7 +494,7 @@ Let $X$ be a random input window, $E \in \{1,\ldots,K\}$ the expert assignment p
 
 Full proof in Appendix~\ref{app:proofs}; rate-distortion interpretation and phase-transition formalization in Appendix~\ref{app:prop2_depth}. \textit{Remark.} KSG cross-check (${\pm}0.26$ nats) confirms leakage estimates hold beyond Gaussianity. \textbf{Independent validation:} training $\alpha \in [0,1]$ as an \texttt{nn.Parameter}, gradient descent converges to $\alpha < 0.5$ on all six datasets ($30/30$ runs; Appendix~\ref{app:learnable_alpha}).
 
-\textbf{Quantitative prediction.} The \emph{routing signal ratio} $R(\mathcal{D}) = [\text{Var}(M) + \text{Var}(\Sigma)] / \overline{\text{Var}(S)}$ serves as a monotone proxy for the MI bound. Figure~\ref{fig:signal_ratio} validates this across nine LTSF benchmarks: $\rho = -0.88$ ($p < 0.002$; bootstrap CI: $[-1.00, -0.51]$; $n{=}9$). Traffic ($R{=}0.14$) is correctly predicted as a boundary case ($\Delta{=}{+}2.9\%$). Solar ($R{=}0.06$) is the one outlier: the Conv1d router exploits temporal shape patterns beyond location-scale, consistent with the SSR ablation ($+43\%$ degradation). Additional ablations (SSR, RDGF, per-quartile analysis) in Appendix~\ref{app:routing_ablations}.
+\textbf{Quantitative prediction.} The \emph{routing signal ratio} $R(\mathcal{D}) = [\text{Var}(M) + \text{Var}(\Sigma)] / \overline{\text{Var}(S)}$ measures whether input windows in a dataset differ primarily in their location and scale (high $R$, normalization destroys the dominant routing signal) or primarily in their shape (low $R$, routing signal survives normalization). It serves as a monotone proxy for the MI bound. Figure~\ref{fig:signal_ratio} validates this: the Spearman rank correlation between $R(\mathcal{D})$ and the MSE improvement $\Delta\%$ from raw routing is $\rho = -0.88$ ($p < 0.002$; bootstrap CI: $[-1.00, -0.51]$; $n{=}9$), i.e., datasets where normalization strips more routing signal benefit more from bypassing it. Traffic ($R{=}0.14$) is correctly predicted as a boundary case ($\Delta{=}{+}2.9\%$). Solar ($R{=}0.06$) is the one outlier: the Conv1d router exploits temporal shape patterns beyond location-scale, consistent with the SSR ablation ($+43\%$ degradation). Additional ablations (SSR, RDGF, per-quartile analysis) in Appendix~\ref{app:routing_ablations}.
 
 \begin{figure}[t]
 \centering
@@ -552,8 +571,10 @@ Full proof in Appendix~\ref{app:proofs}; rate-distortion interpretation and phas
 
 {\looseness=-1 \textbf{Cross-backbone generalization.}\label{sec:cross_backbone} RR-MoA is not specific to MOMENT. On MOMENT-small and MOMENT-large (both using RevIN), it wins \textbf{all 21} configurations by $27$--$81\%$ (Table~\ref{tab:cross_backbone}). On Moirai (LayerNorm only, no RevIN), it wins \textbf{18/18} by $3$--$31\%$---demonstrating that raw-signal routing provides value \emph{beyond} the RevIN diagnosis: even when hidden states retain enough information to avoid collapse (Moirai entropy: $1.48$--$1.60$), the raw input carries richer per-window statistics that improve routing quality. On Moirai-MoE~\citep{liu2025moiraimoe}, which already contains sparse internal experts, RR-MoA still improves \textbf{all 6 datasets} by $37$--$90\%$ (Table~\ref{tab:moirai_moe}), showing that adapter-level and backbone-internal routing operate on complementary axes. Two \textbf{negative controls} validate the diagnosis: Chronos and Timer-XL~\citep{liu2025timerxl}, which lack instance normalization, show no routing collapse (entropy $1.48$--$1.61$) and RR-MoA provides no advantage (\textbf{4/18} wins, within chance)---exactly as Observation~\ref{thm:mi_decomp} predicts (Appendix~\ref{app:cross_backbone}).}
 
-{\looseness=-1 \textbf{Sparse routing, multi-horizon, and task generalization.}\label{sec:topk}
-Top-2 sparse routing adds $4.3$\,ms ($+10\%$) while retaining $63\%$ of the dense gain; scaling $K{=}3{\to}20$ changes MSE by ${<}5\%$. RR-MoA wins \textbf{24/24} across $H{\in}\{96{-}720\}$ and generalizes to imputation ($7/8$ datasets; Appendix~\ref{app:topk},~\ref{app:imputation}).}
+{\looseness=-1 \textbf{Sparse routing and task generalization.}\label{sec:topk}
+Top-2 sparse routing adds $4.3$\,ms ($+10\%$) while retaining $63\%$ of the dense gain; scaling $K{=}3{\to}20$ changes MSE by ${<}5\%$ (Appendix~\ref{app:topk}). RR-MoA generalizes to imputation ($7/8$ datasets; Appendix~\ref{app:imputation}).}
+
+{\looseness=-1 \textbf{Multi-horizon generalization.} RR-MoA wins \textbf{24/24} configurations across $H{\in}\{96, 192, 336, 720\}$ on ETTh1, ETTm1, and Weather (5 seeds each; Table~\ref{tab:horizon}), with improvements of $27$--$49\%$ over the best fixed adapter at every horizon. The advantage is stable across horizon length: at $H{=}720$, RR-MoA still improves by $27$--$41\%$. A dual-stream extension (Residual-IA\textsuperscript{+}, Appendix~\ref{app:gate_pathology}) further extends this to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
 
 \vspace{-0.5em}
 \section{Conclusion}
