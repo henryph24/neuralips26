@@ -171,3 +171,7 @@ do you think we should create a latex-native plot based on: "slide_images/residu
 ---
 
 let's do it
+
+---
+
+/commit-push
