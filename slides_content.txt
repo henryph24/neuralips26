@@ -35,16 +35,22 @@ SLIDE 3: The Fix — Raw-Routed Mixture of Adapters (RR-MoA)
 - RR-MoA splits information into two streams: the frozen TSFM produces deep embeddings for the experts, while a lightweight Conv1d gate (only 1,100 parameters) reads the raw input to decide which of K = 5 topologically diverse experts to activate.
 - Top-2 sparse routing selects two experts per sample, achieving 40% of the dense compute while retaining 63% of the dense MSE gain, adding only 4.3 ms (10%) latency over a single adapter.
 - The fix is intentionally simple — that it follows trivially from the diagnosis is itself evidence the causal mechanism was correctly identified, unlike optimization-side tricks that attack the wrong target.
-- Self-Routed MoA (SR-MoA), where each expert has its own sigmoid gate on raw input with no external router, independently validates the principle and outperforms RR-MoA by 13-42% across all six datasets.
+- Self-Routed MoA (SR-MoA) — where each expert has its own sigmoid gate on raw input with no external router — uses a completely different routing architecture but shares only one thing with RR-MoA: routing on raw input. That SR-MoA outperforms RR-MoA by 13-42% across all six datasets proves the paper's central thesis: the key insight is *what* you route on (raw input), not *how* you route (external router vs self-gating). The principle, not the specific router design, drives the gains.
 
 
 SLIDE 4: Results — 54/54 Wins, Frozen Paradox, and Closing the DLinear Gap
 
-- RR-MoA wins all 54 out of 54 configurations across 6 datasets, 3 freeze levels, and 3 seeds, with improvements of 27% to 77% over the best fixed adapter (p < 0.001, Wilcoxon signed-rank).
-- The Frozen Paradox is confirmed: frozen RR-MoA beats full fine-tuning (all 8 encoder blocks unfrozen, best of 90 optimization configurations) by 12-79% on every dataset. Within MoE, freezing prevents co-adaptation collapse; across architectures, five diverse experts with learned routing outperform a single head even when that head has full backbone access.
-- RR-MoA generalizes across six backbones: all 21 wins on MOMENT (RevIN), 18/18 on Moirai (no RevIN, showing value beyond the RevIN diagnosis), and 37-90% improvement on Moirai-MoE where adapter-level routing stacks on top of backbone-internal routing.
+CLAIM LAYER 1 — RR-MoA vs other adapters (frozen-backbone baselines):
+- RR-MoA wins all 54 out of 54 configurations across 6 datasets, 3 freeze levels, and 3 seeds, with improvements of 27% to 77% over the best fixed adapter — i.e., the winner among three standard single-head topologies (linear, attention, conv1d), chosen per cell (p < 0.001, Wilcoxon signed-rank). Comparison against richer baselines (LoRA, TRACE, AdaMix, full fine-tuning, DLinear) is in Slide 4 / Table 5 of the paper.
+- The Frozen Paradox is confirmed: frozen RR-MoA beats full fine-tuning (all 8 of MOMENT-small's 8 encoder blocks unfrozen — i.e., the entire backbone trainable, best of 90 optimization configurations) by 12-79% on every dataset. Within MoE, freezing prevents co-adaptation collapse; across architectures, five diverse experts with learned routing outperform a single head even when that head has full backbone access.
+- RR-MoA generalizes across six backbones: 21/21 wins on MOMENT (RevIN), 18/18 on Moirai (no RevIN — showing value beyond the RevIN diagnosis), and 37-90% improvement on Moirai-MoE where adapter-level routing stacks on top of backbone-internal routing.
 - Two negative controls validate normalization-specificity: Chronos and Timer-XL (no instance normalization) show no routing collapse and RR-MoA provides no advantage — exactly as the theory predicts.
-- A dual-stream extension restoring raw-signal access to experts matches or beats DLinear on 6 out of 6 datasets at H = 96, generalizing to 107/123 cells across six backbones and four horizons — validating the diagnosis as actionable.
+
+CLAIM LAYER 2 — Closing the DLinear gap (vs from-scratch supervised model):
+- Honest framing: RR-MoA itself does NOT beat DLinear in absolute MSE — DLinear (49K params, trained from scratch per dataset) outperforms every frozen-backbone adapter in the literature, including RR-MoA. This is the awkward calibration anchor every TSFM-adapter paper has to confront.
+- The diagnosis predicts the cause of the gap: RevIN strips per-window mean and variance before the encoder, and those statistics carry forecasting signal too — not just routing signal. DLinear sees raw inputs end-to-end and preserves them.
+- The diagnosis-driven fix (Residual-IA⁺): a dual-stream extension where each expert combines a shared NLinear raw-input branch (DLinear-equivalent) with a gated backbone residual on top — restoring raw-signal access at the expert level, not just the router.
+- Result: Residual-IA⁺ matches or beats DLinear on 6/6 datasets at H = 96, generalizing to 107/123 cells (88%) across six backbones and four horizons — 65 significant wins vs 11 losses, 5.9:1 ratio. This is what validates the diagnosis as actionable: the fix follows mechanically from the diagnosis, and the predicted gap-closure occurs under the predicted conditions.
 
 
 SLIDE 5: Takeaways and Broader Implications

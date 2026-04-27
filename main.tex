@@ -249,7 +249,7 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 
 We evaluate RR-MoA on standard long-term forecasting benchmarks using five backbones, seven baselines, and up to five random seeds per configuration.
 
-\textbf{Backbones.} Primary: MOMENT-small~\citep{goswami2024moment} ($d{=}512$, 8 blocks, internal RevIN~\citep{kim2021revin}). Cross-backbone: MOMENT-large ($d{=}1024$), Moirai~\citep{woo2024moirai} ($d{=}384$, no RevIN), Chronos~\citep{ansari2024chronos} and Timer-XL~\citep{liu2025timerxl} (no RevIN, negative controls; \S\ref{sec:cross_backbone}). Primary results use a \emph{strictly frozen} backbone; freeze-level ablations in \S\ref{sec:freeze_ablation}.
+\textbf{Backbones.} Primary: MOMENT-small~\citep{goswami2024moment} ($d{=}512$, 8 encoder blocks, internal RevIN~\citep{kim2021revin}). Cross-backbone: MOMENT-large ($d{=}1024$, 24 blocks), Moirai~\citep{woo2024moirai} ($d{=}384$, 6 blocks, no RevIN), Moirai-MoE ($d{=}384$, 6 blocks, sparse internal experts), Chronos~\citep{ansari2024chronos} ($d{=}512$, 6 encoder blocks) and Timer-XL~\citep{liu2025timerxl} ($d{=}512$, 8 blocks, no RevIN; the latter two are negative controls; \S\ref{sec:cross_backbone}). Throughout, ``full fine-tuning'' for any backbone means \emph{all} encoder blocks are unfrozen (8/8 for MOMENT-small, 24/24 for MOMENT-large, 6/6 for Moirai/Moirai-MoE/Chronos, 8/8 for Timer-XL). Primary results use a \emph{strictly frozen} backbone; freeze-level ablations in \S\ref{sec:freeze_ablation}.
 
 {\looseness=-1 \textbf{Datasets and tasks.} ETTh1/h2/m1/m2~\citep{zhou2021informer}, Weather (21ch), Electricity (321ch)---standard LTSF benchmarks~\citep{godahewa2021monash}. Chronological splits, channel-wise StandardScaler normalization~\citep{zhou2021informer, nie2023patchtst}. We evaluate forecasting ($H{=}96$) and imputation (20\% masked). DLinear calibration: $0.416$/$0.322$/$0.208$ on ETTh1/ETTm1/Weather (Appendix~\ref{app:dlinear}).}
 
@@ -1940,6 +1940,117 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 
 \subsection{Residual-IA: Diagnosing and Fixing a Second Pathology}
 \label{app:gate_pathology}
+
+\begin{figure}[h]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    box/.style={rectangle, draw=black!70, rounded corners=2pt, fill=white,
+        minimum height=0.75cm, font=\small, align=center, line width=0.7pt},
+    frozenbox/.style={box, draw=blue!60, fill=blue!4, minimum width=2.4cm, minimum height=1.2cm},
+    nlinearbox/.style={box, draw=green!55!black, fill=green!5, minimum width=2.4cm, minimum height=1.2cm},
+    hiddenbox/.style={box, draw=blue!50, fill=blue!3, minimum width=1.0cm, minimum height=0.7cm},
+    rawforebox/.style={box, draw=green!55!black, fill=green!4, minimum width=1.2cm, minimum height=0.7cm},
+    expertactive/.style={box, draw=black!80, fill=white, minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize\bfseries, align=center},
+    expertinactive/.style={box, draw=gray!35, fill=gray!6, minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize, text=gray!50, align=center},
+    sigmagate/.style={diamond, draw=orange!70, fill=orange!10, minimum size=0.55cm, font=\scriptsize, inner sep=0pt, line width=0.6pt},
+    sumnode/.style={circle, draw=black!70, fill=white, minimum size=0.65cm, font=\normalsize, line width=0.7pt},
+    outputbox/.style={box, draw=teal!60, fill=teal!4, minimum width=1.2cm},
+    bluearr/.style={->, line width=0.8pt, color=blue!55},
+    greenarr/.style={->, line width=0.8pt, color=green!55!black},
+    grayarr/.style={->, line width=0.7pt, color=gray!50},
+    outarr/.style={->, line width=0.8pt, color=teal!60},
+]
+
+% INPUT
+\node[box, minimum width=1.4cm, minimum height=1.0cm] (input) at (0, 0) {
+    $\mathbf{X}_\mathrm{raw}$\\[-2pt]
+    {\scriptsize raw input}
+};
+
+% Stream 1: Frozen TSFM (top)
+\node[frozenbox] (tsfm) at (3.2, 1.6) {
+    \textbf{Frozen TSFM}\\[-1pt]
+    \textbf{Backbone}\\[-1pt]
+    {\scriptsize\color{red!60} no gradients}
+};
+\node[font=\scriptsize\bfseries, text=red!65, fill=red!8, rounded corners=2pt, inner sep=1.5pt]
+    at ([yshift=0.15cm]tsfm.north) {\textsc{frozen}};
+\node[hiddenbox] (hidden) at (5.6, 1.6) {$\mathbf{H}$};
+
+% Stream 2: Shared NLinear (bottom)
+\node[nlinearbox] (nlinear) at (3.2, -1.6) {
+    \textbf{Shared NLinear}\\[-1pt]
+    \textbf{Branch}\\[-1pt]
+    {\scriptsize DLinear-equivalent}
+};
+\node[rawforebox] (yraw) at (5.6, -1.6) {$\mathbf{y}_\mathrm{raw}$};
+
+% Stream labels
+\node[font=\scriptsize\bfseries, text=blue!55] at (1.6, 2.5) {\textsc{Stream 1: Backbone}};
+\node[font=\scriptsize\bfseries, text=green!55!black] at (1.6, -2.5) {\textsc{Stream 2: Raw (DLinear-eq.)}};
+
+% 5 experts (right side, stacked)
+\node[expertinactive] (e1) at (9.2, 3.0) {Expert 1: Mean Pool\\$\mathbf{y}_1 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_1) \cdot \mathrm{Adapter}_1(\mathbf{H})$};
+\node[expertactive]   (e2) at (9.2, 1.5) {Expert 2: Last Token\\$\mathbf{y}_2 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_2) \cdot \mathrm{Adapter}_2(\mathbf{H})$};
+\node[expertinactive] (e3) at (9.2, 0.0) {Expert 3: Max Pool\\$\mathbf{y}_3 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_3) \cdot \mathrm{Adapter}_3(\mathbf{H})$};
+\node[expertactive]   (e4) at (9.2, -1.5) {Expert 4: Attention\\$\mathbf{y}_4 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_4) \cdot \mathrm{Adapter}_4(\mathbf{H})$};
+\node[expertinactive] (e5) at (9.2, -3.0) {Expert 5: Conv1d\\$\mathbf{y}_5 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_5) \cdot \mathrm{Adapter}_5(\mathbf{H})$};
+
+% Sigmoid gates (small diamonds before each active expert)
+\node[sigmagate] (g2) at (7.0, 1.5) {$\sigma$};
+\node[sigmagate] (g4) at (7.0, -1.5) {$\sigma$};
+
+% Weighted sum + output
+\node[sumnode] (sum) at (12.7, 0.0) {$\Sigma$};
+\node[font=\tiny, text=gray!60] at (12.7, -0.6) {weighted};
+\node[outputbox] (output) at (14.4, 0.0) {
+    $\hat{\mathbf{y}}$\\[-2pt]
+    {\scriptsize forecast}
+};
+
+% Arrows: input splits into two streams
+\draw[bluearr]  (input.north) |- (tsfm.west);
+\draw[greenarr] (input.south) |- (nlinear.west);
+
+% Stream 1: TSFM -> H -> all experts (blue)
+\draw[bluearr] (tsfm.east) -- (hidden.west);
+\draw[grayarr] (hidden.east) -- ++(0.4,0) |- (e1.west);
+\draw[bluearr] (hidden.east) -- ++(0.4,0) |- (e2.west);
+\draw[grayarr] (hidden.east) -- ++(0.4,0) |- (e3.west);
+\draw[bluearr] (hidden.east) -- ++(0.4,0) |- (e4.west);
+\draw[grayarr] (hidden.east) -- ++(0.4,0) |- (e5.west);
+
+% Stream 2: NLinear -> y_raw -> all experts (green, shared)
+\draw[greenarr] (nlinear.east) -- (yraw.west);
+\draw[greenarr, line width=0.5pt, opacity=0.5] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e1.west);
+\draw[greenarr] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e2.west);
+\draw[greenarr, line width=0.5pt, opacity=0.5] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e3.west);
+\draw[greenarr] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e4.west);
+\draw[greenarr, line width=0.5pt, opacity=0.5] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e5.west);
+
+% Self-routing gates from X_raw (orange diamonds)
+\draw[->, line width=0.6pt, color=orange!70, dashed] (input.east) -- ++(5.5,0) |- (g2.west);
+\draw[->, line width=0.6pt, color=orange!70, dashed] (input.east) -- ++(5.5,0) |- (g4.west);
+\draw[->, line width=0.6pt, color=orange!70] (g2.east) -- (e2.west);
+\draw[->, line width=0.6pt, color=orange!70] (g4.east) -- (e4.west);
+
+% Active experts -> sum -> output
+\draw[bluearr] (e2.east) -| (sum.north);
+\draw[bluearr] (e4.east) -| (sum.south);
+\draw[outarr]  (sum.east) -- (output.west);
+
+% Bottom annotation
+\node[font=\scriptsize, align=center, text=gray!70] at (8.0, -4.2) {
+    Blend gate $\sigma$ initialized at $b{=}{-}2$ ($\sigma{\approx}0.12$): model starts as effectively-DLinear; backbone added only where useful.
+};
+
+\end{tikzpicture}%
+}% end resizebox
+\caption{\textbf{Residual-IA\textsuperscript{+} architecture (dual-stream extension).} \textit{Stream 1} (blue): the frozen TSFM produces hidden states $\mathbf{H}$, fed into each expert's Adapter head. \textit{Stream 2} (green): a shared NLinear branch reads $\mathbf{X}_\mathrm{raw}$ directly, producing $\mathbf{y}_\mathrm{raw}$ — DLinear-equivalent and shared across all $K$ experts. Each expert combines them as $\mathbf{y}_k = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_k(\mathbf{X}_\mathrm{raw})) \cdot \mathrm{Adapter}_k(\mathbf{H})$, with the blend gate initialized at $b{=}{-}2$ so the model starts as effectively-DLinear and learns to add backbone signal where useful. Self-routing $\sigma$ gates (orange) on $\mathbf{X}_\mathrm{raw}$ select which experts contribute. Result: \textbf{6/6 vs DLinear at $H{=}96$} on MOMENT-small; \textbf{107/123 cells} ($88\%$) match-or-beat across 6 backbones $\times$ 6 datasets $\times$ 4 horizons (Tables~\ref{tab:residual_ia_plus}, \ref{tab:residual_ia_plus_mhcb}).}
+\label{fig:residual_ia_arch}
+\end{figure}
 
 The dual-stream and multi-resolution variants narrow the average DLinear gap from $+57\%$ to $+5$--$8\%$ (Tables~\ref{tab:gap_closing}, \ref{tab:gap_closing_ext}) but win on only 1/6 datasets (Weather). A systematic $546$-run hyperparameter sweep uncovered a \emph{second} hidden pathology and the architectural fix that closes the remaining gap to \textbf{4/6 match-or-beat}.
 
