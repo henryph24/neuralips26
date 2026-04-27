@@ -1,0 +1,173 @@
+"A mutual-information decomposition formalizes the mechanism: RevIN destroys routing MI by exactly the information in the stripped location-scale statistics, and this loss is lower-bounded by a quantity we can measure"
+
+explain this in easier language for me
+
+---
+
+is this very rigorous setup and used widely in the literature
+
+---
+
+"The routing signal ratio R(D) serves as a predictive proxy for which datasets benefit from raw routing, validated at Spearman rho = -0.88 across nine benchmarks, including boundary cases where RR-MoA correctly does not help (Traffic, R = 0.14)" 
+Explain this a bit more
+
+---
+
+were we writing clear enough about this routing signal ratio in the paper
+
+---
+
+let's do that, make sure the writing is not too casual since this is neurips
+
+---
+
+what does it mean by Spearman rho
+
+---
+
+did we write explicitly about this enough in the paper
+
+---
+
+explain this: "The diagnosis also predicts a Frozen Paradox: unfreezing the backbone triggers a gradient co-adaptation loop where the dominant expert reshapes the shared representation, collapsing routing — so frozen adapters should beat full fine-tuning.
+
+"
+
+I find the claim: so frozen adapters should beat full fine-tuning being risky
+
+---
+
+write more explicitly in the paper and the @slides_content.txt
+
+---
+
+create me a self-contained gemini visualisation for the solution, make sure it reads like an architecture diagram
+
+---
+
+create me a self-contained gemini visualisation for the solution, make sure it reads like an architecture diagram: "Because the diagnosis pinpoints normalization as the cause, the fix is direct: route on the raw, pre-normalization input while keeping the backbone strictly frozen.
+
+RR-MoA splits information into two streams: the frozen TSFM produces deep embeddings for the experts, while a lightweight Conv1d gate (only 1,100 parameters) reads the raw input to decide which of K = 5 topologically diverse experts to activate.
+
+Top-2 sparse routing selects two experts per sample, achieving 40% of the dense compute while retaining 63% of the dense MSE gain, adding only 4.3 ms (10%) latency over a single adapter.
+
+Self-Routed MoA (SR-MoA), where each expert has its own sigmoid gate on raw input with no external router, independently validates the principle and outperforms RR-MoA by 13-42% across all six datasets.
+
+"
+
+---
+
+i mean, use gemini nano banana (image gen latest model from google), key is alrady in .env
+
+---
+
+done
+
+---
+
+based on this, recreate it with a latex native plot
+
+---
+
+recompile it
+
+---
+
+"RR-MoA wins all 54 out of 54 configurations across 6 datasets, 3 freeze levels, and 3 seeds, with improvements of 27% to 77% over the best fixed adapter (p < 0.001, Wilcoxon signed-rank)"
+
+what are these all 54 configs
+
+---
+
+did we write explicitly about what these 54 runs are in the paper ?
+
+---
+
+is this setup a standard in neurips for time series related paper
+
+---
+
+double check, I thought we have run a lot of experiments for many horizons, check the race vm if necessary (recall from memory)
+
+---
+
+did we write very clearly about multi horizon at the appendix right in the main content
+
+---
+
+let's do it
+
+---
+
+why 87/99, will it raise an eyebrow ?
+
+also explain these two: 
+"""
+Top-2 sparse routing selects two experts per sample, achieving 40% of the dense compute while retaining 63% of the dense MSE gain, adding only 4.3 ms (10%) latency over a single adapter.
+
+Self-Routed MoA (SR-MoA), where each expert has its own sigmoid gate on raw input with no external router, independently validates the principle and outperforms RR-MoA by 13-42% across all six datasets.
+
+
+"""
+
+---
+
+let take the suggestions
+
+---
+
+/commit-push
+
+---
+
+did we highlight this enough on the slide content and in the paper: "  Why it matters for the paper: SR-MoA uses a completely different routing architecture but shares only one thing with RR-MoA — routing
+  on raw input. That it works better proves the paper's thesis: the key insight is what you route on (raw input), not how you route
+  (external router vs self-gating)."
+
+---
+
+elaborate on this point: "The Frozen Paradox is confirmed: frozen RR-MoA beats full fine-tuning (all 8 encoder blocks unfrozen, best of 90 optimization configurations) by 12-79% on every dataset — counterintuitively, less training freedom produces better results"
+
+---
+
+elaborate on this: "A dual-stream extension restoring raw-signal access to experts matches or beats DLinear on 6 out of 6 datasets at H = 96, generalizing to 107/123 cells across six backbones and four horizons -> validating the diagnosis as actionable"
+
+---
+
+(all 8 encoder blocks) <- is this total of encoder blocks in the baseline TSFM ?
+
+---
+
+did we write explicitly about this (full coverage) in the slide content and paper
+
+---
+
+let's do that
+
+---
+
+"RR-MoA generalizes across six backbones: all 21 wins on MOMENT (RevIN), 18/18 on Moirai (no RevIN, showing value beyond the RevIN diagnosis), and 37-90% improvement on Moirai-MoE where adapter-level routing stacks on top of backbone-internal routing" this one still failed to beat d-linear ?
+
+---
+
+let's do that
+
+---
+
+did we specify the best-fixed adapter ?
+
+---
+
+let's do that
+
+---
+
+visualise this: "A dual-stream extension restoring raw-signal access to experts matches or beats DLinear on 6 out of 6 datasets at H = 96, generalizing to 107/123 cells across six backbones and four horizons -> validating the diagnosis as actionable" the same way we visualise the raw-routed mixture of adapter (gemini nano banana, we had ready script and api)
+
+---
+
+do you think we should create a latex-native plot based on: "slide_images/residual_ia_plus_architecture.png" and include it in the paper
+
+---
+
+let's do it
