@@ -52,7 +52,7 @@
 \maketitle
 
 \begin{abstract}
-Time series foundation models (TSFMs) like MOMENT and Moirai provide powerful pretrained representations, but adapting them to a downstream task requires attaching a lightweight adapter head that maps hidden states to predictions. Standard TSFM benchmarks use a single static head---one adapter topology for every input window. A natural improvement is a mixture-of-expert (MoE) adapter, where a router selects the best expert head for each window. However, on TSFMs with instance normalization, this \textbf{catastrophically fails}: the router learns to send \emph{every} window to the \emph{same} expert---routing entropy collapses to $0.000{\pm}0.000$, and the remaining experts are never used. We identify \textbf{normalization-induced routing collapse}: instance normalization strips the per-window mean and variance that the router needs to distinguish input regimes, leaving it with homogenized hidden states that all look alike. Eight converging causal controls isolate the mechanism---most strikingly, opposite entropy trajectories on identical data (Timer-XL rises $1.49{\to}1.60$ while MOMENT collapses $0.60{\to}0.00$)---and all five standard MoE-rescue families (load balancing, z-loss, entropy regularization, ReLU routing, expert-choice) across eleven configurations fail ($2.7{\times}$ worse; 720 runs). A mutual-information decomposition formalizes the mechanism and yields a signal-ratio predictor ($\rho{=}{-}0.88$, $p{<}0.002$, $n{=}9$) that identifies where collapse occurs, including boundary cases where it does \emph{not} (Traffic, $R{=}0.14$). Because the diagnosis pinpoints the cause, the fix principle is clear: \textbf{Raw-Routed Mixture of Adapters (RR-MoA)} routes on raw, pre-normalization input, achieving \textbf{54/54 wins} ($p{<}0.001$) on the primary backbone and generalizing across four additional backbones (two negative controls without instance normalization confirm specificity). A predicted consequence---the \textbf{Frozen Paradox}---is confirmed: frozen adapters beat full fine-tuning by $12$--$79\%$, because unfreezing triggers co-adaptation collapse. An extension restoring raw-signal access to experts matches or beats DLinear on 6/6 datasets (Appendix).
+Time series foundation models (TSFMs) like MOMENT and Moirai provide powerful pretrained representations, but adapting them to a downstream task requires attaching a lightweight adapter head that maps hidden states to predictions. Standard TSFM benchmarks use a single static head---one adapter topology for every input window. A natural improvement is a mixture-of-expert (MoE) adapter, where a router selects the best expert head for each window. However, on TSFMs with instance normalization, this \textbf{catastrophically fails}: the router learns to send \emph{every} window to the \emph{same} expert---routing entropy collapses to $0.000{\pm}0.000$, and the remaining experts are never used. We identify \textbf{normalization-induced routing collapse}: instance normalization strips the per-window mean and variance that the router needs to distinguish input regimes, leaving it with homogenized hidden states that all look alike. Eight converging causal controls isolate the mechanism---most strikingly, opposite entropy trajectories on identical data (Timer-XL rises $1.49{\to}1.60$ while MOMENT collapses $0.60{\to}0.00$)---and all five standard MoE-rescue families (load balancing, z-loss, entropy regularization, ReLU routing, expert-choice) across eleven configurations fail ($2.7{\times}$ worse; 720 runs). A mutual-information decomposition formalizes the mechanism and yields a signal-ratio predictor ($\rho{=}{-}0.88$, $p{<}0.002$, $n{=}9$) that identifies where collapse occurs, including boundary cases where it does \emph{not} (Traffic, $R{=}0.14$). Because the diagnosis pinpoints the cause, the fix principle is clear: \textbf{Raw-Routed Mixture of Adapters (RR-MoA)} routes on raw, pre-normalization input, achieving \textbf{54/54 wins} ($p{<}0.001$) on the primary backbone and generalizing across four additional backbones (two negative controls without instance normalization confirm specificity). A predicted consequence---the \textbf{Frozen Paradox}---is confirmed: frozen adapters beat full fine-tuning by $12$--$79\%$, because unfreezing triggers co-adaptation collapse. A third architecture (\textbf{Residual-IA\textsuperscript{+}}) restoring raw-signal access at the expert level matches or beats DLinear on 6/6 datasets (Appendix).
 \end{abstract}
 
 \section{Introduction}
@@ -62,7 +62,7 @@ Time series foundation models (TSFMs) like MOMENT and Moirai provide powerful pr
 
 \textbf{The problem with one-size-fits-all adapters.} Today, every public TSFM benchmark adapts the backbone with a single static head that pools hidden states and projects them to the forecast horizon~\citep{goswami2024moment, das2024timesfm, nie2023patchtst, hu2022lora}. But real time series are non-stationary---ETTh1 mixes quiet baseline segments with sharp seasonal excursions---and a single adapter topology cannot be optimal for every input window. A natural remedy is a \emph{mixture of expert adapters}: a pool of topologically distinct heads with a learned router that assigns each window to the most suitable expert.
 
-\textbf{Why keep the backbone frozen?} Frozen-backbone adaptation enables deployment regimes that per-dataset models like DLinear~\citep{zeng2023dlinear} cannot serve. A single TSFM in GPU VRAM serves thousands of tenants via 426K-parameter adapters (${\sim}1.7$\,MB each) swapped in microseconds---eliminating $O(N)$ independent training pipelines. On-device deployment and cross-task reuse impose similar constraints (Appendices~\ref{app:deployment},~\ref{app:benchmark}). As TSFMs scale toward billion-parameter regimes~\citep{shi2024timemoe}, frozen-backbone PEFT becomes an increasingly important per-dataset adaptation path.
+\textbf{Why keep the backbone frozen?} Frozen-backbone adaptation is compatible with established multi-tenant adapter deployment regimes~\citep{houlsby2019adapters,hu2022lora}---regimes that per-dataset models like DLinear~\citep{zeng2023dlinear} cannot serve. A single TSFM in GPU VRAM can serve thousands of tenants via 426K-parameter adapters (${\sim}1.7$\,MB each) swapped in microseconds---eliminating $O(N)$ independent training pipelines. On-device deployment and cross-task reuse impose similar constraints (Appendices~\ref{app:deployment},~\ref{app:benchmark}). As TSFMs scale toward billion-parameter regimes~\citep{shi2024timemoe}, frozen-backbone PEFT becomes an increasingly important per-dataset adaptation path.
 
 \textbf{The collapse problem.} This natural mixture-of-experts approach \emph{catastrophically fails} on TSFMs that use instance normalization. When the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}---routing on hidden states with load balancing---is applied to MOMENT with RevIN, routing entropy drops to $0.000\pm0.000$ in 7/12 unfrozen configurations (Table~\ref{tab:adamix}). The root cause is \textbf{normalization-induced co-adaptation}: the dominant expert receives larger gradients, which reshape the backbone to serve it even more, creating a feedback loop that collapses within ${\sim}50$ training steps (Figure~\ref{fig:trajectory}). Even with a frozen backbone, hidden-state routing still underperforms because RevIN~\citep{kim2021revin} strips the per-window mean and variance that the router needs to distinguish different input regimes. This is instance-normalization-specific: Moirai~\citep{woo2024moirai}, which uses LayerNorm instead of RevIN, does \emph{not} collapse (\S\ref{sec:cross_backbone}).
 
@@ -74,7 +74,7 @@ Our contributions are threefold:
 
 \textbf{(2)~Fix and a predicted consequence.} Because the principle pinpoints the cause, the fix follows directly: RR-MoA routes on raw pre-normalization input, achieving \textbf{54/54 wins} ($p{<}0.001$; Table~\ref{tab:baselines}). The principle also predicts a \textbf{Frozen Paradox}: unfreezing triggers co-adaptation collapse (Proposition~\ref{prop:frozen}), so frozen adapters should beat full fine-tuning---confirmed at $12$--$79\%$ across all six datasets. RR-MoA generalizes across four RevIN/LayerNorm backbones; two negative controls (Chronos, Timer-XL) confirm instance-normalization-specificity.
 
-\textbf{(3)~Actionable diagnosis.} The diagnosis is further validated by its predictive power: restoring raw-signal access to the experts closes the gap to supervised baselines, matching or beating DLinear on 6/6 datasets at $H{=}96$ ($107/123$ cells across six backbones; \S\ref{sec:main_results}, Appendix~\ref{app:gate_pathology}).
+\textbf{(3)~Actionable diagnosis.} The diagnosis is further validated by its predictive power: a third architecture, \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}), restores raw-signal access at the \emph{expert} level via a shared NLinear branch added to each expert's output. This closes the gap to supervised baselines, matching or beating DLinear on 6/6 datasets at $H{=}96$ ($107/123$ cells across six backbones; \S\ref{sec:main_results}).
 
 \section{Related Work}
 
@@ -82,9 +82,9 @@ Our contributions are threefold:
 
 \textbf{MoE in Foundation Models.} Mixture-of-experts (MoE) routing~\citep{fedus2022switch} has been applied \emph{within} TSFM backbones to scale model capacity: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} uses sparse activation to reach billions of parameters. These designs place experts inside the backbone architecture. RR-MoA instead applies MoE at the \emph{adapter level} on a frozen backbone---an orthogonal design axis. We validate that the two axes stack: RR-MoA on top of Moirai-MoE still yields $-37\%$ MSE (\S\ref{sec:cross_backbone}, Table~\ref{tab:moirai_moe}).
 
-\textbf{MoE routing collapse and rescue.} Routing collapse---where a few experts capture all traffic---is a well-known failure mode in MoE training. Existing solutions attack it from the \emph{optimization side}: load-balancing losses~\citep{fedus2022switch}, z-loss~\citep{zoph2022stmoe}, Expert-Choice routing~\citep{zhou2022expertchoice}, and ReLU gating~\citep{zhang2025remoe}. AdaMix~\citep{wang2022adamix} brings MoE to adapter fine-tuning in NLP but still routes on hidden states. All of these enforce diversity through training objectives without asking whether the router's \emph{input} contains discriminative information in the first place. We sweep all five families across eleven configurations on MOMENT$+$RevIN and show \textbf{none recover MSE to within $2.7{\times}$ of RR-MoA} (Table~\ref{tab:rescue}). Our contribution is complementary: we show that when normalization structurally removes routing information from hidden states, no configuration from any of the five standard rescue families can compensate. Concurrently, recent work in NLP and vision has moved toward eliminating external routers entirely: AoE~\citep{lv2025aoe} lets experts self-select via activation norms, ERMoE~\citep{cheng2025ermoe} routes via cosine similarity to learned eigenbases (achieving 0\% collapse), and Routing-Free MoE~\citep{liu2026routingfree} encapsulates gating within each expert. We validate this self-routing principle in our setting (\S\ref{sec:main_results}): self-gated experts on raw input match RR-MoA, while the same architecture on hidden states collapses---confirming the bottleneck is normalization, not router design.
+\textbf{MoE routing collapse and rescue.} Routing collapse---where a few experts capture all traffic---is a well-known failure mode in MoE training. Existing solutions attack it from the \emph{optimization side}: load-balancing losses~\citep{fedus2022switch}, z-loss~\citep{zoph2022stmoe}, Expert-Choice routing~\citep{zhou2022expertchoice}, and ReLU gating~\citep{zhang2025remoe}. AdaMix~\citep{wang2022adamix} brings MoE to adapter fine-tuning in NLP but still routes on hidden states. All of these enforce diversity through training objectives without asking whether the router's \emph{input} contains discriminative information in the first place. We sweep all five families across eleven configurations on MOMENT$+$RevIN and show \textbf{none recover MSE to within $2.7{\times}$ of RR-MoA} (Table~\ref{tab:rescue}). Our contribution is complementary: we show that when normalization structurally removes routing information from hidden states, no configuration from any of the five standard rescue families can compensate. Concurrently, recent work in NLP and vision has moved toward eliminating external routers entirely: AoE~\citep{lv2025aoe} lets experts self-select via activation norms, ERMoE~\citep{cheng2025ermoe} routes via cosine similarity to learned eigenbases (achieving 0\% collapse), and Routing-Free MoE~\citep{liu2026routingfree} encapsulates gating within each expert. We validate this self-routing principle in our setting (\S\ref{sec:main_results}): self-gated experts on raw input match RR-MoA, while the same architecture on hidden states collapses---confirming the bottleneck is normalization, not router design. Concurrent theoretical work~\citep{wang2026myth} proves MoE specialization reflects hidden-state geometry: tokens with similar hidden states activate similar experts. We extend this one step upstream by identifying what \emph{shapes} that geometry on TSFMs---instance normalization homogenizes hidden states by stripping per-window statistics, producing the geometric collapse that geometry-based analyses describe but do not causally explain.
 
-{\looseness=-1 \textbf{Normalization in Time Series.} RevIN~\citep{kim2021revin} mitigates distribution shift; DishTS~\citep{fan2023dishts} and Non-stationary Transformers~\citep{liu2022nonstationary} partially recover stripped statistics. Concurrently, \citet{berthelier2026revin} independently show that several RevIN components are redundant or detrimental. We identify a consequence not previously characterized in the MoE literature: RevIN strips the per-window statistics that substantially aid discriminative gating in MoE routers.}
+{\looseness=-1 \textbf{Normalization in Time Series.} RevIN~\citep{kim2021revin} mitigates distribution shift; DishTS~\citep{fan2023dishts} and Non-stationary Transformers~\citep{liu2022nonstationary} partially recover stripped statistics. Concurrently, \citet{berthelier2026revin} independently show that several RevIN components are redundant or detrimental, and \citet{zou2025ibnorm} argue that variance-centric normalization (BatchNorm, LayerNorm, RMSNorm) is suboptimal for representation learning because two representations with identical mean and variance can encode different amounts of task-relevant information. We identify a specific, mechanistic consequence of this principle that has not been characterized in the MoE literature: when the stripped statistics carry the \emph{routing} signal in a downstream MoE adapter, instance normalization causes catastrophic routing collapse---a failure mode distinct from the optimization-induced collapse studied in standard MoE rescue literature.}
 
 \textbf{NAS and LLM-Guided Search.} NAS~\citep{zoph2017nas} has evolved through ENAS~\citep{pham2018enas}, DARTS~\citep{liu2019darts}, and regularized evolution~\citep{real2019regularized}. Shears~\citep{munoz2024shears} and RZ-NAS~\citep{ji2025rznas} search adapter hyperparameters for LLMs; NAS-LoRA~\citep{chen2025naslora} targets vision adapters. FunSearch~\citep{romera2024funsearch}, EvoPrompting~\citep{chen2023evoprompting}, PartEvo~\citep{hu2025partevo}, and ReEvo~\citep{ye2024reevo} demonstrate LLM-guided program synthesis. We use this paradigm for expert pool construction (Appendix~\ref{app:aas_details}).
 
@@ -295,7 +295,7 @@ Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
 \end{tabular}
 \end{table}
 
-{\looseness=-1 \textbf{The Frozen Paradox.} Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on every dataset (Table~\ref{tab:baselines}, Figure~\ref{fig:frozen_paradox}). Two distinct mechanisms contribute. First, \emph{within MoE adapters}, unfreezing triggers gradient co-adaptation (Proposition~\ref{prop:frozen}): the dominant expert reshapes the shared backbone, collapsing routing---freezing prevents this loop and preserves expert diversity. Second, \emph{across architectures}, the frozen five-expert mixture with learned per-sample routing provides an architectural advantage that a single unfrozen head cannot match even with full parameter access: per-sample expert selection captures input-regime structure that no single topology can represent. Within RR-MoA, frozen is best on 4/6 datasets; light unfreezing wins by up to $13\%$ on the other two. SR-MoA independently replicates this pattern (frozen best on 4/6 datasets; Table~\ref{tab:self_routed}). Even with careful hyperparameter tuning---learning rates $10^{-5}$ to $10^{-6}$, 100 epochs, cosine schedule with 10-epoch warmup, layerwise LR decay, weight decay sweep, gradient accumulation up to effective batch 512 (90 configurations)---full fine-tuning still loses by $51$--$71\%$ (Appendix~\ref{app:extended_ft}).}
+{\looseness=-1 \textbf{The Frozen Paradox.} Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks unfrozen, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on every dataset (Table~\ref{tab:baselines}, Figure~\ref{fig:frozen_paradox}). Two distinct mechanisms contribute. First, \emph{within MoE adapters}, unfreezing triggers gradient co-adaptation (Proposition~\ref{prop:frozen}): the dominant expert reshapes the shared backbone, collapsing routing---freezing prevents this loop and preserves expert diversity. Second, \emph{across architectures}, the frozen five-expert mixture with learned per-sample routing provides an architectural advantage that a single unfrozen head cannot match even with full parameter access: per-sample expert selection captures input-regime structure that no single topology can represent. Within RR-MoA, frozen is best on 4/6 datasets; light unfreezing wins by up to $13\%$ on the other two. A second architecture introduced below---\textbf{SR-MoA} (Self-Routed MoA), in which each expert has its own sigmoid gate on raw input rather than a shared external router---independently replicates this pattern (frozen best on 4/6 datasets; Table~\ref{tab:self_routed}). Even with careful hyperparameter tuning---learning rates $10^{-5}$ to $10^{-6}$, 100 epochs, cosine schedule with 10-epoch warmup, layerwise LR decay, weight decay sweep, gradient accumulation up to effective batch 512 (90 configurations)---full fine-tuning still loses by $51$--$71\%$ (Appendix~\ref{app:extended_ft}).}
 
 \begin{proposition}[Gradient Co-Adaptation Drives Entropy Collapse]
 \label{prop:frozen}
@@ -357,7 +357,9 @@ In contrast, \textbf{RR-MoA} maintains healthy routing entropy ($1.0$--$1.57$) a
 
 \textbf{Rescue-baseline sweep.} To rule out that the collapse is merely under-tuned, we sweep five standard MoE rescue families---Switch load-balance~\citep{fedus2022switch}, ST-MoE z-loss~\citep{zoph2022stmoe}, entropy regularization, ReMoE ReLU routing~\citep{zhang2025remoe}, and expert-choice routing~\citep{zhou2022expertchoice}---across eleven configurations on 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $= 720$ runs (Table~\ref{tab:rescue}, Appendix~\ref{app:rescue_details}). The best rescue (z-loss $c_z{=}0.01$) reduces MSE by only $10.9\%$, still $2.7{\times}$ worse than RR-MoA. Excessive balancing ($\alpha{=}10.0$) is catastrophic ($+67.7\%$). This confirms Observation~\ref{thm:mi_decomp}(ii): when routing information is structurally absent from the hidden states, none of the standard rescue mechanisms we tested can compensate.
 
-\textbf{The principle is architecture-agnostic.} RR-MoA is the minimal instantiation of a general principle: route on raw input. To confirm the bottleneck is in the routing \emph{input} rather than the router \emph{architecture}, we test two alternative instantiations. First, Self-Routed MoA (SR-MoA)~\citep{lv2025aoe,cheng2025ermoe,liu2026routingfree}: each expert contains its own sigmoid gate on raw input---no external router at all. SR-MoA \emph{outperforms} RR-MoA by $13$--$42\%$ across all 6 datasets (ETTh1: $0.464$; ETTm1: $0.388$; Weather: $0.222$; 252 runs total), generalizes across six backbones, and independently replicates the Frozen Paradox (frozen best on 4/6 datasets; Table~\ref{tab:self_routed}). That a different architecture exceeds RR-MoA while sharing only the raw-input principle confirms it is the \emph{principle}, not the specific router design, that drives the gains. The same SR-MoA architecture gating on hidden states degrades by $+87\%$ to $+768\%$ on \textbf{all 6 datasets} ($p{=}0.016$, Wilcoxon). \textbf{Normalization-specificity:} on Timer-XL (no RevIN), the same raw-vs-hidden comparison yields only $+4$--$9\%$---$15$--$100{\times}$ smaller than on MOMENT---confirming the degradation is normalization-induced. Second, replacing AdaMix's hidden-state router with a raw-input router recovers entropy to $1.41$--$1.57$ and MSE by $41$--$88\%$ on all 12 cells (Appendix~\ref{app:adamix_details}). All three instantiations (RR-MoA, SR-MoA, AdaMix-Raw) confirm the same diagnosis: the bottleneck is normalization, not router design. Table~\ref{tab:causal_controls} summarizes all eight converging controls.
+\textbf{Three architectural instantiations of one principle.} The diagnosis says: restore raw-input access wherever normalization destroyed it. The paper proposes three variants---all confirming the same diagnosis from different angles. \emph{(i)}~\textbf{RR-MoA} (\S\ref{sec:main_results}, Figure~\ref{fig:framework}, headline contribution): external Conv1d gate reads $\mathbf{X}_\mathrm{raw}$ and selects Top-K experts; experts read hidden states $\mathbf{H}$. \emph{(ii)}~\textbf{SR-MoA} (Self-Routed MoA, Figure~\ref{fig:srmoa_arch}, architecture-agnostic validation): no external router---each expert has its own sigmoid gate on $\mathbf{X}_\mathrm{raw}$. \emph{(iii)}~\textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}, Figure~\ref{fig:residual_ia_arch}, diagnosis-actionability proof): each expert combines a shared NLinear raw-input branch with a gated backbone residual---this closes the DLinear gap.
+
+\textbf{The principle is architecture-agnostic (SR-MoA).} To confirm the bottleneck is in the routing \emph{input} rather than the router \emph{architecture}, SR-MoA~\citep{lv2025aoe,cheng2025ermoe,liu2026routingfree} replaces the external Conv1d router with a per-expert sigmoid gate $\sigma_k(\mathbf{X}_\mathrm{raw})$---no external router at all. SR-MoA \emph{outperforms} RR-MoA by $13$--$42\%$ across all 6 datasets (ETTh1: $0.464$; ETTm1: $0.388$; Weather: $0.222$; 252 runs total), generalizes across six backbones, and independently replicates the Frozen Paradox (frozen best on 4/6 datasets; Table~\ref{tab:self_routed}). That a different architecture exceeds RR-MoA while sharing only the raw-input principle confirms it is the \emph{principle}, not the specific router design, that drives the gains. The same SR-MoA architecture gating on hidden states degrades by $+87\%$ to $+768\%$ on \textbf{all 6 datasets} ($p{=}0.016$, Wilcoxon). \textbf{Normalization-specificity:} on Timer-XL (no RevIN), the same raw-vs-hidden comparison yields only $+4$--$9\%$---$15$--$100{\times}$ smaller than on MOMENT---confirming the degradation is normalization-induced. A third architecture-level control, \textbf{AdaMix-Raw} (Appendix~\ref{app:adamix_details}), replaces AdaMix's hidden-state router with a raw-input router and recovers entropy to $1.41$--$1.57$ and MSE by $41$--$88\%$ on all 12 cells. All three router instantiations (RR-MoA, SR-MoA, AdaMix-Raw) confirm the same diagnosis: the bottleneck is normalization, not router design. Table~\ref{tab:causal_controls} summarizes all eight converging controls.
 
 \begin{table}[h]
 \centering
@@ -412,7 +414,7 @@ Full fine-tuning (all unfrozen) & $1.060 \pm 0.059$ & $0.871 \pm 0.029$ & $0.468
 
 RR-MoA outperforms every baseline ($p{<}0.001$). The independent ensemble (same experts, no router) is $36$--$46\%$ worse, confirming learned routing adds value beyond diversity.
 
-\textbf{Closing the DLinear gap.} DLinear (49K params, from scratch) outperforms frozen adapters in absolute MSE (Table~\ref{tab:baselines}, grey rows). As the diagnosis predicts, restoring raw-signal access to experts closes this gap: a dual-stream extension matches or beats DLinear on \textbf{6/6 datasets} at $H{=}96$ (up to $-7.5\%$), generalizing to $107/123$ cells across six backbones (Appendix~\ref{app:gate_pathology}).\label{tab:gap_closing_headline}
+\textbf{Closing the DLinear gap.} DLinear (49K params, from scratch) outperforms frozen adapters in absolute MSE (Table~\ref{tab:baselines}, grey rows). As the diagnosis predicts, restoring raw-signal access \emph{at the expert level} closes this gap: \textbf{Residual-IA\textsuperscript{+}} (a dual-stream architecture in which a shared NLinear raw-input branch is added to each expert's output; Appendix~\ref{app:gate_pathology}, Figure~\ref{fig:residual_ia_arch}) matches or beats DLinear on \textbf{6/6 datasets} at $H{=}96$ (up to $-7.5\%$), generalizing to $107/123$ cells across six backbones.\label{tab:gap_closing_headline}
 
 {\looseness=-1 \textbf{Rawness vs.\ bypass and dose-response.} Replacing the router's raw input with RevIN-normalized input degrades MSE by $60$--$88\%$ while entropy stays high (Table~\ref{tab:router_input}, Appendix~\ref{app:routing_ablations}), confirming the router relies on the \emph{content} of the stripped statistics, not merely the bypass path. A dose-response interpolation $\mathbf{x}_\alpha = (1{-}\alpha)\,\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ reveals a \emph{phase transition} (Figure~\ref{fig:dose_response}; 150 runs): MSE degrades mildly for $\alpha{\leq}0.75$ ($+5.4\%$) but catastrophically at $\alpha{=}1.0$ ($+283\%$), while entropy stays in $[1.43, 1.57]$---normalization renders routing uninformative without reducing diversity. The phase transition threshold is quantitatively predicted at $\alpha^* = R(\mathcal{D})/(R(\mathcal{D})+1) \approx 0.40$ for the median benchmark (Appendix~\ref{app:prop2_depth}). A temporal-shuffle ablation confirms routing depends on $(M,\Sigma)$ statistics, not temporal ordering (Appendix~\ref{app:routing_ablations}).}
 
@@ -574,7 +576,7 @@ Full proof in Appendix~\ref{app:proofs}; rate-distortion interpretation and phas
 {\looseness=-1 \textbf{Sparse routing and task generalization.}\label{sec:topk}
 Top-2 sparse routing adds $4.3$\,ms ($+10\%$) while retaining $63\%$ of the dense gain; scaling $K{=}3{\to}20$ changes MSE by ${<}5\%$ (Appendix~\ref{app:topk}). RR-MoA generalizes to imputation ($7/8$ datasets; Appendix~\ref{app:imputation}).}
 
-{\looseness=-1 \textbf{Multi-horizon generalization.} RR-MoA wins \textbf{24/24} configurations across $H{\in}\{96, 192, 336, 720\}$ on ETTh1, ETTm1, and Weather (5 seeds each; Table~\ref{tab:horizon}), with improvements of $27$--$49\%$ over the best fixed adapter at every horizon. The advantage is stable across horizon length: at $H{=}720$, RR-MoA still improves by $27$--$41\%$. A dual-stream extension (Residual-IA\textsuperscript{+}, Appendix~\ref{app:gate_pathology}) further extends this to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
+{\looseness=-1 \textbf{Multi-horizon generalization.} RR-MoA wins \textbf{24/24} configurations across $H{\in}\{96, 192, 336, 720\}$ on ETTh1, ETTm1, and Weather (5 seeds each; Table~\ref{tab:horizon}), with improvements of $27$--$49\%$ over the best fixed adapter at every horizon. The advantage is stable across horizon length: at $H{=}720$, RR-MoA still improves by $27$--$41\%$. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}, Figure~\ref{fig:residual_ia_arch}) further extends this to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
 
 \vspace{-0.5em}
 \section{Conclusion}
@@ -582,7 +584,7 @@ Top-2 sparse routing adds $4.3$\,ms ($+10\%$) while retaining $63\%$ of the dens
 
 We identified \emph{normalization-induced routing collapse} as the root cause of MoE adapter failure on time series foundation models. Eight causal controls---including opposite entropy trajectories on identical data (Figure~\ref{fig:causal_contrast})---isolate the mechanism, and a mutual-information decomposition predicts where it applies ($\rho{=}{-}0.88$, $n{=}9$). Because the diagnosis pinpoints the cause, the fix principle is clear: \textbf{RR-MoA} routes on raw, pre-normalization input, achieving \textbf{54/54 wins} and a Frozen Paradox where frozen adapters outperform full fine-tuning by $12$--$79\%$. The diagnosis is further validated by its actionability: restoring raw-signal access to experts matches or beats DLinear on $107/123$ cells across six backbones.
 
-\textbf{Practitioner guideline.} Before deploying MoE adapters on TSFMs with instance normalization, compute $R(\mathcal{D})$: in our experiments, values above $0.5$ predict raw routing helps; below $0.2$, it does not (validated on 9 LTSF datasets). \textbf{Limitations:} Time-MoE~\citep{shi2024timemoe} is untested; Proposition~\ref{prop:frozen} covers linear backbones only (Figure~\ref{fig:trajectory} confirms the mechanism in full Transformers); $R(\mathcal{D})$ uses first moments and may miss higher-order routing signals (Solar outlier).
+\textbf{Practitioner guideline.} Compute $R(\mathcal{D})$: in our 9 LTSF benchmarks, values above $0.5$ reliably predict raw routing helps (6/6 datasets, $27$--$77\%$ improvement). Below $0.2$ the prediction is one-sided: Traffic ($R{=}0.14$, $\Delta{=}{+}2.9\%$) is correctly predicted to not benefit, but Solar ($R{=}0.06$, $\Delta{=}{-}32.9\%$) does benefit because the Conv1d router exploits temporal shape patterns beyond location-scale (SSR ablation, Appendix~\ref{app:routing_ablations}). $R(\mathcal{D})$ thus captures a sufficient (not necessary) condition for raw routing to help; high $R$ is a strong positive predictor, while low $R$ does not rule out gains from richer temporal structure. \textbf{Limitations:} Time-MoE~\citep{shi2024timemoe} is untested; Proposition~\ref{prop:frozen} covers linear backbones only (Figure~\ref{fig:trajectory} confirms the mechanism in full Transformers); $R(\mathcal{D})$ uses first moments and may miss higher-order routing signals (Solar outlier).
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -903,6 +905,16 @@ Gaspard Berthelier, Tahar Nabil, Etienne Le~Naour, Richard Niamke, Samir Perlaza
 \newblock On the role of reversible instance normalization.
 \newblock \textit{arXiv preprint arXiv:2603.11869}, 2026.
 
+\bibitem[Wang et~al.(2026)]{wang2026myth}
+Xi Wang, Soufiane Hayou, and Eric Nalisnick.
+\newblock The myth of expert specialization in {MoEs}: Why routing reflects geometry, not necessarily domain expertise.
+\newblock \textit{arXiv preprint arXiv:2604.09780}, 2026.
+
+\bibitem[Zou et~al.(2025)]{zou2025ibnorm}
+Xiandong Zou, Jia Li, Xiaotong Yuan, and Pan Zhou.
+\newblock {IBNorm}: Information-bottleneck inspired normalization for representation learning.
+\newblock \textit{arXiv preprint arXiv:2510.25262}, 2025.
+
 \end{thebibliography}
 
 \newpage
@@ -1180,6 +1192,94 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\definecolor{srback}{RGB}{33,118,189}
+\definecolor{srraw}{RGB}{46,139,87}
+\definecolor{srgate}{RGB}{217,119,49}
+\definecolor{srout}{RGB}{38,166,154}
+
+\begin{figure}[h]
+\centering
+\resizebox{0.95\columnwidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    box/.style={rectangle, draw=black!70, rounded corners=2pt, fill=white,
+        minimum height=0.75cm, font=\small, align=center, line width=0.7pt},
+    frozenbox/.style={box, draw=srback, fill=srback!8,
+        minimum width=2.4cm, minimum height=1.2cm, line width=0.9pt},
+    hiddenbox/.style={box, draw=srback, fill=srback!6,
+        minimum width=1.0cm, minimum height=0.7cm},
+    expertbox/.style={rectangle, draw=black, fill=white, rounded corners=2pt,
+        minimum width=3.6cm, minimum height=0.95cm, font=\scriptsize\bfseries,
+        align=center, line width=1.0pt, text=black},
+    sigmagate/.style={diamond, draw=srgate, fill=srgate!15,
+        minimum size=0.6cm, font=\scriptsize, inner sep=0pt, line width=0.7pt},
+    sumnode/.style={circle, draw=black!70, fill=white,
+        minimum size=0.65cm, font=\normalsize, line width=0.8pt},
+    outputbox/.style={box, draw=srout, fill=srout!8,
+        minimum width=1.2cm, line width=0.9pt},
+    bluearr/.style={->, line width=1.0pt, color=srback},
+    rawarr/.style={->, line width=0.9pt, color=srraw},
+    gatearr/.style={->, line width=0.8pt, color=srgate},
+    outarr/.style={->, line width=1.0pt, color=srout},
+]
+% Input
+\node[box, minimum width=1.4cm, minimum height=1.0cm] (input) at (0, 0) {
+    $\mathbf{X}_\mathrm{raw}$\\[-2pt]{\scriptsize raw input}};
+
+% Frozen TSFM + H
+\node[frozenbox] (tsfm) at (3.2, 1.8) {
+    \textbf{Frozen TSFM}\\[-1pt]\textbf{Backbone}\\[-1pt]
+    {\scriptsize\color{red!65} no gradients}};
+\node[font=\scriptsize\bfseries, text=white,
+    fill={rgb,255:red,200;green,55;blue,55}, rounded corners=2pt, inner sep=2pt]
+    at ([xshift=0.6cm,yshift=0.18cm]tsfm.north east) {\textsc{frozen}};
+\node[hiddenbox] (hidden) at (5.5, 1.8) {$\mathbf{H}$};
+
+% 5 experts on the right, each with its own sigma gate on X_raw
+\foreach \i/\y/\name in {1/2.6/Mean Pool, 2/1.3/Last Token, 3/0.0/Max Pool, 4/-1.3/Attention, 5/-2.6/Conv1d} {
+    \node[sigmagate] (g\i) at (7.0, \y) {$\sigma_\i$};
+    \node[expertbox] (e\i) at (10.0, \y) {Expert \i: \name};
+}
+
+% Sum + output
+\node[sumnode] (sum) at (12.5, 0.0) {$\Sigma$};
+\node[font=\tiny, text=black!75] at (12.5, -0.65) {weighted};
+\node[outputbox] (output) at (14.2, 0.0) {
+    $\hat{\mathbf{y}}$\\[-2pt]{\scriptsize forecast}};
+
+% Stream labels
+\node[font=\scriptsize\bfseries, text=srback] at (1.6, 2.7) {\textsc{Stream A: Hidden States}};
+\node[font=\scriptsize\bfseries, text=srgate] at (1.6, -3.3) {\textsc{Self-routing: per-expert} $\sigma_k(\mathbf{X}_\mathrm{raw})$};
+
+% Arrows
+% Input -> TSFM
+\draw[bluearr] (input.north) |- (tsfm.west);
+\draw[bluearr] (tsfm.east) -- (hidden.west);
+% H -> all experts
+\foreach \i in {1,2,3,4,5} {
+    \draw[bluearr] (hidden.east) -- ++(0.4,0) |- (e\i.west);
+}
+% Input -> per-expert sigma gates (raw input fans out to all gates)
+\foreach \i in {1,2,3,4,5} {
+    \draw[gatearr, dashed] (input.east) -- ++(0.5,0) |- (g\i.west);
+    \draw[gatearr] (g\i.east) -- (e\i.west) node[midway, above, font=\tiny, text=srgate, yshift=-1pt] {};
+}
+% Experts -> sum (only contributing weight by their sigma)
+\foreach \i in {1,2,3,4,5} {
+    \draw[bluearr, opacity=0.6] (e\i.east) -| (sum.north);
+}
+\draw[outarr] (sum.east) -- (output.west);
+
+% Bottom annotation
+\node[font=\scriptsize, align=center, text=black!85] at (8.0, -3.85) {
+    No external router. Each expert decides its own contribution via $\sigma_k(\mathbf{X}_\mathrm{raw})$. Output: $\hat{\mathbf{y}} = \sum_k \sigma_k(\mathbf{X}_\mathrm{raw}) \cdot \mathrm{Adapter}_k(\mathbf{H})$.
+};
+\end{tikzpicture}%
+}
+\caption{\textbf{SR-MoA architecture (Self-Routed Mixture of Adapters).} Each of $K{=}5$ experts has its own sigmoid gate $\sigma_k$ reading $\mathbf{X}_\mathrm{raw}$ directly---no external router. The frozen TSFM produces $\mathbf{H}$, and each expert's contribution is scaled by its self-gate. SR-MoA shares only the \emph{raw-input} principle with RR-MoA (Figure~\ref{fig:framework}): the routing architecture is otherwise entirely different. SR-MoA outperforms RR-MoA by $13$--$42\%$ across all 6 datasets, providing architecture-agnostic validation that the principle---not the specific router---drives the gains.}
+\label{fig:srmoa_arch}
+\end{figure}
 
 \begin{table}[h]
 \centering
@@ -1941,6 +2041,12 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \subsection{Residual-IA: Diagnosing and Fixing a Second Pathology}
 \label{app:gate_pathology}
 
+\definecolor{ridback}{RGB}{33,118,189}
+\definecolor{ridraw}{RGB}{46,139,87}
+\definecolor{ridgate}{RGB}{217,119,49}
+\definecolor{ridout}{RGB}{38,166,154}
+\definecolor{ridfrozen}{RGB}{200,55,55}
+
 \begin{figure}[h]
 \centering
 \resizebox{\columnwidth}{!}{%
@@ -1948,19 +2054,30 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
     >=Stealth,
     box/.style={rectangle, draw=black!70, rounded corners=2pt, fill=white,
         minimum height=0.75cm, font=\small, align=center, line width=0.7pt},
-    frozenbox/.style={box, draw=blue!60, fill=blue!4, minimum width=2.4cm, minimum height=1.2cm},
-    nlinearbox/.style={box, draw=green!55!black, fill=green!5, minimum width=2.4cm, minimum height=1.2cm},
-    hiddenbox/.style={box, draw=blue!50, fill=blue!3, minimum width=1.0cm, minimum height=0.7cm},
-    rawforebox/.style={box, draw=green!55!black, fill=green!4, minimum width=1.2cm, minimum height=0.7cm},
-    expertactive/.style={box, draw=black!80, fill=white, minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize\bfseries, align=center},
-    expertinactive/.style={box, draw=gray!35, fill=gray!6, minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize, text=gray!50, align=center},
-    sigmagate/.style={diamond, draw=orange!70, fill=orange!10, minimum size=0.55cm, font=\scriptsize, inner sep=0pt, line width=0.6pt},
-    sumnode/.style={circle, draw=black!70, fill=white, minimum size=0.65cm, font=\normalsize, line width=0.7pt},
-    outputbox/.style={box, draw=teal!60, fill=teal!4, minimum width=1.2cm},
-    bluearr/.style={->, line width=0.8pt, color=blue!55},
-    greenarr/.style={->, line width=0.8pt, color=green!55!black},
-    grayarr/.style={->, line width=0.7pt, color=gray!50},
-    outarr/.style={->, line width=0.8pt, color=teal!60},
+    frozenbox/.style={box, draw=ridback, fill=ridback!8,
+        minimum width=2.4cm, minimum height=1.2cm, line width=0.9pt},
+    nlinearbox/.style={box, draw=ridraw, fill=ridraw!8,
+        minimum width=2.4cm, minimum height=1.2cm, line width=0.9pt},
+    hiddenbox/.style={box, draw=ridback, fill=ridback!6,
+        minimum width=1.0cm, minimum height=0.7cm},
+    rawforebox/.style={box, draw=ridraw, fill=ridraw!6,
+        minimum width=1.2cm, minimum height=0.7cm},
+    expertactive/.style={box, draw=black, fill=white,
+        minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize\bfseries,
+        align=center, line width=1.1pt, text=black},
+    expertinactive/.style={box, draw=black!50, fill=white,
+        minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize,
+        text=black!85, align=center, line width=0.5pt, dashed},
+    sigmagate/.style={diamond, draw=ridgate, fill=ridgate!15,
+        minimum size=0.55cm, font=\scriptsize, inner sep=0pt, line width=0.7pt},
+    sumnode/.style={circle, draw=black!70, fill=white,
+        minimum size=0.65cm, font=\normalsize, line width=0.8pt},
+    outputbox/.style={box, draw=ridout, fill=ridout!8,
+        minimum width=1.2cm, line width=0.9pt},
+    bluearr/.style={->, line width=1.0pt, color=ridback},
+    greenarr/.style={->, line width=1.0pt, color=ridraw},
+    grayarr/.style={->, line width=0.6pt, color=black!55, dashed},
+    outarr/.style={->, line width=1.0pt, color=ridout},
 ]
 
 % INPUT
@@ -1973,11 +2090,12 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \node[frozenbox] (tsfm) at (3.2, 1.6) {
     \textbf{Frozen TSFM}\\[-1pt]
     \textbf{Backbone}\\[-1pt]
-    {\scriptsize\color{red!60} no gradients}
+    {\scriptsize\color{red!65} no gradients}
 };
-\node[font=\scriptsize\bfseries, text=red!65, fill=red!8, rounded corners=2pt, inner sep=1.5pt]
-    at ([yshift=0.15cm]tsfm.north) {\textsc{frozen}};
-\node[hiddenbox] (hidden) at (5.6, 1.6) {$\mathbf{H}$};
+\node[font=\scriptsize\bfseries, text=white,
+    fill=ridfrozen, rounded corners=2pt, inner sep=2pt]
+    at ([xshift=0.6cm,yshift=0.18cm]tsfm.north east) {\textsc{frozen}};
+\node[hiddenbox] (hidden) at (5.7, 1.6) {$\mathbf{H}$};
 
 % Stream 2: Shared NLinear (bottom)
 \node[nlinearbox] (nlinear) at (3.2, -1.6) {
@@ -1985,27 +2103,29 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
     \textbf{Branch}\\[-1pt]
     {\scriptsize DLinear-equivalent}
 };
-\node[rawforebox] (yraw) at (5.6, -1.6) {$\mathbf{y}_\mathrm{raw}$};
+\node[rawforebox] (yraw) at (5.7, -1.6) {$\mathbf{y}_\mathrm{raw}$};
 
-% Stream labels
-\node[font=\scriptsize\bfseries, text=blue!55] at (1.6, 2.5) {\textsc{Stream 1: Backbone}};
-\node[font=\scriptsize\bfseries, text=green!55!black] at (1.6, -2.5) {\textsc{Stream 2: Raw (DLinear-eq.)}};
+% Stream labels (moved out of the way of FROZEN badge and bottom edge)
+\node[font=\scriptsize\bfseries, text=ridback]
+    at (1.6, 2.55) {\textsc{Stream 1: Backbone}};
+\node[font=\scriptsize\bfseries, text=ridraw]
+    at (1.6, -2.55) {\textsc{Stream 2: Raw (DLinear-eq.)}};
 
-% 5 experts (right side, stacked)
-\node[expertinactive] (e1) at (9.2, 3.0) {Expert 1: Mean Pool\\$\mathbf{y}_1 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_1) \cdot \mathrm{Adapter}_1(\mathbf{H})$};
-\node[expertactive]   (e2) at (9.2, 1.5) {Expert 2: Last Token\\$\mathbf{y}_2 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_2) \cdot \mathrm{Adapter}_2(\mathbf{H})$};
-\node[expertinactive] (e3) at (9.2, 0.0) {Expert 3: Max Pool\\$\mathbf{y}_3 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_3) \cdot \mathrm{Adapter}_3(\mathbf{H})$};
-\node[expertactive]   (e4) at (9.2, -1.5) {Expert 4: Attention\\$\mathbf{y}_4 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_4) \cdot \mathrm{Adapter}_4(\mathbf{H})$};
-\node[expertinactive] (e5) at (9.2, -3.0) {Expert 5: Conv1d\\$\mathbf{y}_5 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_5) \cdot \mathrm{Adapter}_5(\mathbf{H})$};
+% 5 experts (right side, stacked) — narrower, σ gate moved outside
+\node[expertinactive] (e1) at (10.4, 3.0) {Expert 1: Mean Pool\\$\mathbf{y}_1 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_1) \cdot \mathrm{Adapter}_1(\mathbf{H})$};
+\node[expertactive]   (e2) at (10.4, 1.5) {Expert 2: Last Token\\$\mathbf{y}_2 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_2) \cdot \mathrm{Adapter}_2(\mathbf{H})$};
+\node[expertinactive] (e3) at (10.4, 0.0) {Expert 3: Max Pool\\$\mathbf{y}_3 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_3) \cdot \mathrm{Adapter}_3(\mathbf{H})$};
+\node[expertactive]   (e4) at (10.4, -1.5) {Expert 4: Attention\\$\mathbf{y}_4 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_4) \cdot \mathrm{Adapter}_4(\mathbf{H})$};
+\node[expertinactive] (e5) at (10.4, -3.0) {Expert 5: Conv1d\\$\mathbf{y}_5 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_5) \cdot \mathrm{Adapter}_5(\mathbf{H})$};
 
-% Sigmoid gates (small diamonds before each active expert)
-\node[sigmagate] (g2) at (7.0, 1.5) {$\sigma$};
-\node[sigmagate] (g4) at (7.0, -1.5) {$\sigma$};
+% Sigmoid gates (small diamonds before each active expert, no overlap)
+\node[sigmagate] (g2) at (7.6, 1.5) {$\sigma$};
+\node[sigmagate] (g4) at (7.6, -1.5) {$\sigma$};
 
 % Weighted sum + output
-\node[sumnode] (sum) at (12.7, 0.0) {$\Sigma$};
-\node[font=\tiny, text=gray!60] at (12.7, -0.6) {weighted};
-\node[outputbox] (output) at (14.4, 0.0) {
+\node[sumnode] (sum) at (13.5, 0.0) {$\Sigma$};
+\node[font=\tiny, text=black!75] at (13.5, -0.65) {weighted};
+\node[outputbox] (output) at (15.2, 0.0) {
     $\hat{\mathbf{y}}$\\[-2pt]
     {\scriptsize forecast}
 };
@@ -2014,7 +2134,7 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \draw[bluearr]  (input.north) |- (tsfm.west);
 \draw[greenarr] (input.south) |- (nlinear.west);
 
-% Stream 1: TSFM -> H -> all experts (blue)
+% Stream 1: TSFM -> H -> all experts (blue, only active in full color; gray for inactive)
 \draw[bluearr] (tsfm.east) -- (hidden.west);
 \draw[grayarr] (hidden.east) -- ++(0.4,0) |- (e1.west);
 \draw[bluearr] (hidden.east) -- ++(0.4,0) |- (e2.west);
@@ -2024,17 +2144,19 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 
 % Stream 2: NLinear -> y_raw -> all experts (green, shared)
 \draw[greenarr] (nlinear.east) -- (yraw.west);
-\draw[greenarr, line width=0.5pt, opacity=0.5] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e1.west);
-\draw[greenarr] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e2.west);
-\draw[greenarr, line width=0.5pt, opacity=0.5] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e3.west);
-\draw[greenarr] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e4.west);
-\draw[greenarr, line width=0.5pt, opacity=0.5] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.2cm]e5.west);
+\draw[greenarr, dashed, line width=0.6pt] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.25cm]e1.west);
+\draw[greenarr] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.25cm]e2.west);
+\draw[greenarr, dashed, line width=0.6pt] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.25cm]e3.west);
+\draw[greenarr] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.25cm]e4.west);
+\draw[greenarr, dashed, line width=0.6pt] (yraw.east) -- ++(0.4,0) |- ([yshift=-0.25cm]e5.west);
 
-% Self-routing gates from X_raw (orange diamonds)
-\draw[->, line width=0.6pt, color=orange!70, dashed] (input.east) -- ++(5.5,0) |- (g2.west);
-\draw[->, line width=0.6pt, color=orange!70, dashed] (input.east) -- ++(5.5,0) |- (g4.west);
-\draw[->, line width=0.6pt, color=orange!70] (g2.east) -- (e2.west);
-\draw[->, line width=0.6pt, color=orange!70] (g4.east) -- (e4.west);
+% Self-routing gates from X_raw (orange dashed lines, routed below the diagram)
+\draw[->, line width=0.7pt, color=ridgate, densely dashed]
+    (input.south east) -- ++(0.5,-0.5) -| (g2.south);
+\draw[->, line width=0.7pt, color=ridgate, densely dashed]
+    (input.south east) -- ++(0.5,-0.5) -| (g4.north);
+\draw[->, line width=0.8pt, color=ridgate] (g2.east) -- (e2.west);
+\draw[->, line width=0.8pt, color=ridgate] (g4.east) -- (e4.west);
 
 % Active experts -> sum -> output
 \draw[bluearr] (e2.east) -| (sum.north);
@@ -2042,7 +2164,7 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \draw[outarr]  (sum.east) -- (output.west);
 
 % Bottom annotation
-\node[font=\scriptsize, align=center, text=gray!70] at (8.0, -4.2) {
+\node[font=\scriptsize, align=center, text=black!85] at (8.5, -4.3) {
     Blend gate $\sigma$ initialized at $b{=}{-}2$ ($\sigma{\approx}0.12$): model starts as effectively-DLinear; backbone added only where useful.
 };
 

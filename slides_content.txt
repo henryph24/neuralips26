@@ -6,6 +6,7 @@ WHY THIS IS NEURIPS-WORTHY
 - The Frozen Paradox — that frozen adapters beat full fine-tuning by 12-79% — is genuinely counterintuitive. Two mechanisms explain it: (1) within MoE adapters, unfreezing triggers gradient co-adaptation that collapses routing; (2) across architectures, the frozen five-expert mixture with learned routing provides per-sample specialization that a single unfrozen head cannot match even with full parameter access.
 - The experimental scale (5,400+ runs, 6 backbones, 9 datasets, 720-run rescue sweep, 107 machine-verified numerical claims) sets a reproducibility standard that few NeurIPS submissions match, and the self-verification script is itself a methodological contribution.
 - The finding generalizes beyond time series: a cross-modality control on ViT confirms that InstanceNorm1d causes the same collapse on vision patch embeddings, establishing this as a general principle about normalization and routing rather than a domain-specific quirk.
+- The principle is validated by *three independent architectures* — RR-MoA (external Conv1d gate on raw input), SR-MoA (per-expert sigmoid gates on raw input, no external router), and Residual-IA⁺ (per-expert raw-input NLinear branch on top of backbone residual) — all confirming the same diagnosis from different architectural angles. SR-MoA outperforms RR-MoA by 13-42%, and Residual-IA⁺ closes the DLinear gap on 6/6 datasets. A single architecture's success could be architectural luck; three orthogonal architectures all working makes the principle, not any specific design, the load-bearing claim.
 
 
 ---
@@ -29,13 +30,28 @@ SLIDE 2: The Diagnosis — Normalization Destroys Routing Information
 - The diagnosis predicts a Frozen Paradox with two components: (1) unfreezing with MoE routing triggers gradient co-adaptation where the dominant expert reshapes the shared representation, collapsing routing — so frozen MoE should beat unfrozen MoE; (2) the frozen five-expert mixture with per-sample routing should beat unfrozen single-head fine-tuning because expert diversity captures input-regime structure that no single topology can represent, even with full parameter access.
 
 
-SLIDE 3: The Fix — Raw-Routed Mixture of Adapters (RR-MoA)
+SLIDE 3: The Fix — Three Architectural Instantiations of One Principle
 
-- Because the diagnosis pinpoints normalization as the cause, the fix is unambiguous: route on the raw, pre-normalization input while keeping the backbone strictly frozen.
-- RR-MoA splits information into two streams: the frozen TSFM produces deep embeddings for the experts, while a lightweight Conv1d gate (only 1,100 parameters) reads the raw input to decide which of K = 5 topologically diverse experts to activate.
-- Top-2 sparse routing selects two experts per sample, achieving 40% of the dense compute while retaining 63% of the dense MSE gain, adding only 4.3 ms (10%) latency over a single adapter.
+The diagnosis says: restore raw-input access wherever normalization destroyed it. There are several architectural points where this can be done, and the paper proposes three variants — all confirming the same diagnosis from different angles.
+
+(i) RR-MoA (headline contribution, route on raw):
+- External Conv1d gate (only 1,100 parameters) reads raw input and selects Top-2 of K=5 topologically diverse experts; experts read frozen TSFM hidden states H.
 - The fix is intentionally simple — that it follows trivially from the diagnosis is itself evidence the causal mechanism was correctly identified, unlike optimization-side tricks that attack the wrong target.
-- Self-Routed MoA (SR-MoA) — where each expert has its own sigmoid gate on raw input with no external router — uses a completely different routing architecture but shares only one thing with RR-MoA: routing on raw input. That SR-MoA outperforms RR-MoA by 13-42% across all six datasets proves the paper's central thesis: the key insight is *what* you route on (raw input), not *how* you route (external router vs self-gating). The principle, not the specific router design, drives the gains.
+- Top-2 sparse routing achieves 40% of the dense compute while retaining 63% of the dense MSE gain, adding only 4.3 ms (10%) latency over a single adapter.
+
+(ii) SR-MoA (Self-Routed MoA — architecture-agnostic validation):
+- No external router at all. Each expert has its own sigmoid gate σ_k(X_raw) deciding its own contribution; output: y_hat = Σ_k σ_k(X_raw) · Adapter_k(H).
+- Uses a completely different routing architecture but shares only one thing with RR-MoA: routing on raw input.
+- That SR-MoA outperforms RR-MoA by 13-42% across all six datasets proves the paper's central thesis: the key insight is *what* you route on (raw input), not *how* you route (external router vs self-gating). The principle, not the specific router design, drives the gains.
+
+(iii) Residual-IA⁺ (diagnosis-actionability proof — closes the DLinear gap):
+- Each expert combines a shared NLinear raw-input branch (DLinear-equivalent) with a gated backbone residual: y_k = NLinear(X_raw) + σ(blend_k(X_raw)) · Adapter_k(H).
+- The blend gate is initialized at b=-2 (σ ≈ 0.12), so the model starts as effectively-DLinear and learns to add backbone signal only where useful.
+- Restores raw access at the *expert* level (not just the router) — addresses a separate failure mode: RevIN strips forecasting signal too, not just routing signal.
+
+(iv) SR-RIA⁺ (stackability validation, appendix-only):
+- Stacks SR-MoA's self-routing with Residual-IA⁺'s dual-stream experts. Achieves 6/6 match-or-beat vs DLinear at H=96 with average gap −1.7%.
+- Confirms the two extensions are *orthogonal*: one fixes routing, the other fixes expert information access — combining them doesn't break either.
 
 
 SLIDE 4: Results — 54/54 Wins, Frozen Paradox, and Closing the DLinear Gap
@@ -49,14 +65,15 @@ CLAIM LAYER 1 — RR-MoA vs other adapters (frozen-backbone baselines):
 CLAIM LAYER 2 — Closing the DLinear gap (vs from-scratch supervised model):
 - Honest framing: RR-MoA itself does NOT beat DLinear in absolute MSE — DLinear (49K params, trained from scratch per dataset) outperforms every frozen-backbone adapter in the literature, including RR-MoA. This is the awkward calibration anchor every TSFM-adapter paper has to confront.
 - The diagnosis predicts the cause of the gap: RevIN strips per-window mean and variance before the encoder, and those statistics carry forecasting signal too — not just routing signal. DLinear sees raw inputs end-to-end and preserves them.
-- The diagnosis-driven fix (Residual-IA⁺): a dual-stream extension where each expert combines a shared NLinear raw-input branch (DLinear-equivalent) with a gated backbone residual on top — restoring raw-signal access at the expert level, not just the router.
+- The diagnosis-driven fix is Residual-IA⁺ (architecture #3 from Slide 3): the dual-stream expert design — restoring raw-signal access at the *expert* level, not just the router — directly addresses the predicted second pathway of information loss.
 - Result: Residual-IA⁺ matches or beats DLinear on 6/6 datasets at H = 96, generalizing to 107/123 cells (88%) across six backbones and four horizons — 65 significant wins vs 11 losses, 5.9:1 ratio. This is what validates the diagnosis as actionable: the fix follows mechanically from the diagnosis, and the predicted gap-closure occurs under the predicted conditions.
+- Stackability: SR-RIA⁺ (SR-MoA self-routing + Residual-IA⁺ dual-stream experts) achieves match-or-beat on 6/6 vs DLinear with average gap −1.7%, confirming the two extensions compose orthogonally.
 
 
 SLIDE 5: Takeaways and Broader Implications
 
 - The core contribution is a general principle: normalization destroys routing information when the stripped statistics carry the routing signal — this applies beyond RevIN to any instance-level normalization, confirmed by a cross-modality control on ViT where InstanceNorm1d causes the same collapse.
-- Practitioner guideline: before deploying MoE adapters on any normalized backbone, compute the signal ratio R(D) — values above 0.5 predict raw routing helps, below 0.2 it does not.
-- The frozen-backbone paradigm enables deployment regimes that per-dataset models cannot serve: a single TSFM in GPU memory serves thousands of tenants via lightweight adapters swapped in microseconds, eliminating the need for independent training pipelines per tenant.
+- Practitioner guideline: compute the signal ratio R(D) — values above 0.5 reliably predict raw routing helps (6/6 in our benchmarks, 27-77% improvement). Below 0.2 the prediction is one-sided: Traffic (R=0.14) is correctly predicted to not benefit, but Solar (R=0.06) does benefit because the Conv1d router exploits temporal shape patterns beyond location-scale. R(D) thus captures a sufficient (not necessary) condition — high R is a strong positive predictor, low R does not rule out gains from richer temporal structure.
+- Our frozen-backbone fix is compatible with established multi-tenant adapter deployment regimes (Houlsby et al. 2019; Hu et al. 2022) — a single TSFM in GPU memory can serve thousands of tenants via lightweight adapters swapped in microseconds, a regime per-dataset DLinear models cannot serve. RR-MoA preserves this deployment compatibility while substantially closing the MSE gap. (Note: the multi-tenant deployment paradigm itself is established prior art, not a contribution of this paper; the contribution is showing that our diagnosis-driven fix works within it.)
 - Limitations we acknowledge: Time-MoE is untested, the Frozen Paradox proposition covers linear backbones only (though confirmed empirically on full Transformers), and R(D) uses first moments which may miss higher-order routing signals like the Solar outlier.
 - The experimental battery spans over 5,000 runs with a self-verification script that re-derives every numerical claim from raw data — all code, results, and verification will be open-sourced upon acceptance.
