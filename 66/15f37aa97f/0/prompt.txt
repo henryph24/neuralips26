@@ -1,0 +1,21 @@
+use exa mcp to find and read a few published paper at neurips 2025 related to time series and evaluate their writing style. I got this feedback from one of my senior supervisors: ""If you're submitting to NeurIPS, writing it like this isn't good enough — many parts need to be rewritten. This is an A-ranked conference, not a technical report.""
+
+---
+
+let's do it, but make sure we do not trade clarity for excessive academic writing
+
+---
+
+let's do it
+
+---
+
+review the overall writing style one more time to see if it improved
+
+---
+
+let's do it
+
+---
+
+is main still strictly within 9 pages of limit
