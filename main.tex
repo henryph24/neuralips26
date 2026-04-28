@@ -18,6 +18,7 @@
 \usepackage{colortbl}
 \usepackage{algorithm}
 \usepackage{algorithmic}
+\usepackage{enumitem}
 \usepackage{pgfplots}
 \usepackage{tikz}
 \usetikzlibrary{positioning, arrows.meta, shapes.geometric, fit, calc}
@@ -52,35 +53,32 @@
 \maketitle
 
 \begin{abstract}
-Time series foundation models (TSFMs) like MOMENT and Moirai provide powerful pretrained representations, but adapting them to a downstream task requires attaching a lightweight adapter head that maps hidden states to predictions. Standard TSFM benchmarks use a single static head---one adapter topology for every input window. A natural improvement is a mixture-of-expert (MoE) adapter, where a router selects the best expert head for each window. However, on TSFMs with instance normalization, this \textbf{catastrophically fails}: the router learns to send \emph{every} window to the \emph{same} expert---routing entropy collapses to $0.000{\pm}0.000$, and the remaining experts are never used. We identify \textbf{normalization-induced routing collapse}: instance normalization strips the per-window mean and variance that the router needs to distinguish input regimes, leaving it with homogenized hidden states that all look alike. Eight converging causal controls isolate the mechanism---most strikingly, opposite entropy trajectories on identical data (Timer-XL rises $1.49{\to}1.60$ while MOMENT collapses $0.60{\to}0.00$)---and all five standard MoE-rescue families (load balancing, z-loss, entropy regularization, ReLU routing, expert-choice) across eleven configurations fail ($2.7{\times}$ worse; 720 runs). A mutual-information decomposition formalizes the mechanism and yields a signal-ratio predictor ($\rho{=}{-}0.88$, $p{<}0.002$, $n{=}9$) that identifies where collapse occurs, including boundary cases where it does \emph{not} (Traffic, $R{=}0.14$). Because the diagnosis pinpoints the cause, the fix principle is clear: \textbf{Raw-Routed Mixture of Adapters (RR-MoA)} routes on raw, pre-normalization input, achieving \textbf{54/54 wins} ($p{<}0.001$) on the primary backbone and generalizing across four additional backbones (two negative controls without instance normalization confirm specificity). A predicted consequence---the \textbf{Frozen Paradox}---is confirmed: frozen adapters beat full fine-tuning by $12$--$79\%$, because unfreezing triggers co-adaptation collapse. A third architecture (\textbf{Residual-IA\textsuperscript{+}}) restoring raw-signal access at the expert level matches or beats DLinear on 6/6 datasets (Appendix).
+Time series foundation models (TSFMs) provide powerful pretrained representations, but using them on a downstream task requires attaching a lightweight adapter head. A natural improvement over today's single-head designs is a mixture-of-expert (MoE) adapter that selects a different head for each input window. We show that this natural design catastrophically fails on TSFMs with instance normalization: the router collapses to a single expert and the remaining experts are never used. The cause, which we call \emph{normalization-induced routing collapse}, is that instance normalization strips the per-window mean and variance the router needs to distinguish input regimes. Standard MoE rescue mechanisms---load balancing, z-loss, entropy regularization, ReLU routing, and expert-choice---do not recover performance, because the failure is not in the router's optimization but in its input. We formalize the mechanism through a mutual-information decomposition that yields a signal-ratio predictor of where collapse occurs, including boundary cases where it does not. The fix follows from the diagnosis: \emph{Raw-Routed Mixture of Adapters} (RR-MoA) routes on the raw, pre-normalization input. RR-MoA wins on every dataset/freeze-level cell of the primary backbone, generalizes across four further backbones, and is confirmed to be instance-normalization-specific by two negative controls. The same principle predicts a \emph{Frozen Paradox} that we verify empirically: unfreezing triggers co-adaptation collapse, so frozen adapters beat full fine-tuning. A companion architecture (Residual-IA\textsuperscript{+}) restoring raw-signal access at the expert level closes the remaining gap to supervised baselines.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
 
-{\looseness=-1 Time series foundation models (TSFMs)---MOMENT~\citep{goswami2024moment}, TimesFM~\citep{das2024timesfm}, Chronos~\citep{ansari2024chronos}, Timer-XL~\citep{liu2025timerxl}, Moirai~\citep{woo2024moirai}, and others~\citep{lee2024units, rasul2024lagllama, shi2024timemoe, ekambaram2024ttm, liu2026timers1}---provide powerful pretrained representations, now scaling to billions of parameters with internal MoE routing. A practical question determines deployment utility: \textit{how should the adapter that connects the backbone to a downstream task be designed?}}
+Time series foundation models (TSFMs) such as MOMENT~\citep{goswami2024moment}, TimesFM~\citep{das2024timesfm}, Chronos~\citep{ansari2024chronos}, Timer-XL~\citep{liu2025timerxl}, and Moirai~\citep{woo2024moirai} now provide powerful pretrained representations for time series, with several recent variants pushing toward billion-parameter scales~\citep{lee2024units, rasul2024lagllama, shi2024timemoe, ekambaram2024ttm, liu2026timers1}. Using one of these backbones on a downstream task still requires attaching a lightweight adapter head that maps hidden states to predictions, and the design of that adapter---more than the backbone choice---determines deployment utility.
 
-\textbf{The problem with one-size-fits-all adapters.} Today, every public TSFM benchmark adapts the backbone with a single static head that pools hidden states and projects them to the forecast horizon~\citep{goswami2024moment, das2024timesfm, nie2023patchtst, hu2022lora}. But real time series are non-stationary---ETTh1 mixes quiet baseline segments with sharp seasonal excursions---and a single adapter topology cannot be optimal for every input window. A natural remedy is a \emph{mixture of expert adapters}: a pool of topologically distinct heads with a learned router that assigns each window to the most suitable expert.
+Today, every public TSFM benchmark uses a single static head that pools hidden states and projects them to the forecast horizon~\citep{goswami2024moment, das2024timesfm, nie2023patchtst, hu2022lora}. Real time series are not so uniform: ETTh1 mixes quiet baseline segments with sharp seasonal excursions, and a single adapter topology cannot be optimal for every input window. A natural remedy is a \emph{mixture of expert adapters}: a pool of topologically distinct heads with a learned router that assigns each window to the most suitable one. Keeping the backbone frozen while training only the adapter is also what makes deployment practical---one TSFM in GPU memory can serve thousands of tenants through small ($\sim$1.7\,MB) per-task adapters swapped in microseconds, an arrangement that per-dataset models like DLinear~\citep{zeng2023dlinear} cannot match (Appendices~\ref{app:deployment},~\ref{app:benchmark}).
 
-\textbf{Why keep the backbone frozen?} Frozen-backbone adaptation is compatible with established multi-tenant adapter deployment regimes~\citep{houlsby2019adapters,hu2022lora}---regimes that per-dataset models like DLinear~\citep{zeng2023dlinear} cannot serve. A single TSFM in GPU VRAM can serve thousands of tenants via 426K-parameter adapters (${\sim}1.7$\,MB each) swapped in microseconds---eliminating $O(N)$ independent training pipelines. On-device deployment and cross-task reuse impose similar constraints (Appendices~\ref{app:deployment},~\ref{app:benchmark}). As TSFMs scale toward billion-parameter regimes~\citep{shi2024timemoe}, frozen-backbone PEFT becomes an increasingly important per-dataset adaptation path.
+This natural mixture-of-experts approach catastrophically fails on TSFMs that use instance normalization. When the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}---routing on hidden states with load balancing---is applied to MOMENT with RevIN, routing entropy drops to zero in most unfrozen configurations (Table~\ref{tab:adamix}). The router learns to send every window to the same expert, and the remaining experts are never used. The mechanism is what we call \emph{normalization-induced routing collapse}: RevIN~\citep{kim2021revin} strips the per-window mean and variance that the router needs to distinguish input regimes, leaving it with homogenized hidden states. Even with the backbone frozen, hidden-state routing still underperforms; with the backbone unfrozen, the dominant expert receives larger gradients which reshape the backbone to serve it even more, closing a co-adaptation feedback loop within tens of training steps (Figure~\ref{fig:trajectory}). The failure is specific to instance normalization: backbones such as Moirai that use LayerNorm instead of RevIN do not collapse (\S\ref{sec:cross_backbone}). Standard MoE rescue mechanisms---load balancing, entropy regularization, z-loss, ReLU routing, expert-choice---also do not help (Table~\ref{tab:rescue}), because the problem lies in the router's \emph{input}, not its optimization.
 
-\textbf{The collapse problem.} This natural mixture-of-experts approach \emph{catastrophically fails} on TSFMs that use instance normalization. When the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}---routing on hidden states with load balancing---is applied to MOMENT with RevIN, routing entropy drops to $0.000\pm0.000$ in 7/12 unfrozen configurations (Table~\ref{tab:adamix}). The root cause is \textbf{normalization-induced co-adaptation}: the dominant expert receives larger gradients, which reshape the backbone to serve it even more, creating a feedback loop that collapses within ${\sim}50$ training steps (Figure~\ref{fig:trajectory}). Even with a frozen backbone, hidden-state routing still underperforms because RevIN~\citep{kim2021revin} strips the per-window mean and variance that the router needs to distinguish different input regimes. This is instance-normalization-specific: Moirai~\citep{woo2024moirai}, which uses LayerNorm instead of RevIN, does \emph{not} collapse (\S\ref{sec:cross_backbone}).
+Because the diagnosis pinpoints normalization as the cause, the fix principle is direct. \emph{Raw-Routed Mixture of Adapters} (RR-MoA) routes on the raw, pre-normalization input $\mathbf{X}_\text{raw}$ while keeping the backbone strictly frozen; only the router and five canonical expert heads are trainable. The same principle predicts a \emph{Frozen Paradox}: unfreezing triggers co-adaptation collapse (Proposition~\ref{prop:frozen}), so frozen adapters should beat full fine-tuning, which we confirm empirically.
 
-\textbf{Our fix.} Because the diagnosis pinpoints normalization as the cause, the fix principle is clear: \textbf{Raw-Routed Mixture of Adapters (RR-MoA)} routes on the raw, pre-normalization input $\mathbf{X}_\text{raw}$ while keeping the backbone strictly frozen. Only the router and five canonical expert heads are trainable. Eleven standard MoE-rescue mechanisms (load balancing, entropy regularization, z-loss, ReLU routing, expert-choice) all fail to recover performance ($2.7{\times}$ worse than RR-MoA across 720 runs; Table~\ref{tab:rescue}), confirming that the problem is in the router's \emph{input}, not its \emph{optimization}.
-
-Our contributions are threefold:
-
-\textbf{(1)~A principle validated across three normalization families and two modalities: instance normalization destroys routing information when the stripped statistics carry the routing signal.} A mutual-information decomposition (Observation~\ref{thm:mi_decomp}) shows that instance normalization destroys routing MI by exactly the information in the stripped location-scale statistics. The principle makes four \textbf{testable predictions}, all confirmed: (a)~$R(\mathcal{D})$ predicts which datasets benefit ($\rho{=}{-}0.88$, $n{=}9$; Figure~\ref{fig:signal_ratio}); (b)~backbones without instance normalization should not collapse (Timer-XL, Chronos; \S\ref{sec:cross_backbone}); (c)~cross-modality transfer (ViT$+$InstanceNorm1d collapses; ResNet does not; Appendix~\ref{app:vision_moe}); (d)~a phase-transition threshold $\alpha^* {=} R/(R{+}1) {\approx} 0.40$ (Proposition~\ref{prop:phase_transition}, Figure~\ref{fig:dose_response}). Eight converging causal controls isolate the mechanism, the most striking being opposite entropy trajectories: MOMENT collapses ($0.60{\to}0.00$) while Timer-XL \emph{rises} ($1.49{\to}1.60$)---same code, same data, only the normalization differs.
-
-\textbf{(2)~Fix and a predicted consequence.} Because the principle pinpoints the cause, the fix follows directly: RR-MoA routes on raw pre-normalization input, achieving \textbf{54/54 wins} ($p{<}0.001$; Table~\ref{tab:baselines}). The principle also predicts a \textbf{Frozen Paradox}: unfreezing triggers co-adaptation collapse (Proposition~\ref{prop:frozen}), so frozen adapters should beat full fine-tuning---confirmed at $12$--$79\%$ across all six datasets. RR-MoA generalizes across four RevIN/LayerNorm backbones; two negative controls (Chronos, Timer-XL) confirm instance-normalization-specificity.
-
-\textbf{(3)~Actionable diagnosis.} The diagnosis is further validated by its predictive power: a third architecture, \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}), restores raw-signal access at the \emph{expert} level via a shared NLinear branch added to each expert's output. This closes the gap to supervised baselines, matching or beating DLinear on 6/6 datasets at $H{=}96$ ($107/123$ cells across six backbones; \S\ref{sec:main_results}).
+\paragraph{Contributions.}
+\begin{itemize}[leftmargin=1.2em, itemsep=0.15em, topsep=0.2em]
+\item We identify \emph{normalization-induced routing collapse}, a failure mode of MoE adapters on TSFMs that is distinct from the optimization-induced collapse studied in standard MoE-rescue literature, and isolate it through eight converging causal controls.
+\item We formalize the mechanism through a mutual-information decomposition (Observation~\ref{thm:mi_decomp}) that yields a signal-ratio predictor of which datasets benefit from raw routing---including boundary cases where they do not---and validate the same principle across three normalization families, five backbones, and a vision modality.
+\item We propose RR-MoA, a minimal architectural fix that routes on raw pre-normalization input, and a companion variant (Residual-IA\textsuperscript{+}) that restores raw-signal access at the expert level. Together they close the gap to per-dataset supervised baselines while preserving frozen-backbone deployability.
+\end{itemize}
 
 \section{Related Work}
 
-\textbf{TSFM Adaptation.} The standard approach to adapting a frozen TSFM is to attach a lightweight module---LoRA~\citep{hu2022lora}, bottleneck adapters~\citep{houlsby2019adapters}, or a linear probe~\citep{goswami2024moment}---and tune it on downstream data. Recent work has expanded the design space: MSFT~\citep{qiao2025msft} proposes multi-scale finetuning, TRACE~\citep{li2025trace} introduces importance-based LoRA selection with reconstructed heads, and AdaPTS~\citep{benechehab2025adapts} adapts input representations rather than the backbone itself. Beyond LoRA~\citep{gupta2024beyondlora} surveys PEFT alternatives for Chronos; Prune-then-Finetune~\citep{zhao2025prune} applies structured pruning; in-context fine-tuning~\citep{faw2025icf} adapts at inference time. TEMPLATE~\citep{zhang2025template} and GIFT-Eval~\citep{woo2024gifteval} address model selection and benchmarking. All of these search over finetuning \textit{strategies}---learning rates, rank, which layers to tune---rather than the adapter \textit{architecture} itself. Our work addresses this gap: we show that the choice of adapter topology should be \emph{per-sample}, not per-dataset.
+\textbf{TSFM Adaptation.} The standard recipe attaches a lightweight module to a frozen TSFM and tunes it on downstream data---LoRA~\citep{hu2022lora}, bottleneck adapters~\citep{houlsby2019adapters}, or a linear probe~\citep{goswami2024moment} are the canonical choices. A recent line of work has explored variations on this theme: multi-scale finetuning~\citep{qiao2025msft}, importance-based LoRA selection~\citep{li2025trace}, input-representation adaptation~\citep{benechehab2025adapts}, structured pruning~\citep{zhao2025prune}, in-context tuning~\citep{faw2025icf}, and PEFT alternatives surveyed for Chronos~\citep{gupta2024beyondlora}. Related benchmarking and model-selection work includes TEMPLATE~\citep{zhang2025template} and GIFT-Eval~\citep{woo2024gifteval}. What unifies these efforts is that they search over finetuning \textit{strategies}---learning rates, rank, which layers to tune---while keeping a single adapter architecture. We instead ask whether the adapter topology should itself be chosen per input window.
 
-\textbf{MoE in Foundation Models.} Mixture-of-experts (MoE) routing~\citep{fedus2022switch} has been applied \emph{within} TSFM backbones to scale model capacity: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} uses sparse activation to reach billions of parameters. These designs place experts inside the backbone architecture. RR-MoA instead applies MoE at the \emph{adapter level} on a frozen backbone---an orthogonal design axis. We validate that the two axes stack: RR-MoA on top of Moirai-MoE still yields $-37\%$ MSE (\S\ref{sec:cross_backbone}, Table~\ref{tab:moirai_moe}).
+\textbf{MoE in Foundation Models.} Mixture-of-experts routing~\citep{fedus2022switch} has been used \emph{within} TSFM backbones to scale capacity, with experts placed inside the backbone architecture: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} uses sparse activation to reach billions of parameters. RR-MoA applies MoE on an orthogonal axis, at the \emph{adapter level} on top of a frozen backbone. The two axes are complementary rather than competing: stacking RR-MoA on Moirai-MoE further improves accuracy (\S\ref{sec:cross_backbone}, Table~\ref{tab:moirai_moe}).
 
 \textbf{MoE routing collapse and rescue.} Routing collapse---where a few experts capture all traffic---is a well-known failure mode in MoE training. Existing solutions attack it from the \emph{optimization side}: load-balancing losses~\citep{fedus2022switch}, z-loss~\citep{zoph2022stmoe}, Expert-Choice routing~\citep{zhou2022expertchoice}, and ReLU gating~\citep{zhang2025remoe}. AdaMix~\citep{wang2022adamix} brings MoE to adapter fine-tuning in NLP but still routes on hidden states. All of these enforce diversity through training objectives without asking whether the router's \emph{input} contains discriminative information in the first place. We sweep all five families across eleven configurations on MOMENT$+$RevIN and show \textbf{none recover MSE to within $2.7{\times}$ of RR-MoA} (Table~\ref{tab:rescue}). Our contribution is complementary: we show that when normalization structurally removes routing information from hidden states, no configuration from any of the five standard rescue families can compensate. Concurrently, recent work in NLP and vision has moved toward eliminating external routers entirely: AoE~\citep{lv2025aoe} lets experts self-select via activation norms, ERMoE~\citep{cheng2025ermoe} routes via cosine similarity to learned eigenbases (achieving 0\% collapse), and Routing-Free MoE~\citep{liu2026routingfree} encapsulates gating within each expert. We validate this self-routing principle in our setting (\S\ref{sec:main_results}): self-gated experts on raw input match RR-MoA, while the same architecture on hidden states collapses---confirming the bottleneck is normalization, not router design. Concurrent theoretical work~\citep{wang2026myth} proves MoE specialization reflects hidden-state geometry: tokens with similar hidden states activate similar experts. We extend this one step upstream by identifying what \emph{shapes} that geometry on TSFMs---instance normalization homogenizes hidden states by stripping per-window statistics, producing the geometric collapse that geometry-based analyses describe but do not causally explain.
 
@@ -264,7 +262,7 @@ We evaluate RR-MoA on standard long-term forecasting benchmarks using five backb
 \label{sec:architectures}
 \label{sec:freeze_ablation}
 
-This section proceeds in four steps: we first show that RR-MoA consistently outperforms fixed adapters (Table~\ref{tab:rrmoa}), then diagnose why standard MoE routing fails (Table~\ref{tab:adamix}), demonstrate that no standard rescue mechanism recovers performance (Table~\ref{tab:rescue}), and finally compare against a comprehensive baseline suite (Table~\ref{tab:baselines}).
+RR-MoA's case rests on three claims: that fixed-topology adapters are suboptimal, that the natural MoE remedy collapses on instance-normalized backbones, and that the collapse cannot be recovered by standard rescue mechanisms. We establish each in turn before comparing RR-MoA against a comprehensive baseline suite.
 
 {\looseness=-1 \textbf{RR-MoA vs.\ fixed adapters.} Table~\ref{tab:rrmoa} compares Top-2 RR-MoA against the best fixed adapter, using the \emph{same five expert heads} in all rows. Across 6 datasets $\times$ 3 freeze levels $\times$ 3 seeds $=$ \textbf{54 configurations}, RR-MoA wins every one with tight standard deviations.}
 
@@ -418,84 +416,23 @@ RR-MoA outperforms every baseline ($p{<}0.001$). The independent ensemble (same 
 
 {\looseness=-1 \textbf{Rawness vs.\ bypass and dose-response.} Replacing the router's raw input with RevIN-normalized input degrades MSE by $60$--$88\%$ while entropy stays high (Table~\ref{tab:router_input}, Appendix~\ref{app:routing_ablations}), confirming the router relies on the \emph{content} of the stripped statistics, not merely the bypass path. A dose-response interpolation $\mathbf{x}_\alpha = (1{-}\alpha)\,\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ reveals a \emph{phase transition} (Figure~\ref{fig:dose_response}; 150 runs): MSE degrades mildly for $\alpha{\leq}0.75$ ($+5.4\%$) but catastrophically at $\alpha{=}1.0$ ($+283\%$), while entropy stays in $[1.43, 1.57]$---normalization renders routing uninformative without reducing diversity. The phase transition threshold is quantitatively predicted at $\alpha^* = R(\mathcal{D})/(R(\mathcal{D})+1) \approx 0.40$ for the median benchmark (Appendix~\ref{app:prop2_depth}). A temporal-shuffle ablation confirms routing depends on $(M,\Sigma)$ statistics, not temporal ordering (Appendix~\ref{app:routing_ablations}).}
 
-\begin{figure}[h]
-\centering
-\begin{minipage}[t]{0.54\columnwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=\textwidth, height=3.9cm,
-    xlabel={Normalization dose $\alpha$},
-    ylabel={Test MSE (H=96)},
-    xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
-    x tick label style={font=\footnotesize}, y tick label style={font=\footnotesize},
-    xmin=-0.05, xmax=1.05, ymin=0, ymax=3.2,
-    xtick={0, 0.25, 0.5, 0.75, 1.0},
-    grid=major, grid style={gray!15},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85, row sep=-2pt, legend columns=2, /tikz/every even column/.append style={column sep=4pt}},
-]
-\addplot[blue!80, thick, mark=square*, mark size=1.8pt] coordinates {(0,0.461) (0.25,0.464) (0.5,0.466) (0.75,0.479) (1.0,1.040)};
-\addplot[red!70, thick, mark=triangle*, mark size=2pt] coordinates {(0,0.485) (0.25,0.527) (0.5,0.556) (0.75,0.573) (1.0,2.711)};
-\addplot[green!60!black, thick, mark=o, mark size=1.5pt] coordinates {(0,0.396) (0.25,0.394) (0.5,0.397) (0.75,0.398) (1.0,1.028)};
-\addplot[orange!80, thick, mark=diamond*, mark size=2pt] coordinates {(0,0.237) (0.25,0.240) (0.5,0.247) (0.75,0.266) (1.0,0.507)};
-\addplot[purple!70, thick, mark=pentagon*, mark size=1.8pt] coordinates {(0,0.261) (0.25,0.264) (0.5,0.268) (0.75,0.276) (1.0,0.475)};
-\addplot[cyan!60!black, thick, mark=star, mark size=2pt] coordinates {(0,0.340) (0.25,0.364) (0.5,0.350) (0.75,0.311) (1.0,2.927)};
-\legend{ETTh1, ETTh2, ETTm1, Weather, Electricity, ETTm2}
-% Phase transition annotation
-\addplot[black!40, dashed, thick, forget plot] coordinates {(0.875,0) (0.875,3.1)};
 
-\end{axis}
-\end{tikzpicture}
-\end{minipage}%
-\hfill
-\begin{minipage}[t]{0.44\columnwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=\textwidth, height=3.9cm,
-    xlabel={Normalization dose $\alpha$},
-    ylabel={Routing entropy (nats)},
-    xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
-    x tick label style={font=\footnotesize}, y tick label style={font=\footnotesize},
-    xmin=-0.05, xmax=1.05, ymin=1.3, ymax=1.65,
-    xtick={0, 0.25, 0.5, 0.75, 1.0},
-    grid=major, grid style={gray!15},
-]
-\addplot[blue!80, thick, mark=square*, mark size=1.8pt] coordinates {(0,1.544) (0.25,1.545) (0.5,1.545) (0.75,1.551) (1.0,1.554)};
-\addplot[red!70, thick, mark=triangle*, mark size=2pt] coordinates {(0,1.425) (0.25,1.427) (0.5,1.433) (0.75,1.471) (1.0,1.535)};
-\addplot[green!60!black, thick, mark=o, mark size=1.5pt] coordinates {(0,1.554) (0.25,1.559) (0.5,1.564) (0.75,1.565) (1.0,1.572)};
-\addplot[orange!80, thick, mark=diamond*, mark size=2pt] coordinates {(0,1.529) (0.25,1.533) (0.5,1.541) (0.75,1.550) (1.0,1.532)};
-\addplot[purple!70, thick, mark=pentagon*, mark size=1.8pt] coordinates {(0,1.571) (0.25,1.569) (0.5,1.566) (0.75,1.565) (1.0,1.565)};
-\addplot[cyan!60!black, thick, mark=star, mark size=2pt] coordinates {(0,1.480) (0.25,1.467) (0.5,1.465) (0.75,1.475) (1.0,1.545)};
-\addplot[black, thin, dotted] coordinates {(-0.05,1.609) (1.05,1.609)};
-\node[font=\tiny, anchor=south west] at (axis cs:0.0,1.609) {$\log 5$};
-\end{axis}
-\end{tikzpicture}
-\end{minipage}
-\caption{\textbf{Normalization dose-response} (frozen, 5 seeds $\times$ 6 datasets). \textbf{Left:} MSE vs $\alpha$ ($0{=}$raw, $1{=}$RevIN). Phase transition at $\alpha{=}1.0$ ($+283\%$), mild for $\alpha{\leq}0.75$ ($+5.4\%$). \textbf{Right:} entropy stays high at all $\alpha$---normalization renders routing uninformative, not collapsed.}
-\label{fig:dose_response}
-\end{figure}
-
-\textbf{Why RevIN destroys routing: formal analysis.} The experimental evidence above converges on a clear mechanism, but relies on empirical observations. We now formalize it through an information-theoretic lens. Each input window $\mathbf{x}_i$ decomposes into three components: mean $M_i = \mu(\mathbf{x}_i)$, scale $\Sigma_i = \sigma(\mathbf{x}_i)$, and shape $\mathbf{S}_i = (\mathbf{x}_i - M_i)/\Sigma_i$. RevIN maps $\mathbf{x}_i \mapsto \mathbf{S}_i$, discarding $(M_i, \Sigma_i)$. The following decomposition, while algebraically elementary (it follows from the MI chain rule), provides the formal basis for three testable quantitative predictions that we validate across nine datasets.
+\textbf{Why RevIN destroys routing: formal analysis.} The experiments above converge on a single mechanism: instance normalization strips the per-window statistics that the router uses to tell input regimes apart. To pin this down, we ask what information the router actually has access to before and after normalization. Each input window $\mathbf{x}_i$ decomposes into a mean $M_i = \mu(\mathbf{x}_i)$, a scale $\Sigma_i = \sigma(\mathbf{x}_i)$, and a shape $\mathbf{S}_i = (\mathbf{x}_i - M_i)/\Sigma_i$. RevIN maps $\mathbf{x}_i \mapsto \mathbf{S}_i$ and discards $(M_i, \Sigma_i)$, so the question reduces to how much routing information lives in the discarded part. The mutual-information chain rule gives a clean answer.
 
 \begin{observation}[Routing Information Loss Under Instance Normalization]
 \label{thm:mi_decomp}
 Let $X$ be a random input window, $E \in \{1,\ldots,K\}$ the expert assignment produced by any deterministic router, and $S = (X - M)/\Sigma$ the RevIN-normalized shape.
 \begin{enumerate}
     \item[\textup{(i)}] \textbf{Exact decomposition.} $I(X; E) - I(S; E) = I(M, \Sigma; E \mid S) \geq 0$.
-    \item[\textup{(ii)}] \textbf{Unconditional quantitative bound.} Without any independence assumption,
+    \item[\textup{(ii)}] \textbf{Quantitative bound.} Without any independence assumption,
     \[
         I(X; E) - I(S; E) \;\geq\; I(M, \Sigma;\, E) \;-\; I(M, \Sigma;\, S),
     \]
-    where the residual $\varepsilon := I(M, \Sigma;\, S) \geq 0$ measures the ``leakage'' of stripped statistics through the shape.  Equality (tightness) holds iff $(M,\Sigma) \perp\!\!\!\perp S$ given $E$.
-    \item[\textup{(iii)}] \textbf{Full-information corner.} If the router depends \emph{entirely} on the stripped statistics ($E \perp\!\!\!\perp S \mid (M,\Sigma)$), then $I(X; E) - I(S; E) = H(E)$: RevIN destroys the \emph{entire} routing distribution in nats.
-    \item[\textup{(iv)}] \textbf{Signal ratio as sufficient-statistic proxy.} Since Part~(iii) establishes that $(M,\Sigma)$ are sufficient statistics for $E$ when the router depends entirely on them, the signal ratio $R(\mathcal{D}) = [\mathrm{Var}(M) + \mathrm{Var}(\Sigma)] / \overline{\mathrm{Var}(S)}$ measures the variance contribution of these sufficient statistics relative to the residual shape---a monotone proxy for the \emph{potential} routing information in the stripped statistics. The leakage $\varepsilon$ varies by dataset ($0.09$--$1.26$ nats via CCA; cross-validated within ${\pm}0.2$ nats by the KSG estimator~\citep{kraskov2004ksg}); $R(\mathcal{D})$ is validated at $\rho{=}{-}0.88$ across nine datasets. \textbf{Tightness:} direct measurement of $H(E \mid S)$ via held-out classifier confirms normalization retains only $16$--$41\%$ of routing entropy; the bound~(ii) gap averages $0.075$ nats ($4.7\%$ of $\log K$; Appendix~\ref{app:mi_tightness}).\footnote{$H(E \mid S)$ does not correlate with $\Delta\%$ ($\rho{=}{-}0.12$); $R(\mathcal{D})$ predicts improvement because it measures routing \emph{potential}, not the MI loss itself.}
+    where $\varepsilon := I(M, \Sigma;\, S) \geq 0$ captures any residual ``leakage'' of the stripped statistics through the shape. Equality holds iff $(M,\Sigma) \perp\!\!\!\perp S$ given $E$.
 \end{enumerate}
 \end{observation}
 
-Full proof in Appendix~\ref{app:proofs}; rate-distortion interpretation and phase-transition formalization in Appendix~\ref{app:prop2_depth}. \textit{Remark.} KSG cross-check (${\pm}0.26$ nats) confirms leakage estimates hold beyond Gaussianity. \textbf{Independent validation:} training $\alpha \in [0,1]$ as an \texttt{nn.Parameter}, gradient descent converges to $\alpha < 0.5$ on all six datasets ($30/30$ runs; Appendix~\ref{app:learnable_alpha}).
-
-\textbf{Quantitative prediction.} The \emph{routing signal ratio} $R(\mathcal{D}) = [\text{Var}(M) + \text{Var}(\Sigma)] / \overline{\text{Var}(S)}$ measures whether input windows in a dataset differ primarily in their location and scale (high $R$, normalization destroys the dominant routing signal) or primarily in their shape (low $R$, routing signal survives normalization). It serves as a monotone proxy for the MI bound. Figure~\ref{fig:signal_ratio} validates this: the Spearman rank correlation between $R(\mathcal{D})$ and the MSE improvement $\Delta\%$ from raw routing is $\rho = -0.88$ ($p < 0.002$; bootstrap CI: $[-1.00, -0.51]$; $n{=}9$), i.e., datasets where normalization strips more routing signal benefit more from bypassing it. Traffic ($R{=}0.14$) is correctly predicted as a boundary case ($\Delta{=}{+}2.9\%$). Solar ($R{=}0.06$) is the one outlier: the Conv1d router exploits temporal shape patterns beyond location-scale, consistent with the SSR ablation ($+43\%$ degradation). Additional ablations (SSR, RDGF, per-quartile analysis) in Appendix~\ref{app:routing_ablations}.
+In the limit where the router's signal lives entirely in the stripped statistics ($E \perp\!\!\!\perp S \mid (M,\Sigma)$), the bound saturates and $I(X; E) - I(S; E) = H(E)$---RevIN destroys the entire routing distribution. We therefore use the \emph{signal ratio} $R(\mathcal{D}) = [\mathrm{Var}(M) + \mathrm{Var}(\Sigma)] / \overline{\mathrm{Var}(S)}$ as a tractable monotone proxy for the variance contribution of the stripped statistics. The bound is empirically tight: CCA gives $\varepsilon \in [0.09, 1.26]$ nats, cross-validated within ${\pm}0.26$ nats by KSG~\citep{kraskov2004ksg}; a held-out classifier shows normalization retains only $16$--$41\%$ of routing entropy with bound (ii) gap averaging $0.075$ nats (Appendix~\ref{app:mi_tightness}). Training $\alpha \in [0,1]$ as a learnable parameter, gradient descent converges to $\alpha < 0.5$ on all six datasets ($30/30$ runs; Appendix~\ref{app:learnable_alpha}). $R(\mathcal{D})$ predicts the raw-routing benefit at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$; Figure~\ref{fig:signal_ratio}); $H(E \mid S)$ alone does not ($\rho{=}{-}0.12$), since routing \emph{potential} in the stripped statistics matters, not the MI loss itself. Traffic ($R{=}0.14$, $\Delta{=}{+}2.9\%$) is correctly predicted as a boundary case; Solar ($R{=}0.06$) is the one outlier (SSR ablation $+43\%$; Appendix~\ref{app:routing_ablations}). Full proof in Appendix~\ref{app:proofs}.
 
 \begin{figure}[t]
 \centering
@@ -505,7 +442,7 @@ Full proof in Appendix~\ref{app:proofs}; rate-distortion interpretation and phas
 \begin{axis}[
     ybar,
     width=\textwidth,
-    height=4.4cm,
+    height=3.6cm,
     bar width=7pt,
     ylabel={Test MSE (H=96)},
     ylabel style={font=\footnotesize},
@@ -570,20 +507,13 @@ Full proof in Appendix~\ref{app:proofs}; rate-distortion interpretation and phas
 \end{figure}
 \vspace{-1em}
 
-{\looseness=-1 \textbf{Cross-backbone generalization.}\label{sec:cross_backbone} RR-MoA is not specific to MOMENT. On MOMENT-small and MOMENT-large (both using RevIN), it wins \textbf{all 21} configurations by $27$--$81\%$ (Table~\ref{tab:cross_backbone}). On Moirai (LayerNorm only, no RevIN), it wins \textbf{18/18} by $3$--$31\%$---demonstrating that raw-signal routing provides value \emph{beyond} the RevIN diagnosis: even when hidden states retain enough information to avoid collapse (Moirai entropy: $1.48$--$1.60$), the raw input carries richer per-window statistics that improve routing quality. On Moirai-MoE~\citep{liu2025moiraimoe}, which already contains sparse internal experts, RR-MoA still improves \textbf{all 6 datasets} by $37$--$90\%$ (Table~\ref{tab:moirai_moe}), showing that adapter-level and backbone-internal routing operate on complementary axes. Two \textbf{negative controls} validate the diagnosis: Chronos and Timer-XL~\citep{liu2025timerxl}, which lack instance normalization, show no routing collapse (entropy $1.48$--$1.61$) and RR-MoA provides no advantage (\textbf{4/18} wins, within chance)---exactly as Observation~\ref{thm:mi_decomp} predicts (Appendix~\ref{app:cross_backbone}).}
+{\looseness=-1 \textbf{Cross-backbone, task and horizon generalization.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA is not specific to MOMENT: it wins all 21 MOMENT-small/large configurations ($27$--$81\%$; Table~\ref{tab:cross_backbone}) and 18/18 Moirai ($3$--$31\%$), and improves all 6 datasets on Moirai-MoE~\citep{liu2025moiraimoe} by $37$--$90\%$ (Table~\ref{tab:moirai_moe})---adapter-level and backbone-internal routing thus operate on complementary axes. The two negative controls predicted by Observation~\ref{thm:mi_decomp}---Chronos and Timer-XL~\citep{liu2025timerxl}, neither using instance normalization---show no collapse and no RR-MoA gain (4/18 wins, within chance; Appendix~\ref{app:cross_backbone}). Top-2 sparse routing retains most of the dense gain at a $+10\%$ latency cost (Appendix~\ref{app:topk}); the advantage extends to imputation ($7/8$ datasets; Appendix~\ref{app:imputation}) and is stable across forecast horizons $H{\in}\{96{,}192{,}336{,}720\}$ (24/24 wins; Table~\ref{tab:horizon}). The companion \textbf{Residual-IA\textsuperscript{+}} variant (Appendix~\ref{app:gate_pathology}) extends this to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
 
-{\looseness=-1 \textbf{Sparse routing and task generalization.}\label{sec:topk}
-Top-2 sparse routing adds $4.3$\,ms ($+10\%$) while retaining $63\%$ of the dense gain; scaling $K{=}3{\to}20$ changes MSE by ${<}5\%$ (Appendix~\ref{app:topk}). RR-MoA generalizes to imputation ($7/8$ datasets; Appendix~\ref{app:imputation}).}
-
-{\looseness=-1 \textbf{Multi-horizon generalization.} RR-MoA wins \textbf{24/24} configurations across $H{\in}\{96, 192, 336, 720\}$ on ETTh1, ETTm1, and Weather (5 seeds each; Table~\ref{tab:horizon}), with improvements of $27$--$49\%$ over the best fixed adapter at every horizon. The advantage is stable across horizon length: at $H{=}720$, RR-MoA still improves by $27$--$41\%$. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}, Figure~\ref{fig:residual_ia_arch}) further extends this to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
-
-\vspace{-0.5em}
+\vspace{-0.6em}
 \section{Conclusion}
-\vspace{-0.3em}
+\vspace{-0.4em}
 
-We identified \emph{normalization-induced routing collapse} as the root cause of MoE adapter failure on time series foundation models. Eight causal controls---including opposite entropy trajectories on identical data (Figure~\ref{fig:causal_contrast})---isolate the mechanism, and a mutual-information decomposition predicts where it applies ($\rho{=}{-}0.88$, $n{=}9$). Because the diagnosis pinpoints the cause, the fix principle is clear: \textbf{RR-MoA} routes on raw, pre-normalization input, achieving \textbf{54/54 wins} and a Frozen Paradox where frozen adapters outperform full fine-tuning by $12$--$79\%$. The diagnosis is further validated by its actionability: restoring raw-signal access to experts matches or beats DLinear on $107/123$ cells across six backbones.
-
-\textbf{Practitioner guideline.} Compute $R(\mathcal{D})$: in our 9 LTSF benchmarks, values above $0.5$ reliably predict raw routing helps (6/6 datasets, $27$--$77\%$ improvement). Below $0.2$ the prediction is one-sided: Traffic ($R{=}0.14$, $\Delta{=}{+}2.9\%$) is correctly predicted to not benefit, but Solar ($R{=}0.06$, $\Delta{=}{-}32.9\%$) does benefit because the Conv1d router exploits temporal shape patterns beyond location-scale (SSR ablation, Appendix~\ref{app:routing_ablations}). $R(\mathcal{D})$ thus captures a sufficient (not necessary) condition for raw routing to help; high $R$ is a strong positive predictor, while low $R$ does not rule out gains from richer temporal structure. \textbf{Limitations:} Time-MoE~\citep{shi2024timemoe} is untested; Proposition~\ref{prop:frozen} covers linear backbones only (Figure~\ref{fig:trajectory} confirms the mechanism in full Transformers); $R(\mathcal{D})$ uses first moments and may miss higher-order routing signals (Solar outlier).
+A natural MoE adapter on instance-normalized TSFMs fails for structural reasons: the normalization the backbone relies on for distribution shift also strips the per-window statistics a downstream router needs. Standard rescue mechanisms target the router's optimization rather than its input and cannot help; routing on the raw, pre-normalization input does, and the same principle predicts the Frozen Paradox and motivates Residual-IA\textsuperscript{+}. The signal-ratio statistic identifies where the fix applies without training. \textbf{Limitations:} we cover RevIN-style normalization and the five dominant rescue families; $R(\mathcal{D})$ uses second-order moments and can miss higher-order signals (Solar); Proposition~\ref{prop:frozen} is proved for linear backbones, with the Transformer extension left to future work.
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -1011,6 +941,34 @@ For $\alpha < \alpha^*$, routing quality degrades continuously; for $\alpha \to 
 \end{proposition}
 
 \emph{Validation.} For the median $R(\mathcal{D}) = 0.67$ across our benchmarks, Proposition~\ref{prop:phase_transition} predicts $\alpha^* \approx 0.40$. The dose-response experiment (Figure~\ref{fig:dose_response}; 150 runs) confirms this: MSE degrades mildly for $\alpha \leq 0.75$ ($+5.4\%$) but catastrophically at $\alpha = 1.0$ ($+283\%$). The sharpness of the transition arises from the softmax: when $P_\mathrm{route}(\alpha) / P_\mathrm{noise}$ drops below ${\sim}1$, routing weights converge to uniform regardless of expert relevance.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.62\columnwidth, height=3.6cm,
+    xlabel={Normalization dose $\alpha$},
+    ylabel={Test MSE (H=96)},
+    xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
+    x tick label style={font=\footnotesize}, y tick label style={font=\footnotesize},
+    xmin=-0.05, xmax=1.05, ymin=0, ymax=3.2,
+    xtick={0, 0.25, 0.5, 0.75, 1.0},
+    grid=major, grid style={gray!15},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85, row sep=-2pt, legend columns=2, /tikz/every even column/.append style={column sep=4pt}},
+]
+\addplot[blue!80, thick, mark=square*, mark size=1.8pt] coordinates {(0,0.461) (0.25,0.464) (0.5,0.466) (0.75,0.479) (1.0,1.040)};
+\addplot[red!70, thick, mark=triangle*, mark size=2pt] coordinates {(0,0.485) (0.25,0.527) (0.5,0.556) (0.75,0.573) (1.0,2.711)};
+\addplot[green!60!black, thick, mark=o, mark size=1.5pt] coordinates {(0,0.396) (0.25,0.394) (0.5,0.397) (0.75,0.398) (1.0,1.028)};
+\addplot[orange!80, thick, mark=diamond*, mark size=2pt] coordinates {(0,0.237) (0.25,0.240) (0.5,0.247) (0.75,0.266) (1.0,0.507)};
+\addplot[purple!70, thick, mark=pentagon*, mark size=1.8pt] coordinates {(0,0.261) (0.25,0.264) (0.5,0.268) (0.75,0.276) (1.0,0.475)};
+\addplot[cyan!60!black, thick, mark=star, mark size=2pt] coordinates {(0,0.340) (0.25,0.364) (0.5,0.350) (0.75,0.311) (1.0,2.927)};
+\legend{ETTh1, ETTh2, ETTm1, Weather, Electricity, ETTm2}
+\addplot[black!40, dashed, thick, forget plot] coordinates {(0.875,0) (0.875,3.1)};
+\end{axis}
+\end{tikzpicture}
+\caption{\textbf{Normalization dose-response} (frozen, 5 seeds $\times$ 6 datasets). MSE vs $\alpha$ ($0{=}$raw, $1{=}$RevIN). Phase transition at $\alpha{=}1.0$ ($+283\%$), mild for $\alpha{\leq}0.75$ ($+5.4\%$); routing entropy stays in $[1.43,1.57]$ across all $\alpha$ (Appendix~\ref{app:routing_ablations}).}
+\label{fig:dose_response}
+\end{figure}
 
 \textbf{Information bottleneck connection.}
 The RevIN-encoder pipeline implements a form of the information bottleneck~\citep{tishby2000ib}: it compresses $X$ into a representation $H = f_\theta(S)$ that is optimized for downstream prediction while discarding ``irrelevant'' variability (the per-window location-scale statistics). The routing MI loss from Observation~\ref{thm:mi_decomp}(i) is the price paid for this compression \emph{at the routing decision point}. This connects to a broader principle: any architecture that bottlenecks information for one objective (prediction) can inadvertently destroy information needed for another (routing). The vision cross-modality control (Appendix~\ref{app:vision_moe}) confirms this is not RevIN-specific: InstanceNorm1d on ViT patches creates the same bottleneck, while InstanceNorm2d on ResNet spatial features does not---because spatial features are not the routing signal for classification.
