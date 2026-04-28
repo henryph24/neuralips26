@@ -1,0 +1,68 @@
+recompile the paper
+
+---
+
+[Image #1] in figure 1 the text should be brought to font. the text "Weighted" is still grey
+
+---
+
+review all the latex native visualisation code for similar issues as above
+
+---
+
+use gemini nano banana pro to visualise the problem: "Time series foundation models like MOMENT and Moirai are powerful pretrained
+representations. But the standard way to adapt them is to attach a single static head — one
+adapter topology for every input window, no matter what the data looks like.
+A natural improvement is mixture-of-expert adapters: a pool of structurally diverse heads with a
+learned router that picks the best expert per window. AdaMix and Switch Transformer have
+shown this works well in NLP.
+Here is where things go sideways. On TSFMs that use instance normalization — and most of
+the major ones do — this standard MoE recipe catastrophically fails. Routing entropy
+collapses to exactly 0.000 in 7 of 12 unfrozen configurations. The router learns to send
+every single sample to the same expert. The other four experts are dead weight.
+Our first instinct was: this is a known optimization issue. So we tried all five standard rescue
+families from the MoE literature — load balancing from Switch, z-loss from ST-MoE, entropy
+regularization, ReLU routing, expert-choice. Eleven configurations across a 720-run sweep.
+Zero of eleven recover. Still 2.7× worse than what we’ll show next.
+Our claim — and the rest of this talk defends it — is that the MoE field has been treating this as
+an optimization problem. We show it’s actually an information problem"
+
+api is aleady ready in .env
+
+fetch latest google image gen model and api guideline
+
+---
+
+<task-notification>
+<task-id>bpspzl4wp</task-id>
+<tool-use-id>toolu_01Kk5qJMoYgTuaogHErUdBzq</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/eb46ddab-e8ee-4d26-b7c2-599c326c549a/tasks/bpspzl4wp.output</output-file>
+<status>completed</status>
+<summary>Background command "Generate thesis visualization" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b5u25buyc</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/eb46ddab-e8ee-4d26-b7c2-599c326c549a/tasks/b5u25buyc.output</output-file>
+<status>completed</status>
+<summary>Background command "Generate rescue-failure visualization" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+notice to adjust the prompt to generate an academic visualisation to be featured in a paper. Try again, just generate one image that summarise the problem, also I need to show "TSFM adapters today use a single static head for every input window" on a standard TSFM architecture
+
+---
+
+Resume: check status of the two background image generations and view results
+
+---
+
+/skill-creator:skill-creator create the Gemini academic visualisation generation skills at USER SCOPE
+
+---
+
+based on "problem_overview.png", create a latex native plot that looks similar and place it in the paper
