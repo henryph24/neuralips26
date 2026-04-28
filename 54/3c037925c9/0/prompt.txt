@@ -1,0 +1,9 @@
+I think all .md file should be only at local
+
+---
+
+I think all .md file should be tracked only at local, never at remote repo
+
+---
+
+option A
