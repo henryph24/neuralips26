@@ -74,13 +74,159 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 \item We propose RR-MoA, a minimal architectural fix that routes on raw pre-normalization input, and a companion variant (Residual-IA\textsuperscript{+}) that restores raw-signal access at the expert level. Together they close the gap to per-dataset supervised baselines while preserving frozen-backbone deployability.
 \end{itemize}
 
+\begin{figure}[t]
+\centering
+\resizebox{0.92\columnwidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    every node/.style={font=\scriptsize},
+    box/.style={rectangle, draw=black!70, rounded corners=1.5pt, fill=white,
+        minimum height=0.7cm, align=center, line width=0.6pt},
+    bbbox/.style={box, draw=black!85, fill=blue!3, minimum width=2.4cm, minimum height=1.0cm,
+        font=\scriptsize\bfseries},
+    smallbox/.style={box, minimum width=0.65cm, minimum height=0.45cm, font=\tiny},
+    waveframe/.style={rectangle, draw=black!40, fill=gray!3, line width=0.4pt,
+        minimum width=1.45cm, minimum height=0.55cm, inner sep=1pt},
+    headbox/.style={box, draw=black!85, fill=orange!8, minimum width=1.7cm, minimum height=0.85cm,
+        font=\scriptsize\bfseries},
+    routerbox/.style={box, draw=black!85, fill=orange!8, minimum width=0.95cm, minimum height=0.7cm,
+        font=\scriptsize\bfseries},
+    expertactive/.style={box, draw=orange!80, fill=orange!12, minimum width=1.0cm,
+        minimum height=0.36cm, font=\tiny\bfseries, line width=0.9pt},
+    expertinactive/.style={box, draw=black!30, fill=gray!4, minimum width=1.0cm,
+        minimum height=0.36cm, font=\tiny, text=black!50},
+    arr/.style={->, line width=0.55pt, color=black!75},
+    activearr/.style={->, line width=0.85pt, color=orange!85},
+    deadarr/.style={->, line width=0.4pt, color=black!25, densely dashed},
+    banner/.style={font=\footnotesize\bfseries, align=center},
+    sublabel/.style={font=\tiny, color=black!60, align=center},
+]
+
+% ============== PANEL A (TOP) ==============
+\node[banner] (titleA) at (7.3, 3.65)
+    {TSFM adapters today use a single static head for every input window};
+
+% Three input waveforms (left)
+\node[waveframe] (w1a) at (0.9, 3.30) {};
+\draw[blue!75, line width=0.5pt] plot[domain=-0.65:0.65, samples=30, smooth]
+    ({\x},{3.30+0.16*sin(deg(2.4*\x))});
+\node[waveframe] (w2a) at (0.9, 2.78) {};
+\draw[red!75, line width=0.4pt] plot[domain=-0.65:0.65, samples=70]
+    ({\x},{2.78+0.09*sin(deg(35*\x))+0.05*sin(deg(11*\x))});
+\node[waveframe] (w3a) at (0.9, 2.26) {};
+\draw[green!55!black, line width=0.5pt]
+    (0.25,2.18) -- (0.55,2.18) -- (0.55,2.40) -- (0.85,2.40) --
+    (0.85,2.18) -- (1.15,2.18) -- (1.15,2.40) -- (1.45,2.40) -- (1.55,2.40);
+\node[sublabel] at (0.9, 1.86) {Input windows $\mathbf{X}$ (distinct per-window stats)};
+
+% Frozen TSFM backbone
+\node[bbbox] (bbA) at (4.4, 2.78)
+    {Frozen TSFM Backbone\\[-1pt]\scriptsize\mdseries(MOMENT, Moirai)};
+\node[font=\tiny\bfseries, text=red!70, fill=red!7, rounded corners=1pt, inner sep=1pt]
+    at ([yshift=0.02cm]bbA.north) {\textsc{frozen}};
+\node[box, draw=black!50, fill=blue!4, minimum width=2.3cm, minimum height=0.32cm,
+    font=\tiny] (revA) at (4.4, 2.18) {Instance Normalization (RevIN)};
+
+% Hidden states H stack
+\node[smallbox] (hA1) at (7.05, 3.04) {$\mathbf{H}_1$};
+\node[smallbox] (hA2) at (7.05, 2.78) {$\mathbf{H}_2$};
+\node[smallbox] (hA3) at (7.05, 2.52) {$\mathbf{H}_3$};
+
+% Single static head
+\node[headbox] (headA) at (9.4, 2.78) {Single static\\[-1pt]adapter head};
+
+% Output
+\node[font=\small] (yA) at (11.6, 2.78) {$\hat{\mathbf{y}}$};
+
+% Arrows panel A
+\foreach \w in {w1a, w2a, w3a} {\draw[arr] (\w.east) -- (bbA.west);}
+\draw[arr] (bbA.east) -- (hA1.west);
+\draw[arr] (bbA.east) -- (hA2.west);
+\draw[arr] (bbA.east) -- (hA3.west);
+\foreach \h in {hA1, hA2, hA3} {\draw[arr] (\h.east) -- (headA.west);}
+\draw[arr] (headA.east) -- (yA.west);
+
+% ============== Divider ==============
+\draw[black!30, dashed, line width=0.4pt] (-0.2,1.55) -- (12.0,1.55);
+
+% ============== PANEL B (BOTTOM) ==============
+\node[banner] (titleB) at (7.3, 1.30)
+    {A natural MoE adapter catastrophically collapses on instance-normalized TSFMs};
+
+% Three input waveforms (left, same as A)
+\node[waveframe] (w1b) at (0.9, 0.90) {};
+\draw[blue!75, line width=0.5pt] plot[domain=-0.65:0.65, samples=30, smooth]
+    ({\x},{0.90+0.16*sin(deg(2.4*\x))});
+\node[waveframe] (w2b) at (0.9, 0.38) {};
+\draw[red!75, line width=0.4pt] plot[domain=-0.65:0.65, samples=70]
+    ({\x},{0.38+0.09*sin(deg(35*\x))+0.05*sin(deg(11*\x))});
+\node[waveframe] (w3b) at (0.9, -0.14) {};
+\draw[green!55!black, line width=0.5pt]
+    (0.25,-0.22) -- (0.55,-0.22) -- (0.55,0.00) -- (0.85,0.00) --
+    (0.85,-0.22) -- (1.15,-0.22) -- (1.15,0.00) -- (1.45,0.00) -- (1.55,0.00);
+\node[sublabel] at (0.9, -0.50) {Input windows $\mathbf{X}$};
+
+% Frozen TSFM backbone (same as A)
+\node[bbbox] (bbB) at (4.4, 0.38)
+    {Frozen TSFM Backbone\\[-1pt]\scriptsize\mdseries(MOMENT, Moirai)};
+\node[font=\tiny\bfseries, text=red!70, fill=red!7, rounded corners=1pt, inner sep=1pt]
+    at ([yshift=0.02cm]bbB.north) {\textsc{frozen}};
+\node[box, draw=black!50, fill=blue!4, minimum width=2.3cm, minimum height=0.32cm,
+    font=\tiny] (revB) at (4.4, -0.22) {Instance Normalization (RevIN)};
+
+% Hidden states H stack
+\node[smallbox] (hB1) at (6.7, 0.64) {$\mathbf{H}_1$};
+\node[smallbox] (hB2) at (6.7, 0.38) {$\mathbf{H}_2$};
+\node[smallbox] (hB3) at (6.7, 0.12) {$\mathbf{H}_3$};
+
+% Router
+\node[routerbox] (routerB) at (8.1, 0.38) {Router};
+
+% Five experts
+\node[expertactive] (e1) at (9.7, 1.00) {E$_1$};
+\node[expertinactive] (e2) at (9.7, 0.62) {E$_2$};
+\node[expertinactive] (e3) at (9.7, 0.24) {E$_3$};
+\node[expertinactive] (e4) at (9.7, -0.14) {E$_4$};
+\node[expertinactive] (e5) at (9.7, -0.52) {E$_5$};
+\node[font=\tiny, color=black!55] at (10.55, 0.62) {unused};
+\node[font=\tiny, color=black!55] at (10.55, 0.24) {unused};
+\node[font=\tiny, color=black!55] at (10.55, -0.14) {unused};
+\node[font=\tiny, color=black!55] at (10.55, -0.52) {unused};
+
+% Output
+\node[font=\small] (yB) at (12.05, 0.38) {$\hat{\mathbf{y}}$};
+
+% Arrows panel B
+\foreach \w in {w1b, w2b, w3b} {\draw[arr] (\w.east) -- (bbB.west);}
+\draw[arr] (bbB.east) -- (hB1.west);
+\draw[arr] (bbB.east) -- (hB2.west);
+\draw[arr] (bbB.east) -- (hB3.west);
+\foreach \h in {hB1, hB2, hB3} {\draw[arr] (\h.east) -- (routerB.west);}
+\draw[activearr] (routerB.east) -- (e1.west);
+\draw[deadarr] (routerB.east) -- (e2.west);
+\draw[deadarr] (routerB.east) -- (e3.west);
+\draw[deadarr] (routerB.east) -- (e4.west);
+\draw[deadarr] (routerB.east) -- (e5.west);
+\draw[activearr] (e1.east) to[out=0, in=140] (yB.north);
+
+% Panel labels
+\node[font=\footnotesize\bfseries] at (-0.4, 3.65) {(a)};
+\node[font=\footnotesize\bfseries] at (-0.4, 1.30) {(b)};
+
+\end{tikzpicture}%
+}% end resizebox
+\caption{\textbf{Problem overview.} \textbf{(a)}~Today's TSFM benchmarks adapt the frozen backbone with a \emph{single static head} that pools hidden states for every input window, regardless of the window's per-sample statistics. \textbf{(b)}~The natural extension---a mixture of expert adapters with a learned router---catastrophically fails on instance-normalized TSFMs: routing collapses to a single expert (entropy $0.000{\pm}0.000$), and the remaining experts receive no gradient. Both panels share the same backbone; only the head changes.}
+\label{fig:problem_overview}
+\vspace{-1.0em}
+\end{figure}
+
 \section{Related Work}
 
-\textbf{TSFM Adaptation.} The standard recipe attaches a lightweight module to a frozen TSFM and tunes it on downstream data---LoRA~\citep{hu2022lora}, bottleneck adapters~\citep{houlsby2019adapters}, or a linear probe~\citep{goswami2024moment} are the canonical choices. A recent line of work has explored variations on this theme: multi-scale finetuning~\citep{qiao2025msft}, importance-based LoRA selection~\citep{li2025trace}, input-representation adaptation~\citep{benechehab2025adapts}, structured pruning~\citep{zhao2025prune}, in-context tuning~\citep{faw2025icf}, and PEFT alternatives surveyed for Chronos~\citep{gupta2024beyondlora}. Related benchmarking and model-selection work includes TEMPLATE~\citep{zhang2025template} and GIFT-Eval~\citep{woo2024gifteval}. What unifies these efforts is that they search over finetuning \textit{strategies}---learning rates, rank, which layers to tune---while keeping a single adapter architecture. We instead ask whether the adapter topology should itself be chosen per input window.
+\textbf{TSFM Adaptation.} The standard recipe attaches a lightweight module to a frozen TSFM and tunes it on downstream data---LoRA~\citep{hu2022lora}, bottleneck adapters~\citep{houlsby2019adapters}, or a linear probe~\citep{goswami2024moment}. Recent variations explore multi-scale finetuning~\citep{qiao2025msft}, importance-based LoRA selection~\citep{li2025trace}, input-representation adaptation~\citep{benechehab2025adapts}, structured pruning~\citep{zhao2025prune}, in-context tuning~\citep{faw2025icf}, and PEFT alternatives for Chronos~\citep{gupta2024beyondlora}; benchmarking work includes TEMPLATE~\citep{zhang2025template} and GIFT-Eval~\citep{woo2024gifteval}. All of these search over finetuning \textit{strategies} while keeping a single adapter architecture. We instead ask whether the adapter topology should be chosen per input window.
 
 \textbf{MoE in Foundation Models.} Mixture-of-experts routing~\citep{fedus2022switch} has been used \emph{within} TSFM backbones to scale capacity, with experts placed inside the backbone architecture: Moirai-MoE~\citep{liu2025moiraimoe} routes frequency bands across internal experts, and Time-MoE~\citep{shi2024timemoe} uses sparse activation to reach billions of parameters. RR-MoA applies MoE on an orthogonal axis, at the \emph{adapter level} on top of a frozen backbone. The two axes are complementary rather than competing: stacking RR-MoA on Moirai-MoE further improves accuracy (\S\ref{sec:cross_backbone}, Table~\ref{tab:moirai_moe}).
 
-\textbf{MoE routing collapse and rescue.} Routing collapse---where a few experts capture all traffic---is a well-known failure mode in MoE training. Existing solutions attack it from the \emph{optimization side}: load-balancing losses~\citep{fedus2022switch}, z-loss~\citep{zoph2022stmoe}, Expert-Choice routing~\citep{zhou2022expertchoice}, and ReLU gating~\citep{zhang2025remoe}. AdaMix~\citep{wang2022adamix} brings MoE to adapter fine-tuning in NLP but still routes on hidden states. All of these enforce diversity through training objectives without asking whether the router's \emph{input} contains discriminative information in the first place. We sweep all five families across eleven configurations on MOMENT$+$RevIN and show \textbf{none recover MSE to within $2.7{\times}$ of RR-MoA} (Table~\ref{tab:rescue}). Our contribution is complementary: we show that when normalization structurally removes routing information from hidden states, no configuration from any of the five standard rescue families can compensate. Concurrently, recent work in NLP and vision has moved toward eliminating external routers entirely: AoE~\citep{lv2025aoe} lets experts self-select via activation norms, ERMoE~\citep{cheng2025ermoe} routes via cosine similarity to learned eigenbases (achieving 0\% collapse), and Routing-Free MoE~\citep{liu2026routingfree} encapsulates gating within each expert. We validate this self-routing principle in our setting (\S\ref{sec:main_results}): self-gated experts on raw input match RR-MoA, while the same architecture on hidden states collapses---confirming the bottleneck is normalization, not router design. Concurrent theoretical work~\citep{wang2026myth} proves MoE specialization reflects hidden-state geometry: tokens with similar hidden states activate similar experts. We extend this one step upstream by identifying what \emph{shapes} that geometry on TSFMs---instance normalization homogenizes hidden states by stripping per-window statistics, producing the geometric collapse that geometry-based analyses describe but do not causally explain.
+\textbf{MoE routing collapse and rescue.} Routing collapse is a well-known failure mode addressed by load-balancing losses~\citep{fedus2022switch}, z-loss~\citep{zoph2022stmoe}, Expert-Choice routing~\citep{zhou2022expertchoice}, and ReLU gating~\citep{zhang2025remoe}; AdaMix~\citep{wang2022adamix} brings MoE to adapter fine-tuning but still routes on hidden states. All of these enforce diversity through training objectives without asking whether the router's \emph{input} carries discriminative information. Sweeping the five families across eleven configurations on MOMENT$+$RevIN, none recover MSE to within $2.7{\times}$ of RR-MoA (Table~\ref{tab:rescue}). Concurrent work in NLP/vision toward router-free MoEs---AoE~\citep{lv2025aoe}, ERMoE~\citep{cheng2025ermoe}, Routing-Free MoE~\citep{liu2026routingfree}---supports this view: in our setting (\S\ref{sec:main_results}), self-gated experts on raw input match RR-MoA, while the same architecture on hidden states collapses. \citet{wang2026myth} proves MoE specialization reflects hidden-state geometry; we extend this upstream by identifying what shapes that geometry on TSFMs.
 
 {\looseness=-1 \textbf{Normalization in Time Series.} RevIN~\citep{kim2021revin} mitigates distribution shift; DishTS~\citep{fan2023dishts} and Non-stationary Transformers~\citep{liu2022nonstationary} partially recover stripped statistics. Concurrently, \citet{berthelier2026revin} independently show that several RevIN components are redundant or detrimental, and \citet{zou2025ibnorm} argue that variance-centric normalization (BatchNorm, LayerNorm, RMSNorm) is suboptimal for representation learning because two representations with identical mean and variance can encode different amounts of task-relevant information. We identify a specific, mechanistic consequence of this principle that has not been characterized in the MoE literature: when the stripped statistics carry the \emph{routing} signal in a downstream MoE adapter, instance normalization causes catastrophic routing collapse---a failure mode distinct from the optimization-induced collapse studied in standard MoE rescue literature.}
 
@@ -163,7 +309,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 
 % ====== WEIGHTED SUM + OUTPUT ======
 \node[sumnode] (sum) at (12.5, 0.8) {$\Sigma$};
-\node[font=\tiny, text=gray!60] at (12.5, 0.2) {weighted};
+\node[font=\tiny, text=black] at (12.5, 0.2) {weighted};
 \node[outputbox] (output) at (14.3, 0.8) {
     $\hat{\mathbf{y}}$\\[-2pt]
     {\scriptsize forecast}
@@ -507,13 +653,13 @@ In the limit where the router's signal lives entirely in the stripped statistics
 \end{figure}
 \vspace{-1em}
 
-{\looseness=-1 \textbf{Cross-backbone, task and horizon generalization.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA is not specific to MOMENT: it wins all 21 MOMENT-small/large configurations ($27$--$81\%$; Table~\ref{tab:cross_backbone}) and 18/18 Moirai ($3$--$31\%$), and improves all 6 datasets on Moirai-MoE~\citep{liu2025moiraimoe} by $37$--$90\%$ (Table~\ref{tab:moirai_moe})---adapter-level and backbone-internal routing thus operate on complementary axes. The two negative controls predicted by Observation~\ref{thm:mi_decomp}---Chronos and Timer-XL~\citep{liu2025timerxl}, neither using instance normalization---show no collapse and no RR-MoA gain (4/18 wins, within chance; Appendix~\ref{app:cross_backbone}). Top-2 sparse routing retains most of the dense gain at a $+10\%$ latency cost (Appendix~\ref{app:topk}); the advantage extends to imputation ($7/8$ datasets; Appendix~\ref{app:imputation}) and is stable across forecast horizons $H{\in}\{96{,}192{,}336{,}720\}$ (24/24 wins; Table~\ref{tab:horizon}). The companion \textbf{Residual-IA\textsuperscript{+}} variant (Appendix~\ref{app:gate_pathology}) extends this to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
+{\looseness=-1 \textbf{Cross-backbone, task and horizon generalization.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins all 21 MOMENT-small/large configurations ($27$--$81\%$; Table~\ref{tab:cross_backbone}), 18/18 Moirai ($3$--$31\%$), and 6/6 Moirai-MoE~\citep{liu2025moiraimoe} datasets ($37$--$90\%$; Table~\ref{tab:moirai_moe})---adapter-level and backbone-internal routing operate on complementary axes. The negative controls predicted by Observation~\ref{thm:mi_decomp}---Chronos and Timer-XL~\citep{liu2025timerxl}, neither using instance normalization---show no collapse and no RR-MoA gain (4/18 within chance; Appendix~\ref{app:cross_backbone}). Top-2 sparse routing retains most of the dense gain at a $+10\%$ latency cost (Appendix~\ref{app:topk}); imputation ($7/8$; Appendix~\ref{app:imputation}) and horizons $H{\in}\{96{,}192{,}336{,}720\}$ (24/24; Table~\ref{tab:horizon}) confirm robustness. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}) extends to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
 
 \vspace{-0.6em}
 \section{Conclusion}
 \vspace{-0.4em}
 
-A natural MoE adapter on instance-normalized TSFMs fails for structural reasons: the normalization the backbone relies on for distribution shift also strips the per-window statistics a downstream router needs. Standard rescue mechanisms target the router's optimization rather than its input and cannot help; routing on the raw, pre-normalization input does, and the same principle predicts the Frozen Paradox and motivates Residual-IA\textsuperscript{+}. The signal-ratio statistic identifies where the fix applies without training. \textbf{Limitations:} we cover RevIN-style normalization and the five dominant rescue families; $R(\mathcal{D})$ uses second-order moments and can miss higher-order signals (Solar); Proposition~\ref{prop:frozen} is proved for linear backbones, with the Transformer extension left to future work.
+MoE adapters on instance-normalized TSFMs fail for structural reasons: the normalization needed for distribution shift also strips the per-window statistics a downstream router needs. Raw pre-normalization routing fixes the failure and motivates Residual-IA\textsuperscript{+}; $R(\mathcal{D})$ identifies where it applies. Limitations and extensions to non-RevIN normalization are deferred to future work.
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -1179,7 +1325,7 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 
 % Sum + output
 \node[sumnode] (sum) at (12.5, 0.0) {$\Sigma$};
-\node[font=\tiny, text=black!75] at (12.5, -0.65) {weighted};
+\node[font=\tiny, text=black] at (12.5, -0.65) {weighted};
 \node[outputbox] (output) at (14.2, 0.0) {
     $\hat{\mathbf{y}}$\\[-2pt]{\scriptsize forecast}};
 
@@ -1207,7 +1353,7 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \draw[outarr] (sum.east) -- (output.west);
 
 % Bottom annotation
-\node[font=\scriptsize, align=center, text=black!85] at (8.0, -3.85) {
+\node[font=\scriptsize, align=center, text=black] at (8.0, -3.85) {
     No external router. Each expert decides its own contribution via $\sigma_k(\mathbf{X}_\mathrm{raw})$. Output: $\hat{\mathbf{y}} = \sum_k \sigma_k(\mathbf{X}_\mathrm{raw}) \cdot \mathrm{Adapter}_k(\mathbf{H})$.
 };
 \end{tikzpicture}%
@@ -2036,7 +2182,7 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 
 % Weighted sum + output
 \node[sumnode] (sum) at (13.5, 0.0) {$\Sigma$};
-\node[font=\tiny, text=black!75] at (13.5, -0.65) {weighted};
+\node[font=\tiny, text=black] at (13.5, -0.65) {weighted};
 \node[outputbox] (output) at (15.2, 0.0) {
     $\hat{\mathbf{y}}$\\[-2pt]
     {\scriptsize forecast}
@@ -2078,7 +2224,7 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \draw[outarr]  (sum.east) -- (output.west);
 
 % Bottom annotation
-\node[font=\scriptsize, align=center, text=black!85] at (8.5, -4.3) {
+\node[font=\scriptsize, align=center, text=black] at (8.5, -4.3) {
     Blend gate $\sigma$ initialized at $b{=}{-}2$ ($\sigma{\approx}0.12$): model starts as effectively-DLinear; backbone added only where useful.
 };
 
