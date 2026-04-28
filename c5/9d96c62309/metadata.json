@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "c59d96c62309",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "figures/tikz_collapse_mechanism.tex",
+    "main.tex"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c5/9d96c62309/0/metadata.json",
+      "transcript": "/c5/9d96c62309/0/full.jsonl",
+      "content_hash": "/c5/9d96c62309/0/content_hash.txt",
+      "prompt": "/c5/9d96c62309/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 218,
+    "cache_creation_tokens": 177154,
+    "cache_read_tokens": 38857103,
+    "output_tokens": 105060,
+    "api_call_count": 85
+  }
+}

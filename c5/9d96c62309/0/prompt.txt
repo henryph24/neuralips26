@@ -1,0 +1,69 @@
+is MOMENT itself a normalised backbone
+
+---
+
+but MOMENT standardly uses a static head as adapter ?
+
+---
+
+then why we switch that static with an MoA
+
+---
+
+so our arguments are very sound
+
+---
+
+what is the performance when RevIN is off
+
+---
+
+was the performance with our residual-ia better ?
+
+---
+
+thanks for the discussion, recompile the paper
+
+---
+
+[Image #2] this image is really bad, what is original intent ? try the skill gemini viz to generate a good base image first
+
+---
+
+why it did not look like a proper academic style
+
+---
+
+try gemini feed
+
+---
+
+try gemini first
+
+---
+
+look good, letTikZ-ify
+
+---
+
+where is the .png file for "SR-MoA architecture (Self-Routed Mixture of Adapters).
+
+---
+
+we had 3 architecture diagram right, each has 3 .png ? look like we missed one
+
+---
+
+no they are in folder slide_images or other folder, look closely
+
+---
+
+try to look more thoroughly before confirm one is missing
+
+---
+
+let's do it, then improve the tikz verision of [Image #3]. Arrows should be brought behind texts
+
+---
+
+improve all the tikz versions of 3 architectures for visibility, no overlapping of arrows over texts, etc
