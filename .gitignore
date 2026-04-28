@@ -1,18 +1,64 @@
-results/
+# --- Python ---
 __pycache__/
 *.pyc
-.env
 *.egg-info/
+
+# --- Secrets / credentials ---
+.env
 *.pem
-*.pptx
-*.docx
-*.pdf
+*.key
+
+# --- Data and large outputs (not paper source) ---
+results/
 data/
 figures/
 zifCaAXT
-~$*
-.claude/
 experiments/finetune_training_data.json
 experiments/sft_dataset.jsonl
 experiments/winning_codes.txt
+
+# --- Office formats (large binary; not paper source) ---
+*.pptx
+*.docx
 *.html
+
+# --- LaTeX build artifacts ---
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.synctex.gz
+*.toc
+*.log
+main.pdf
+
+# --- Other PDFs (figures/*.pdf force-added separately if needed) ---
+*.pdf
+
+# --- macOS / editor / tool junk ---
+.DS_Store
+~$*
+.claude/
+.firecrawl/
+
+# --- Slide-generation outputs (not part of paper) ---
+slide_images/
+slide_generation_instruction.json
+scripts/gen_slide_images.py
+scripts/gen_visuals.py
+scripts/gen_visuals2.py
+scripts/gen_visuals3.py
+scripts/run_gpu_saturation_race.sh
+
+# --- Local-only docs (sensitive, dated, or superseded) ---
+RACE_SSH.md
+RESEARCH_STATUS.md
+april09.md
+literature_review.md
+paper_draft.md
+slides_content.txt
+todo.md
