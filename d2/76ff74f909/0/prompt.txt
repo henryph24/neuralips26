@@ -1,0 +1,13 @@
+/commit-push
+
+---
+
+recompile locally
+
+---
+
+review our files, put more in .gigignore and remove files that are not shareable to other collaborate (basically organise our remote repo)
+
+---
+
+review our files, put more in .gigignore and remove files that are not shareable to other collaborate (basically organise our remote repo)
