@@ -1046,22 +1046,7 @@ This update adjusts routing weights based on current expert performance, but doe
 \section{AAS Search Details}
 \label{app:aas_details}
 
-The AAS loop maintains a population of 20 adapters over 12 generations (${\sim}240$ evaluations, 3-epoch fitness probes). Elitism preserves the top 2; an LLM variant generates candidates in the code space $\mathcal{G}_\text{code}$. Template-based generation achieves 100\% validity (vs.\ ${\sim}75\%$ for LLM).
-
-\subsubsection*{Template Grammar Production Rules}
-\label{app:grammar}
-
-\begin{align*}
-S &\rightarrow \nonterminal{Pool} \;\cdot\; \nonterminal{MLP} \;\cdot\; \nonterminal{Output} \\
-\nonterminal{Pool} &\rightarrow \text{MeanPool} \mid \text{MaxPool} \mid \text{LastToken} \mid \text{AttnPool} \mid \text{Conv1dPool} \\
-\nonterminal{MLP} &\rightarrow \nonterminal{Layer} \mid \nonterminal{Layer} \;\cdot\; \nonterminal{MLP} \quad (\text{depth} \leq 3) \\
-\nonterminal{Layer} &\rightarrow \text{Linear}(d_\text{in}, d_\text{out}) \;\cdot\; \nonterminal{Act} \;\cdot\; \text{Dropout}(p) \\
-\nonterminal{Act} &\rightarrow \text{GELU} \mid \text{ReLU} \mid \text{SiLU} \mid \text{Tanh} \\
-\nonterminal{Output} &\rightarrow \text{Linear}(d_\text{last}, H)
-\end{align*}
-with $d_\text{out} \in \{64, 128, 192, 256, 384\}$ and $p \in \{0.0, 0.1, 0.2, 0.3\}$, yielding $|\mathcal{G}_\text{tmpl}| \approx 1{,}200$.
-
-% Imputation table moved to main text (Section 4.5)
+The AAS loop maintains a population of 20 adapters over 12 generations (${\sim}240$ evaluations, 3-epoch fitness probes). Elitism preserves the top 2; an LLM variant generates candidates in the code space $\mathcal{G}_\text{code}$. Template-based generation achieves 100\% validity (vs.\ ${\sim}75\%$ for LLM). The 5 canonical pooling heads used by RR-MoA (mean, last-token, max, attention, Conv1d) were identified as the most frequent structural motifs across the ${\sim}1{,}200$ candidate adapters explored.
 
 \section{LoRA Sweep (Full Results)}
 \label{app:lora_sweep}
@@ -1121,13 +1106,6 @@ Dataset & Rank & Targets & Head & MSE (mean$\pm$std) \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\section{Formal Definitions}
-\label{app:formal_defs}
-
-\begin{definition}[Adapter]
-Given a pretrained TSFM backbone $f_\theta: \mathbb{R}^{B \times L} \rightarrow \mathbb{R}^{B \times T \times d}$ that maps input time series to encoder hidden states, an \textbf{adapter} is a parameterized module $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$ that maps hidden states to forecasts, where $\phi \in \Phi_g \subseteq \mathbb{R}^{n_g}$ are trainable weights with $n_g \leq N_\text{max}$ (we set $N_\text{max} = 500{,}000$).
-\end{definition}
 
 \section{Routing Weight Distributions}
 \label{app:routing_weights}
@@ -1517,29 +1495,6 @@ Electricity & last-4 & $1.055$ & $0.00$ & $\mathbf{0.252}$ {\scriptsize($-76\%$)
 \bottomrule
 \end{tabular}
 \end{table}
-
-\section{RevIN Placement Across Backbones}
-\label{app:revin_placement}
-
-\begin{table}[h]
-\centering
-\caption{Normalization architecture per backbone. RevIN position relative to the encoder determines whether routing-relevant statistics survive to the hidden states.}
-\label{tab:revin_placement}
-\footnotesize
-\begin{tabular}{@{}lllc@{}}
-\toprule
-Backbone & Normalization & Placement & Collapse? \\
-\midrule
-MOMENT-small & RevIN + LayerNorm & Pre-encoder & Yes ($H{=}0.000$) \\
-MOMENT-large & RevIN + LayerNorm & Pre-encoder & Yes ($H{=}0.000$) \\
-Moirai-1.1-R-small & LayerNorm only & Per-block & No ($H{=}1.48$--$1.60$) \\
-Chronos-T5-small & T5 LayerNorm only & Per-block (T5 pre-norm) & No ($H{=}1.42$--$1.53$) \\
-Timer-XL (84M) & LayerNorm only & Per-block (decoder) & No ($H{=}1.23$--$1.58$) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-MOMENT's RevIN applies instance normalization ($\mu{=}0$, $\sigma{=}1$ per window) \emph{before} the encoder, stripping mean and scale from every input. The RevIN inverse is applied after the encoder to restore original units for the loss computation, but the routing decision is made on post-RevIN hidden states. Moirai, Chronos, and Timer-XL apply only standard LayerNorm within each transformer block, which normalizes across the feature dimension but preserves per-window temporal statistics.
 
 \section{Normalization Generalization}
 \label{app:norm_generalization}
