@@ -1,89 +1,129 @@
 % Standalone TikZ: Normalization-Induced Routing Collapse Mechanism
 % Usage: \input{figures/tikz_collapse_mechanism.tex} inside a figure environment
+%
+% Academic-style two-panel figure modeled on the gemini-academic-viz reference
+% (figures/talk/collapse_mechanism_v2.png). Conventions:
+%   * white-fill panels with thin colored strokes (no solid color fills)
+%   * desaturated muted palette (dusty blue / sage / brick / ochre)
+%   * single dominant stroke weight (~0.7pt); only highlighted E1 thicker
+%   * thin line arrows with small triangular arrowheads (no block arrows)
+%   * plain black caption text (no colored captions)
+%   * lowercase bold (a) / (b) panel labels per NeurIPS convention
+%
+% Routing pattern: all routing arrows emerge BELOW the panel stack and fan
+% out to the experts. Color encoding (blue / green / red / ochre) carries the
+% waveform-to-expert identity, so no arrows need to cross or pass through
+% any panel.
+
+\definecolor{cmDustyBlue}{RGB}{74,111,165}
+\definecolor{cmSageGreen}{RGB}{107,142,90}
+\definecolor{cmBrickRed}{RGB}{168,74,74}
+\definecolor{cmOchre}{RGB}{184,137,62}
+\definecolor{cmGhost}{RGB}{176,176,176}
+
 \begin{tikzpicture}[
-    signal/.style={draw=gray!40, rounded corners=2pt, minimum width=2.8cm, minimum height=0.7cm, inner sep=2pt},
-    expert/.style={draw=#1!60, fill=#1!8, rounded corners=3pt, minimum width=1.1cm, minimum height=0.5cm, font=\scriptsize\bfseries},
-    expertgray/.style={draw=gray!25, fill=gray!4, rounded corners=3pt, minimum width=1.0cm, minimum height=0.45cm, font=\scriptsize, text=gray!40},
-    arr/.style={-{Stealth[length=2mm, width=1.5mm]}, line width=0.6pt, #1},
-    bigarr/.style={-{Stealth[length=4mm, width=3mm]}, line width=1.5pt, gray!50},
-    lbl/.style={font=\small\bfseries, #1},
+    wavepanel/.style={rectangle, draw=#1, fill=white, line width=0.7pt,
+        rounded corners=1.5pt, minimum width=4cm, minimum height=0.65cm,
+        inner sep=2pt},
+    wavepanelgray/.style={rectangle, draw=cmGhost, fill=white, line width=0.6pt,
+        rounded corners=1.5pt, minimum width=4cm, minimum height=0.65cm,
+        inner sep=2pt},
+    expert/.style={rectangle, draw=#1, fill=white, line width=0.7pt,
+        rounded corners=2pt, minimum width=0.85cm, minimum height=0.5cm,
+        font=\scriptsize\bfseries, text=#1},
+    expertactive/.style={rectangle, draw=cmBrickRed, fill=white, line width=1.0pt,
+        rounded corners=2pt, minimum width=0.85cm, minimum height=0.5cm,
+        font=\scriptsize\bfseries, text=cmBrickRed},
+    expertghost/.style={rectangle, draw=cmGhost, fill=white, line width=0.5pt,
+        rounded corners=2pt, minimum width=0.85cm, minimum height=0.5cm,
+        font=\scriptsize, text=cmGhost},
+    arr/.style={-{Stealth[length=1.7mm,width=1.3mm]}, line width=0.65pt, #1},
+    normarr/.style={-{Stealth[length=2mm,width=1.5mm]}, line width=0.7pt, black!75},
+    panellabel/.style={font=\small\bfseries, anchor=west, text=black},
+    caption/.style={font=\small, anchor=north, text=black},
 ]
 
-% === LEFT: Raw Input Space ===
-\node[lbl=black] at (0, 3.4) {Raw Input Space};
+% ============================================================
+% (a) Raw input space
+% ============================================================
+\node[panellabel] at (0.0, 5.10) {(a) Raw input space};
 
-% Draw 4 distinct signals with clear visual differences
-\begin{scope}[shift={(0, 2.4)}]
-    \node[signal] (s1) at (0,0) {};
-    \draw[blue!70, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.25*sin(720*\x)});
-\end{scope}
-\begin{scope}[shift={(0, 1.4)}]
-    \node[signal] (s2) at (0,0) {};
-    \draw[green!60!black, thick] plot[domain=-1.2:1.2, samples=30, smooth] (\x, {0.04*sin(360*\x) + 0.02*cos(900*\x)});
-\end{scope}
-\begin{scope}[shift={(0, 0.4)}]
-    \node[signal] (s3) at (0,0) {};
-    \draw[red!70, thick] (-1.2,-0.22) -- (1.2,0.22);
-\end{scope}
-\begin{scope}[shift={(-0.0, -0.6)}]
-    \node[signal] (s4) at (0,0) {};
-    \draw[orange!80, thick] plot[domain=-1.2:1.2, samples=50] (\x, {0.2*rand});
-\end{scope}
+% Four stacked waveform panels (centered at x=2)
+\node[wavepanel=cmDustyBlue]  (p1) at (2.0, 4.40) {};
+\node[wavepanel=cmSageGreen]  (p2) at (2.0, 3.65) {};
+\node[wavepanel=cmBrickRed]   (p3) at (2.0, 2.90) {};
+\node[wavepanel=cmOchre]      (p4) at (2.0, 2.15) {};
 
-% Expert boxes (diverse) - each directly below its signal
-\node[expert=blue]          (e1) at (-1.2, -1.7) {E1};
-\node[expert=green!60!black](e2) at (-0.1, -1.7) {E2};
-\node[expert=red]           (e3) at ( 1.0, -1.7) {E3};
-\node[expert=orange]        (e4) at ( 2.1, -1.7) {E4};
+% Waveforms inside panels
+\draw[cmDustyBlue, line width=0.6pt]
+    plot[domain=0.20:3.80, samples=110, smooth]
+    ({\x},{4.40+0.20*sin(deg(7.5*(\x-2.0)))});
+\draw[cmSageGreen, line width=0.6pt]
+    plot[domain=0.20:3.80, samples=80, smooth]
+    ({\x},{3.65+0.22*tanh(1.6*(\x-2.0))});
+\draw[cmBrickRed, line width=0.6pt]
+    (0.25, 2.74) -- (3.75, 3.06);
+\draw[cmOchre, line width=0.55pt]
+    plot[domain=0.20:3.80, samples=130]
+    ({\x},{2.15+0.16*rand});
 
-% Arrows: each signal straight down to its own expert (no crossing)
-\draw[arr=blue!60]       ([xshift=-1.2cm]s1.south) -- (e1.north);
-\draw[arr=green!50!black]([xshift=-0.1cm]s2.south) -- (e2.north);
-\draw[arr=red!60]        ([xshift= 1.0cm]s3.south) -- (e3.north);
-\draw[arr=orange!70]     ([xshift= 1.3cm]s4.south) -- (e4.north);
+% Experts in a horizontal row below
+\node[expert=cmDustyBlue] (e1) at (0.50, 1.20) {E1};
+\node[expert=cmSageGreen] (e2) at (1.50, 1.20) {E2};
+\node[expert=cmBrickRed]  (e3) at (2.50, 1.20) {E3};
+\node[expert=cmOchre]     (e4) at (3.50, 1.20) {E4};
 
-\node[font=\scriptsize\bfseries, text=green!50!black] at (0.4, -2.35) {Diverse routing};
+% Routing arrows: emerge from below the bottom panel (p4) at four different
+% x positions, each going down to its color-matched expert.
+% Color carries the waveform-to-expert identity.
+\draw[arr=cmDustyBlue] (0.50, 1.83) -- (e1.north);
+\draw[arr=cmSageGreen] (1.50, 1.83) -- (e2.north);
+\draw[arr=cmBrickRed]  (2.50, 1.83) -- (e3.north);
+\draw[arr=cmOchre]     (3.50, 1.83) -- (e4.north);
 
-% === CENTER: Normalization arrow ===
-\node[fill=white, draw=gray!40, rounded corners=3pt, line width=0.8pt,
-      font=\scriptsize\bfseries, text=gray!70, inner sep=4pt, align=center]
-      (normlbl) at (3.4, 0.9) {Instance\\[-1pt]Normalization\\[-2pt]{\fontsize{6}{7}\selectfont strips $\mu, \sigma$}};
-\draw[bigarr] (2.0, 0.9) -- (normlbl.west);
-\draw[bigarr] (normlbl.east) -- (4.8, 0.9);
+\node[caption] at (2.0, 0.60) {Diverse routing};
 
-% === RIGHT: Normalized Hidden Space ===
-\node[lbl=black] at (6.8, 3.4) {Normalized Space};
+% ============================================================
+% Middle: instance normalization box
+% ============================================================
+\node[rectangle, draw=black!75, fill=white, rounded corners=2pt,
+      line width=0.7pt, font=\scriptsize, align=center, inner sep=4pt]
+      (norm) at (5.85, 3.30)
+      {Instance normalization\\strips $\mu, \sigma$};
 
-% Draw 4 identical gray signals (all same shape)
-\begin{scope}[shift={(6.8, 2.4)}]
-    \node[signal] (n1) at (0,0) {};
-    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
-\end{scope}
-\begin{scope}[shift={(6.8, 1.4)}]
-    \node[signal] (n2) at (0,0) {};
-    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
-\end{scope}
-\begin{scope}[shift={(6.8, 0.4)}]
-    \node[signal] (n3) at (0,0) {};
-    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
-\end{scope}
-\begin{scope}[shift={(6.8, -0.6)}]
-    \node[signal] (n4) at (0,0) {};
-    \draw[gray!45, thick] plot[domain=-1.2:1.2, samples=40, smooth] (\x, {0.15*sin(540*\x) + 0.08*cos(1080*\x)});
-\end{scope}
+\draw[normarr] (4.10, 3.30) -- (norm.west);
+\draw[normarr] (norm.east) -- (7.60, 3.30);
 
-% Expert boxes (collapsed) - E1 prominent, others faded
-\node[expert=red]   (ce1) at (8.2, -1.7) {\textbf{E1}};
-\node[expertgray]   (ce2) at (5.6, -1.7) {E2};
-\node[expertgray]   (ce3) at (6.5, -1.7) {E3};
-\node[expertgray]   (ce4) at (7.4, -1.7) {E4};
+% ============================================================
+% (b) Normalized space
+% ============================================================
+\node[panellabel] at (7.80, 5.10) {(b) Normalized space};
 
-% All arrows converge to E1
-\draw[arr=gray!50] ([xshift=-0.5cm]n1.south) -- (ce1.north west);
-\draw[arr=gray!50] ([xshift= 0.2cm]n2.south) -- (ce1.north);
-\draw[arr=gray!50] ([xshift= 0.8cm]n3.south) -- ([xshift=0.1cm]ce1.north);
-\draw[arr=gray!50] ([xshift= 1.2cm]n4.south) -- (ce1.north east);
+% Four IDENTICAL light-gray panels — central message
+\node[wavepanelgray] (n1) at (10.0, 4.40) {};
+\node[wavepanelgray] (n2) at (10.0, 3.65) {};
+\node[wavepanelgray] (n3) at (10.0, 2.90) {};
+\node[wavepanelgray] (n4) at (10.0, 2.15) {};
 
-\node[font=\scriptsize\bfseries, text=red!70] at (6.8, -2.35) {Collapse: $H \to 0.000$};
+\foreach \y in {4.40, 3.65, 2.90, 2.15} {
+    \draw[cmGhost, line width=0.55pt]
+        plot[domain=8.20:11.80, samples=80, smooth]
+        ({\x},{\y+0.10*sin(deg(3.0*(\x-10.0)))});
+}
+
+% Experts: only E1 highlighted, E2-E4 ghosted
+\node[expertactive] (re1) at (8.50, 1.20) {E1};
+\node[expertghost]  (re2) at (9.50, 1.20) {E2};
+\node[expertghost]  (re3) at (10.50, 1.20) {E3};
+\node[expertghost]  (re4) at (11.50, 1.20) {E4};
+
+% Convergent ghost arrows: four arrows below the panel stack, all pointing
+% diagonally to E1 — the visual signature of routing collapse.
+\draw[arr=cmGhost] (8.50, 1.83) -- (re1.north);
+\draw[arr=cmGhost] (9.50, 1.83) -- ([xshift=0.07cm]re1.north);
+\draw[arr=cmGhost] (10.50, 1.83) -- ([xshift=0.14cm]re1.north);
+\draw[arr=cmGhost] (11.50, 1.83) -- ([xshift=0.21cm]re1.north);
+
+\node[caption] at (10.0, 0.60) {Collapse: $H = 0.000$};
 
 \end{tikzpicture}
