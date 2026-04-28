@@ -54,11 +54,8 @@ scripts/gen_visuals2.py
 scripts/gen_visuals3.py
 scripts/run_gpu_saturation_race.sh
 
-# --- Local-only docs (sensitive, dated, or superseded) ---
-RACE_SSH.md
-RESEARCH_STATUS.md
-april09.md
-literature_review.md
-paper_draft.md
+# --- Markdown is local-only by policy (no docs in remote repo) ---
+*.md
+
+# --- Other local-only docs ---
 slides_content.txt
-todo.md
