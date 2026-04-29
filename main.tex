@@ -217,7 +217,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 
 \end{tikzpicture}%
 }% end resizebox
-\caption{\textbf{Problem overview.} \textbf{(a)}~Today's TSFM benchmarks adapt the frozen backbone with a \emph{single static head} that pools hidden states for every input window, regardless of the window's per-sample statistics. \textbf{(b)}~The natural extension, a mixture of expert adapters with a learned router, catastrophically fails on instance-normalized TSFMs: routing collapses to a single expert (entropy $0.000{\pm}0.000$), and the remaining experts receive no gradient. Both panels share the same backbone; only the head changes.}
+\caption{\textbf{Problem overview.} \textbf{(a)}~Today's TSFM benchmarks use a single static head over hidden states. \textbf{(b)}~The natural mixture-of-experts extension catastrophically fails on instance-normalized TSFMs: entropy collapses ($0.000{\pm}0.000$) and the remaining experts receive no gradient. Same backbone, different heads.}
 \label{fig:problem_overview}
 \vspace{-1.0em}
 \end{figure}
@@ -354,7 +354,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 
 \end{tikzpicture}%
 }% end resizebox
-\caption{\textbf{RR-MoA architecture.} \textit{Path~A} (blue): the frozen TSFM produces hidden states $\mathbf{H}$ (no gradients through $\theta$); all experts receive $\mathbf{H}$. \textit{Path~B} (orange): a lightweight Conv1d gate (1{,}100 params) reads the raw pre-normalization signal $\mathbf{X}_\mathrm{raw}$ and selects the Top-2 experts via sparse routing. Only the selected experts (bold) contribute to the output; inactive experts (gray) receive no gradient. Standard MoE routing on $\mathbf{H}$ collapses (entropy $0.000{\pm}0.000$; Table~\ref{tab:adamix}); RR-MoA achieves \textbf{54/54 wins} (Table~\ref{tab:rrmoa}).}
+\caption{\textbf{RR-MoA architecture.} \textit{Path~A} (blue): frozen TSFM produces $\mathbf{H}$ for all experts. \textit{Path~B} (orange): Conv1d gate (1{,}100 params) reads $\mathbf{X}_\mathrm{raw}$ and selects Top-2 experts; inactive experts (gray) receive no gradient. Standard hidden-state MoE collapses (Table~\ref{tab:adamix}); RR-MoA wins \textbf{54/54} (Table~\ref{tab:rrmoa}).}
 \label{fig:framework}
 \vspace{-0.8em}
 \end{figure}
@@ -372,24 +372,7 @@ An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{
 \end{equation}
 where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params) operating directly on the raw time series, and each $\text{Expert}_k$ is a canonical adapter head. Routing is restricted to the Top-$k$ experts with the highest gate logits, so only $k$ of $K$ experts execute per sample. With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense FLOPs while retaining $63\%$ of the dense MSE gain (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
 
-\textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), identified from structural motifs across ${\sim}1{,}200$ architectures in an LLM-guided search (Appendix~\ref{app:aas_details}). Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}).
-
-\begin{algorithm}[h]
-\caption{RR-MoA: Raw-Routed Mixture of Adapters with Top-$k$ sparse routing}
-\label{alg:rrmoa}
-\begin{algorithmic}[1]
-\REQUIRE Strictly frozen TSFM $f_{\theta_\text{frozen}}$, raw input $\mathbf{X}_\text{raw}\in\mathbb{R}^{B\times L}$, $K$ expert adapters, sparsity $k\leq K$
-\STATE $\mathbf{H}\leftarrow f_{\theta_\text{frozen}}(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Deep embeddings; \textbf{no gradients} through $\theta$}
-\STATE $\mathbf{g}\leftarrow G_\psi(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Raw-signal gate logits, $\mathbf{g}\in\mathbb{R}^{B\times K}$}
-\STATE $\mathcal{T}\leftarrow \mathrm{TopK}(\mathbf{g},\,k)$ \hfill \COMMENT{Per-sample indices of the $k$ selected experts}
-\STATE $\widetilde{\mathbf{w}}\leftarrow \mathrm{softmax}_{\mathcal{T}}(\mathbf{g})$ \hfill \COMMENT{Renormalized over selected experts only}
-\STATE \textbf{for each}\ $j \in \mathcal{T}$\ \textbf{do}
-\STATE \quad $\mathbf{o}_j\leftarrow \text{Expert}_j(\mathbf{H})$ \hfill \COMMENT{Only the $k$ selected experts execute}
-\STATE \textbf{end for}
-\STATE $\mathbf{Y}\leftarrow \sum_{j\in\mathcal{T}}\widetilde{w}_j\cdot \mathbf{o}_j$
-\RETURN $\mathbf{Y}$
-\end{algorithmic}
-\end{algorithm}
+\textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), identified from structural motifs across ${\sim}1{,}200$ architectures in an LLM-guided search (Appendix~\ref{app:aas_details}). Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}). Pseudocode in Appendix~\ref{app:setup}.
 
 \section{Experiments}
 
@@ -660,6 +643,8 @@ In the limit where the router's signal lives entirely in the stripped statistics
 \vspace{-0.4em}
 
 MoE adapters on instance-normalized TSFMs fail for structural reasons: the normalization needed for distribution shift also strips the per-window statistics a downstream router needs. Raw pre-normalization routing fixes the failure and motivates Residual-IA\textsuperscript{+}; $R(\mathcal{D})$ identifies where it applies.
+
+\paragraph{Implication.} Routing collapse on instance-normalized backbones generalizes a broader pattern: when a foundation model's input pipeline destroys signal that a downstream router needs, optimization-side rescues (load balancing, z-loss, ReLU routing) cannot recover what is structurally absent. The fix is to restore the missing input, not to retune the optimizer. The same mechanism arises in vision (Appendix~\ref{app:vision_moe}) and predicts where future MoE-on-FM systems will and will not benefit from raw-signal access.
 
 \paragraph{Limitations.} Three boundaries scope our claims. \emph{(i)~Normalization specificity.} Our diagnosis applies to backbones with instance-level normalization (RevIN, BatchNorm, GroupNorm); backbones without it (Chronos, Timer-XL) show no collapse and no RR-MoA gain, as Observation~\ref{thm:mi_decomp} predicts. Extensions to attention-based or learned normalizers are not characterized. \emph{(ii)~Signal-ratio boundary cases.} The signal-ratio predictor $R(\mathcal{D})$ is a single monotone proxy for variance contribution; on Solar ($R{=}0.06$) it correctly flags low benefit but is not sharp. Datasets with strong shape-statistics coupling fall outside the tight regime of the bound. \emph{(iii)~Forecasting and imputation only.} We evaluate forecasting and imputation on LTSF benchmarks. Anomaly detection, classification, and irregularly-sampled tasks are deferred to future work.
 
@@ -1020,6 +1005,24 @@ Xiandong Zou, Jia Li, Xiaotong Yuan, and Pan Zhou.
 \item \textbf{Full fine-tuning}: all encoder blocks unfrozen; best of $5$ head topologies $\times$ $2$ learning rates ($10^{-4}$, $10^{-5}$). Extended sweeps in Appendix~\ref{app:extended_ft}.
 \item \textbf{DLinear}~\citep{zeng2023dlinear}: from-scratch supervised; calibration values $0.416 / 0.322 / 0.208$ on ETTh1/ETTm1/Weather. Full table in Appendix~\ref{app:dlinear}.
 \end{itemize}
+
+\paragraph{RR-MoA pseudocode.}
+\begin{algorithm}[h]
+\caption{RR-MoA: Raw-Routed Mixture of Adapters with Top-$k$ sparse routing}
+\label{alg:rrmoa}
+\begin{algorithmic}[1]
+\REQUIRE Strictly frozen TSFM $f_{\theta_\text{frozen}}$, raw input $\mathbf{X}_\text{raw}\in\mathbb{R}^{B\times L}$, $K$ expert adapters, sparsity $k\leq K$
+\STATE $\mathbf{H}\leftarrow f_{\theta_\text{frozen}}(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Deep embeddings; \textbf{no gradients} through $\theta$}
+\STATE $\mathbf{g}\leftarrow G_\psi(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Raw-signal gate logits, $\mathbf{g}\in\mathbb{R}^{B\times K}$}
+\STATE $\mathcal{T}\leftarrow \mathrm{TopK}(\mathbf{g},\,k)$ \hfill \COMMENT{Per-sample indices of the $k$ selected experts}
+\STATE $\widetilde{\mathbf{w}}\leftarrow \mathrm{softmax}_{\mathcal{T}}(\mathbf{g})$ \hfill \COMMENT{Renormalized over selected experts only}
+\STATE \textbf{for each}\ $j \in \mathcal{T}$\ \textbf{do}
+\STATE \quad $\mathbf{o}_j\leftarrow \text{Expert}_j(\mathbf{H})$ \hfill \COMMENT{Only the $k$ selected experts execute}
+\STATE \textbf{end for}
+\STATE $\mathbf{Y}\leftarrow \sum_{j\in\mathcal{T}}\widetilde{w}_j\cdot \mathbf{o}_j$
+\RETURN $\mathbf{Y}$
+\end{algorithmic}
+\end{algorithm}
 
 \section{Multi-Horizon Evaluation}
 \label{app:horizon}
