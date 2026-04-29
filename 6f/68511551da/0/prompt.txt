@@ -1,0 +1,31 @@
+Think hard on the abstract. Seems like we had foregone specific numbers on our contributions, wins, etc. Also make sure it does not exceed the length requirements
+
+---
+
+7/12 may raise eyebrow. Intentionally omit numbers that may confuse
+
+---
+
+why are we restricting ourselves to TSFMs with normalisation
+
+---
+
+Do you think current paper title is good
+
+---
+
+aim for: "(diagnosis + fix)
+
+---
+
+add to memory, minimise usage of emdash
+
+---
+
+one of the main feedback from my supervisor was that because you restored raw access, it is entirely expected that you should outperform somehome. Did we write clearly about this: "Together they
+
+close the gap to per-dataset supervised baselines while preserving frozen-backbone deployability"
+
+---
+
+let's do it
