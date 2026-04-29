@@ -1,0 +1,27 @@
+Computational Complexity of 3 architectural fixes -> Does it still preserver the strength of TSFMs (fast inference)
+
+---
+
+race was shut down but we had experimental archives, try to look for it
+
+---
+
+let's do it
+
+---
+
+so very encouraging results ?
+
+---
+
+we have Modal.com access, try to deploy here and autoscale to 0 when done
+
+---
+
+what dataset are we running those on
+
+---
+
+if this is correct: " This is standard practice". then accept current results, can we further check with NeurIPS published paper on such a practice
+
+use exa search mcp if needed
