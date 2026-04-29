@@ -1,0 +1,17 @@
+let review figures and tables and visualisations name to see if they are incrementing properly and strictly meet neurips requirements
+
+---
+
+let's appendix enumeration
+
+---
+
+let check if reference to appendix in the main writing matches with actual appendix
+
+---
+
+evaluate if these are still relevant
+
+---
+
+let's go
