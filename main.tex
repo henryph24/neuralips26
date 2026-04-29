@@ -63,9 +63,9 @@ Time series foundation models (TSFMs) provide powerful pretrained representation
 
 Time series foundation models (TSFMs) such as MOMENT~\citep{goswami2024moment}, TimesFM~\citep{das2024timesfm}, Chronos~\citep{ansari2024chronos}, Timer-XL~\citep{liu2025timerxl}, and Moirai~\citep{woo2024moirai} now provide powerful pretrained representations for time series, with several recent variants pushing toward billion-parameter scales~\citep{lee2024units, rasul2024lagllama, shi2024timemoe, ekambaram2024ttm, liu2026timers1}. Using one of these backbones on a downstream task still requires attaching a lightweight adapter head that maps hidden states to predictions, and the design of that adapter, more than the backbone choice, determines deployment utility.
 
-Today, every public TSFM benchmark uses a single static head that pools hidden states and projects them to the forecast horizon~\citep{goswami2024moment, das2024timesfm, nie2023patchtst, hu2022lora}. Real time series are not so uniform: ETTh1 mixes quiet baseline segments with sharp seasonal excursions, and a single adapter topology cannot be optimal for every input window. A natural remedy is a \emph{mixture of expert adapters}: a pool of topologically distinct heads with a learned router that assigns each window to the most suitable one. Keeping the backbone frozen while training only the adapter is also what makes deployment practical: one TSFM in GPU memory can serve thousands of tenants through small ($\sim$1.7\,MB) per-task adapters swapped in microseconds, an arrangement that per-dataset models like DLinear~\citep{zeng2023dlinear} cannot match (Appendices~\ref{app:deployment},~\ref{app:benchmark}).
+Today, every public TSFM benchmark uses a single static head that pools hidden states and projects them to the forecast horizon (Figure~\ref{fig:problem_overview}a)~\citep{goswami2024moment, das2024timesfm, nie2023patchtst, hu2022lora}. Real time series are not so uniform: ETTh1 mixes quiet baseline segments with sharp seasonal excursions, and a single adapter topology cannot be optimal for every input window. A natural remedy is a \emph{mixture of expert adapters}: a pool of topologically distinct heads with a learned router that assigns each window to the most suitable one. Keeping the backbone frozen while training only the adapter is also what makes deployment practical: one TSFM in GPU memory can serve thousands of tenants through small ($\sim$1.7\,MB) per-task adapters swapped in microseconds, an arrangement that per-dataset models like DLinear~\citep{zeng2023dlinear} cannot match (Appendices~\ref{app:deployment},~\ref{app:benchmark}).
 
-This natural mixture-of-experts approach catastrophically fails on TSFMs that use instance normalization. When the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}, routing on hidden states with load balancing, is applied to MOMENT with RevIN, routing entropy drops to zero in most unfrozen configurations (Table~\ref{tab:adamix}). The router learns to send every window to the same expert, and the remaining experts are never used. The mechanism is what we call \emph{normalization-induced routing collapse}: RevIN~\citep{kim2021revin} strips the per-window mean and variance that the router needs to distinguish input regimes, leaving it with homogenized hidden states. Even with the backbone frozen, hidden-state routing still underperforms; with the backbone unfrozen, the dominant expert receives larger gradients which reshape the backbone to serve it even more, closing a co-adaptation feedback loop within tens of training steps (Figure~\ref{fig:trajectory}). The failure is specific to instance normalization: backbones such as Moirai that use LayerNorm instead of RevIN do not collapse (\S\ref{sec:cross_backbone}). Standard MoE rescue mechanisms (load balancing, entropy regularization, z-loss, ReLU routing, expert-choice) also do not help (Table~\ref{tab:rescue}), because the problem lies in the router's \emph{input}, not its optimization.
+This natural mixture-of-experts approach catastrophically fails on TSFMs that use instance normalization (Figure~\ref{fig:problem_overview}b). When the standard MoE recipe~\citep{wang2022adamix, fedus2022switch}, routing on hidden states with load balancing, is applied to MOMENT with RevIN, routing entropy drops to zero in most unfrozen configurations (Table~\ref{tab:adamix}). The router learns to send every window to the same expert, and the remaining experts are never used. The mechanism is what we call \emph{normalization-induced routing collapse}: RevIN~\citep{kim2021revin} strips the per-window mean and variance that the router needs to distinguish input regimes, leaving it with homogenized hidden states. Even with the backbone frozen, hidden-state routing still underperforms; with the backbone unfrozen, the dominant expert receives larger gradients which reshape the backbone to serve it even more, closing a co-adaptation feedback loop within tens of training steps (Figure~\ref{fig:trajectory}). The failure is specific to instance normalization: backbones such as Moirai that use LayerNorm instead of RevIN do not collapse (\S\ref{sec:cross_backbone}). Standard MoE rescue mechanisms (load balancing, entropy regularization, z-loss, ReLU routing, expert-choice) also do not help (Table~\ref{tab:rescue}), because the problem lies in the router's \emph{input}, not its optimization.
 
 Because the diagnosis pinpoints normalization as the cause, the fix principle is direct. \emph{Raw-Routed Mixture of Adapters} (RR-MoA) routes on the raw, pre-normalization input $\mathbf{X}_\text{raw}$ while keeping the backbone strictly frozen; only the router and five canonical expert heads are trainable. The same principle predicts a \emph{Frozen Paradox}: unfreezing triggers co-adaptation collapse (Proposition~\ref{prop:frozen}), so frozen adapters should beat full fine-tuning, which we confirm empirically.
 
@@ -372,7 +372,7 @@ An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{
 \end{equation}
 where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params) operating directly on the raw time series, and each $\text{Expert}_k$ is a canonical adapter head. Routing is restricted to the Top-$k$ experts with the highest gate logits, so only $k$ of $K$ experts execute per sample. With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense FLOPs while retaining $63\%$ of the dense MSE gain (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
 
-\textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), identified from structural motifs across ${\sim}1{,}200$ architectures in an LLM-guided search (Appendix~\ref{app:aas_details}). Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}). Pseudocode in Appendix~\ref{app:setup}.
+\textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), identified from structural motifs across ${\sim}1{,}200$ architectures in an LLM-guided search (Appendix~\ref{app:aas_details}). Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}). Pseudocode in Algorithm~\ref{alg:rrmoa} (Appendix~\ref{app:setup}).
 
 \section{Experiments}
 
@@ -388,8 +388,6 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 
 \subsection{Main Results}
 \label{sec:main_results}
-\label{sec:architectures}
-\label{sec:freeze_ablation}
 
 RR-MoA's case rests on three claims: that fixed-topology adapters are suboptimal, that the natural MoE remedy collapses on instance-normalized backbones, and that the collapse cannot be recovered by standard rescue mechanisms. We establish each in turn before comparing RR-MoA against a comprehensive baseline suite.
 
@@ -541,7 +539,7 @@ Full fine-tuning (all unfrozen) & $1.060 \pm 0.059$ & $0.871 \pm 0.029$ & $0.468
 
 RR-MoA outperforms every baseline ($p{<}0.001$). The independent ensemble (same experts, no router) is $36$--$46\%$ worse, confirming learned routing adds value beyond diversity.
 
-\textbf{Closing the DLinear gap.} DLinear (49K params, from scratch) outperforms frozen adapters in absolute MSE (Table~\ref{tab:baselines}, grey rows). As the diagnosis predicts, restoring raw-signal access \emph{at the expert level} closes this gap: \textbf{Residual-IA\textsuperscript{+}} (a dual-stream architecture in which a shared NLinear raw-input branch is added to each expert's output; Appendix~\ref{app:gate_pathology}, Figure~\ref{fig:residual_ia_arch}) matches or beats DLinear on \textbf{6/6 datasets} at $H{=}96$ (up to $-7.5\%$), generalizing to $107/123$ cells across six backbones.\label{tab:gap_closing_headline}
+\textbf{Closing the DLinear gap.} DLinear (49K params, from scratch) outperforms frozen adapters in absolute MSE (Table~\ref{tab:baselines}, grey rows). The gap reflects information destruction by the normalization-encoding pipeline (k-NN and Ridge diagnostics in Appendix~\ref{app:diagnostic}), not adapter capacity. As the diagnosis predicts, restoring raw-signal access \emph{at the expert level} closes this gap: \textbf{Residual-IA\textsuperscript{+}} (a dual-stream architecture in which a shared NLinear raw-input branch is added to each expert's output; Appendix~\ref{app:gate_pathology}, Figure~\ref{fig:residual_ia_arch}) matches or beats DLinear on \textbf{6/6 datasets} at $H{=}96$ (up to $-7.5\%$), generalizing to $107/123$ cells across six backbones. A self-routed variant SR-RIA\textsuperscript{+} (Appendix~\ref{app:sr_ria}) achieves the same 6/6 match-or-beat with $3$ outright wins; a TSFM-free Pure Raw-MLP MoE control (Appendix~\ref{app:raw_mlp_moe}) localizes the TSFM's contribution and rules out the alternative hypothesis that the raw branch alone is doing all the work.
 
 {\looseness=-1 \textbf{Rawness vs.\ bypass and dose-response.} Replacing the router's raw input with RevIN-normalized input degrades MSE by $60$--$88\%$ while entropy stays high (Table~\ref{tab:router_input}, Appendix~\ref{app:routing_ablations}), confirming the router relies on the \emph{content} of the stripped statistics, not merely the bypass path. A dose-response interpolation $\mathbf{x}_\alpha = (1{-}\alpha)\,\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ reveals a \emph{phase transition} (Figure~\ref{fig:dose_response}; 150 runs): MSE degrades mildly for $\alpha{\leq}0.75$ ($+5.4\%$) but catastrophically at $\alpha{=}1.0$ ($+283\%$), while entropy stays in $[1.43, 1.57]$: normalization renders routing uninformative without reducing diversity. The phase transition threshold is quantitatively predicted at $\alpha^* = R(\mathcal{D})/(R(\mathcal{D})+1) \approx 0.40$ for the median benchmark (Appendix~\ref{app:prop2_depth}). A temporal-shuffle ablation confirms routing depends on $(M,\Sigma)$ statistics, not temporal ordering (Appendix~\ref{app:routing_ablations}).}
 
@@ -981,9 +979,13 @@ Xiandong Zou, Jia Li, Xiaotong Yuan, and Pan Zhou.
 
 \newpage
 \appendix
-\renewcommand{\thetable}{\Alph{section}\arabic{table}}
+\renewcommand{\thetable}{\Alph{section}.\arabic{table}}
+\renewcommand{\thefigure}{\Alph{section}.\arabic{figure}}
+\makeatletter
+\@addtoreset{table}{section}
+\@addtoreset{figure}{section}
+\makeatother
 \setcounter{table}{0}
-\renewcommand{\thefigure}{\Alph{section}\arabic{figure}}
 \setcounter{figure}{0}
 
 % Routing entropy figure moved to main text (Figure 2)
@@ -1003,7 +1005,7 @@ Xiandong Zou, Jia Li, Xiaotong Yuan, and Pan Zhou.
 \item \textbf{Independent ensemble}: 5 experts with the canonical pool topologies, trained independently with no router and averaged at inference.
 \item \textbf{AdaMix}~\citep{wang2022adamix}: $K{=}5$ canonical heads with hidden-state softmax router; load-balance coefficient $0.01$. Full implementation details in Appendix~\ref{app:adamix_details}.
 \item \textbf{Full fine-tuning}: all encoder blocks unfrozen; best of $5$ head topologies $\times$ $2$ learning rates ($10^{-4}$, $10^{-5}$). Extended sweeps in Appendix~\ref{app:extended_ft}.
-\item \textbf{DLinear}~\citep{zeng2023dlinear}: from-scratch supervised; calibration values $0.416 / 0.322 / 0.208$ on ETTh1/ETTm1/Weather. Full table in Appendix~\ref{app:dlinear}.
+\item \textbf{DLinear}~\citep{zeng2023dlinear}: from-scratch supervised; calibration values $0.416 / 0.322 / 0.208$ on ETTh1/ETTm1/Weather (gap to RR-MoA visible in Tables~\ref{tab:rrmoa},~\ref{tab:baselines}).
 \end{itemize}
 
 \paragraph{RR-MoA pseudocode.}
@@ -1156,7 +1158,7 @@ Under gradient descent $\dot{A} = -\eta\,\partial\ell/\partial A$, the induced c
 \dot{\ell}_1\big|_A = -\eta\|\mathbf{x}\|^2\!\Bigg[p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2 + (1{-}p)\left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^{\!\top}\frac{\partial\ell_2}{\partial\mathbf{h}} \\
  + (\ell_1{-}\ell_2)\,p(1{-}p)\left(\frac{\partial\ell_1}{\partial\mathbf{h}}\right)^{\!\top}\mathbf{w}\Bigg]
 \end{multline*}
-The first term (self-gradient) always decreases $\ell_1$. The second (cross-gradient) is negligible when expert gradients are approximately orthogonal, a condition that holds empirically once experts specialize to distinct input clusters (Appendix~\ref{app:routing_weights}). The third (loss-coupling) term is small early in training when $|\ell_1 - \ell_2| \ll \|\partial\ell_1/\partial\mathbf{h}\|$. Retaining only the dominant first term:
+The first term (self-gradient) always decreases $\ell_1$. The second (cross-gradient) is negligible when expert gradients are approximately orthogonal, a condition that holds empirically once experts specialize to distinct input clusters. The third (loss-coupling) term is small early in training when $|\ell_1 - \ell_2| \ll \|\partial\ell_1/\partial\mathbf{h}\|$. Retaining only the dominant first term:
 \begin{equation*}
 \dot{\ell}_1\big|_A \approx -\eta\,p\left\|\frac{\partial\ell_1}{\partial\mathbf{h}}\right\|^2\|\mathbf{x}\|^2
 \end{equation*}
@@ -1232,42 +1234,6 @@ Dataset & Rank & Targets & Head & MSE (mean$\pm$std) \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\section{Routing Weight Distributions}
-\label{app:routing_weights}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    width=\columnwidth,
-    height=4.8cm,
-    bar width=7pt,
-    ylabel={Mean routing weight (Top-2, frozen)},
-    ylabel style={font=\small},
-    symbolic x coords={ETTh1, ETTm1, Weather},
-    xtick=data,
-    x tick label style={font=\small},
-    y tick label style={font=\small},
-    legend style={at={(0.5,1.02)}, anchor=south, legend columns=5, font=\scriptsize, draw=none},
-    ymin=0, ymax=0.40,
-    enlarge x limits=0.25,
-    error bars/y dir=both,
-    error bars/y explicit,
-    error bars/error bar style={line width=0.5pt, black!60},
-]
-\addplot[fill=blue!55]   coordinates {(ETTh1,0.210) +- (0,0.045) (ETTm1,0.154) +- (0,0.016) (Weather,0.263) +- (0,0.041)};
-\addplot[fill=red!55]    coordinates {(ETTh1,0.217) +- (0,0.042) (ETTm1,0.277) +- (0,0.017) (Weather,0.175) +- (0,0.040)};
-\addplot[fill=green!55]  coordinates {(ETTh1,0.188) +- (0,0.020) (ETTm1,0.221) +- (0,0.048) (Weather,0.161) +- (0,0.017)};
-\addplot[fill=orange!65] coordinates {(ETTh1,0.180) +- (0,0.006) (ETTm1,0.176) +- (0,0.012) (Weather,0.144) +- (0,0.028)};
-\addplot[fill=purple!55] coordinates {(ETTh1,0.205) +- (0,0.025) (ETTm1,0.173) +- (0,0.041) (Weather,0.257) +- (0,0.073)};
-\legend{Mean, Last, Max, Attn, Conv1d}
-\end{axis}
-\end{tikzpicture}
-\caption{\textbf{Multi-seed RR-MoA routing weights per dataset} (Top-2 sparse, strictly frozen, mean$\pm$std over seeds $\{42,43,44\}$). Routing is diverse and dataset-dependent: ETTh1 spreads weight roughly uniformly (entropy $1.495\pm0.034$); ETTm1 concentrates on Last+Max; Weather on Mean+Conv1d.}
-\label{fig:routing_appendix}
-\end{figure}
 
 \section{Routing Ablations}
 \label{app:routing_ablations}
@@ -1868,25 +1834,6 @@ Solar       & 0.97 & 0.57 & 40.9 & 0.08 & 0.20 & $-32.9$ \\
 
 \textbf{Synthetic validation.} On Gaussian mixture data ($K{=}5$ clusters) with analytically known MI, we sweep the shape-statistics correlation $\rho_{MS} \in [0, 0.9]$. At $\rho_{MS}{=}0$, the bound is tight (gap $= 0.19$ nats, $12\%$ of $\log K$). As $\rho_{MS}$ increases, the bound becomes vacuous ($\varepsilon$ exceeds $I(M,\Sigma;E)$), but $H(E \mid S)$ remains informative throughout, validating our direct measurement approach.
 
-\section{DLinear Calibration}
-\label{app:dlinear}
-
-\begin{table}[h]
-\centering
-\caption{\textbf{DLinear supervised calibration} (trained from scratch, no backbone, 3 seeds, test MSE mean$\pm$std). The gap to RR-MoA is expected; the frozen-backbone paradigm is motivated by deployment constraints (\S\ref{sec:intro}).}
-\label{tab:dlinear}
-\small
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Dataset & DLinear (from scratch) & RR-MoA (frozen, Top-2) & Gap \\
-\midrule
-ETTh1   & $0.416 \pm 0.002$ & $0.690 \pm 0.021$ & $+65.9\%$ \\
-ETTm1   & $0.322 \pm 0.004$ & $0.572 \pm 0.073$ & $+77.6\%$ \\
-Weather & $0.208 \pm 0.003$ & $0.289 \pm 0.008$ & $+38.9\%$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 \section{Information Content Diagnostic}
 \label{app:diagnostic}
 
@@ -2096,7 +2043,6 @@ The best extended schedule (50ep cosine + layer-wise LR decay) improves over the
 
 \section{Closing the DLinear Gap}
 \label{app:gap_closing}
-\label{app:gap_closing_ext}
 
 A good diagnosis should be \emph{actionable}: identifying the root cause of a performance gap should point directly to how to close it. Our diagnosis pinpoints the DLinear gap as information destruction by the normalization--encoding pipeline (\S\ref{sec:main_results}, Appendix~\ref{app:diagnostic}): experts operate on hidden states from which RevIN and patching have stripped fine-grained temporal structure. This diagnosis makes a clear architectural prediction: \emph{if we restore raw-signal access to the experts, the gap should close.} We test this prediction with three architectures.
 
