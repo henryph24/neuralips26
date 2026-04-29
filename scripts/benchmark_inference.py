@@ -2,6 +2,8 @@
 
 Measures per-batch inference time and peak GPU memory for:
 - RR-MoA (Top-2, 5 experts)
+- SR-MoA (Self-Routed, K=5 dense, per-expert sigmoid gates on raw input)
+- Residual-IA+ (Self-Routed Residual-IA, shared NLinear raw branch + gated backbone residual)
 - Single adapter (conv head)
 - DLinear (from-scratch baseline)
 
@@ -30,6 +32,8 @@ from scripts.run_rr_moa import (
     MeanPoolHead, LastTokenHead, MaxPoolHead, AttentionPoolHead, Conv1dPoolHead,
     RawRoutedMoA,
 )
+from scripts.run_self_routed_moa import SelfRoutedMoA
+from scripts.run_sr_ria import SelfRoutedResidualIA
 from scripts.run_standard_evolution import _detect_backbone_type
 
 
@@ -43,7 +47,7 @@ class DLinear(nn.Module):
         return self.linear(x)
 
 
-def benchmark_forward(fn, warmup=10, repeats=100, device="cuda"):
+def benchmark_forward(fn, warmup=20, repeats=200, device="cuda"):
     """Benchmark a callable with CUDA events for accurate timing."""
     # Warmup
     for _ in range(warmup):
@@ -63,8 +67,12 @@ def benchmark_forward(fn, warmup=10, repeats=100, device="cuda"):
     else:
         times = []
         for _ in range(repeats):
+            if device == "mps":
+                torch.mps.synchronize()
             t0 = time.perf_counter()
             fn()
+            if device == "mps":
+                torch.mps.synchronize()
             times.append((time.perf_counter() - t0) * 1000)
 
     return {
@@ -77,14 +85,14 @@ def benchmark_forward(fn, warmup=10, repeats=100, device="cuda"):
 
 def measure_peak_memory(fn, device="cuda"):
     """Measure peak GPU memory during a forward pass."""
-    if device != "cuda":
-        return {"peak_mb": 0}
-    torch.cuda.reset_peak_memory_stats()
-    torch.cuda.synchronize()
-    fn()
-    torch.cuda.synchronize()
-    peak = torch.cuda.max_memory_allocated() / (1024 * 1024)
-    return {"peak_mb": float(peak)}
+    if device == "cuda":
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.synchronize()
+        fn()
+        torch.cuda.synchronize()
+        peak = torch.cuda.max_memory_allocated() / (1024 * 1024)
+        return {"peak_mb": float(peak)}
+    return {"peak_mb": 0}
 
 
 def main():
@@ -166,7 +174,45 @@ def main():
     print("   Latency: %.2f +/- %.2f ms, params: %d" % (
         results["rrmoa_top2"]["mean_ms"], results["rrmoa_top2"]["std_ms"], rrmoa_params))
 
-    # --- 4. DLinear (no backbone) ---
+    # --- 4. SR-MoA (Self-Routed, K=5 dense, gated mode) ---
+    print("\n4. SR-MoA (Self-Routed, K=5 dense)...")
+    srmoa = SelfRoutedMoA(
+        hdim, H, input_len=L, K=5, hidden=64,
+        routing_mode="gated", gate_hidden=16,
+    ).to(device).eval()
+    srmoa_params = sum(p.numel() for p in srmoa.parameters())
+
+    def srmoa_fn():
+        with torch.no_grad():
+            f = _extract_features_batch(model, blocks, bx, mask, backbone_type=bb_type)
+            srmoa(f, x_raw)
+
+    results["srmoa_dense"] = benchmark_forward(srmoa_fn, device=device)
+    results["srmoa_dense"].update(measure_peak_memory(srmoa_fn, device=device))
+    results["srmoa_dense"]["adapter_params"] = srmoa_params
+    print("   Latency: %.2f +/- %.2f ms, params: %d" % (
+        results["srmoa_dense"]["mean_ms"], results["srmoa_dense"]["std_ms"], srmoa_params))
+
+    # --- 5. Residual-IA+ (Self-Routed Residual-IA, shared NLinear raw branch) ---
+    print("\n5. Residual-IA+ (SR-RIA, K=5)...")
+    sr_ria = SelfRoutedResidualIA(
+        hdim, H, input_len=L, K=5, hidden=64,
+        gate_hidden=16, blend_init_bias=-2.0, raw_arch="nlinear",
+    ).to(device).eval()
+    sr_ria_params = sum(p.numel() for p in sr_ria.parameters())
+
+    def sr_ria_fn():
+        with torch.no_grad():
+            f = _extract_features_batch(model, blocks, bx, mask, backbone_type=bb_type)
+            sr_ria(f, x_raw)
+
+    results["residual_ia_plus"] = benchmark_forward(sr_ria_fn, device=device)
+    results["residual_ia_plus"].update(measure_peak_memory(sr_ria_fn, device=device))
+    results["residual_ia_plus"]["adapter_params"] = sr_ria_params
+    print("   Latency: %.2f +/- %.2f ms, params: %d" % (
+        results["residual_ia_plus"]["mean_ms"], results["residual_ia_plus"]["std_ms"], sr_ria_params))
+
+    # --- 6. DLinear (no backbone) ---
     print("\n4. DLinear (from scratch, no backbone)...")
     dlinear = DLinear(L, H).to(device).eval()
     dlinear_params = sum(p.numel() for p in dlinear.parameters())
@@ -193,10 +239,11 @@ def main():
         params = r.get("adapter_params", r.get("params", 0))
         print("%-20s %10s %10s %12s" % (name, latency, peak, "{:,}".format(params)))
 
-    # Save
+    # Save (device-tagged so MPS / CPU runs do not overwrite the canonical A10G run)
     os.makedirs("results/benchmark", exist_ok=True)
-    fname = "results/benchmark/inference_%s_B%d.json" % (
-        args.backbone.split("/")[-1], B)
+    suffix = "" if device == "cuda" else "_%s" % device
+    fname = "results/benchmark/inference_%s_B%d%s.json" % (
+        args.backbone.split("/")[-1], B, suffix)
     with open(fname, "w") as f:
         json.dump(results, f, indent=2)
     print("\nSaved: %s" % fname)
