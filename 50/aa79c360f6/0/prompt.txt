@@ -1,0 +1,13 @@
+in the section "Problem Formulation" why we mention "Expert Pool" here ? should we remove it for its being more structured
+
+---
+
+review our current sections and subsections name to see it matches standards of paper accepted at neurips 2025
+
+---
+
+let's do it
+
+---
+
+I find the current setup providing too much details, which should go a bit more in appendix. find the right balance
