@@ -360,16 +360,10 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 \end{figure}
 \vspace{-1.2em}
 
-\subsection{Problem Formulation and Expert Pool}
-
-For a mixture of adapters to be effective, the expert pool must contain structurally diverse heads so that the router has meaningful choices. An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$ maps a pretrained backbone's hidden states to forecasts, with $n_g \leq 500{,}000$ trainable parameters. We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), identified from structural motifs across ${\sim}1{,}200$ architectures in an LLM-guided search (Appendix~\ref{app:aas_details}). Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}).
-
-\textbf{Standard protocol.} Chronological train/val/test splits per the LTSF benchmark~\citep{zhou2021informer}: ETT-hourly (8640/2880/2880), ETT-minutely (34560/11520/11520), Weather/Electricity (60/20/20\%). Final evaluation uses the held-out test set.
-
 \subsection{Raw-Routed Mixture of Adapters (RR-MoA)}
 \label{sec:rrmoa}
 
-The goal of per-window routing is to select, for each input window, the subset of expert adapters best suited to that window's characteristics, so that a quiet baseline and a volatile spike are handled by different adapter topologies rather than forced through the same head. As shown in the introduction, this fails when the router reads normalized hidden states, because RevIN removes the per-window statistics that distinguish input regimes. \textbf{RR-MoA} avoids this by splitting the information into two streams: the frozen TSFM produces deep embeddings $\mathbf{H}$ for the experts, while a separate lightweight gate reads the \textit{raw, pre-normalization} input $\mathbf{X}_\text{raw}$ to decide which experts to activate:
+An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times H}$ maps a pretrained backbone's hidden states to forecasts, with $n_g \leq 500{,}000$ trainable parameters. The goal of per-window routing is to select, for each input window, the subset of expert adapters best suited to that window's characteristics, so that a quiet baseline and a volatile spike are handled by different adapter topologies rather than forced through the same head. As shown in the introduction, this fails when the router reads normalized hidden states, because RevIN removes the per-window statistics that distinguish input regimes. \textbf{RR-MoA} avoids this by splitting the information into two streams: the frozen TSFM produces deep embeddings $\mathbf{H}$ for the experts, while a separate lightweight gate reads the \textit{raw, pre-normalization} input $\mathbf{X}_\text{raw}$ to decide which experts to activate:
 \begin{equation}
 \mathbf{Y} = \sum_{j \in \mathcal{T}} \underbrace{\widetilde{w}_j}_{\text{sparse weight}} \cdot \underbrace{\text{Expert}_j(\mathbf{H}_\text{FM})}_{\text{deep embedding branch}},\quad
 \mathcal{T} = \mathrm{TopK}\!\left(G_\psi(\mathbf{X}_\text{raw}),\, k\right),\;\;
@@ -377,6 +371,8 @@ The goal of per-window routing is to select, for each input window, the subset o
 \label{eq:rrmoa}
 \end{equation}
 where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params) operating directly on the raw time series, and each $\text{Expert}_k$ is a canonical adapter head. Routing is restricted to the Top-$k$ experts with the highest gate logits, so only $k$ of $K$ experts execute per sample. With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense FLOPs while retaining $63\%$ of the dense MSE gain (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
+
+\textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), identified from structural motifs across ${\sim}1{,}200$ architectures in an LLM-guided search (Appendix~\ref{app:aas_details}). Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}).
 
 \begin{algorithm}[h]
 \caption{RR-MoA: Raw-Routed Mixture of Adapters with Top-$k$ sparse routing}
@@ -399,19 +395,15 @@ where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params)
 
 \subsection{Setup}
 
-We evaluate RR-MoA on standard long-term forecasting benchmarks using five backbones, seven baselines, and up to five random seeds per configuration.
+\textbf{Datasets and tasks.} Six LTSF benchmarks (ETTh1/h2/m1/m2~\citep{zhou2021informer}, Weather, Electricity~\citep{godahewa2021monash}) with chronological splits and channel-wise normalization~\citep{nie2023patchtst}. We evaluate forecasting ($H{=}96$) and imputation ($20\%$ masked).
 
-\textbf{Backbones.} Primary: MOMENT-small~\citep{goswami2024moment} ($d{=}512$, 8 encoder blocks, internal RevIN~\citep{kim2021revin}). Cross-backbone: MOMENT-large ($d{=}1024$, 24 blocks), Moirai~\citep{woo2024moirai} ($d{=}384$, 6 blocks, no RevIN), Moirai-MoE ($d{=}384$, 6 blocks, sparse internal experts), Chronos~\citep{ansari2024chronos} ($d{=}512$, 6 encoder blocks) and Timer-XL~\citep{liu2025timerxl} ($d{=}512$, 8 blocks, no RevIN; the latter two are negative controls; \S\ref{sec:cross_backbone}). Throughout, ``full fine-tuning'' for any backbone means \emph{all} encoder blocks are unfrozen (8/8 for MOMENT-small, 24/24 for MOMENT-large, 6/6 for Moirai/Moirai-MoE/Chronos, 8/8 for Timer-XL). Primary results use a \emph{strictly frozen} backbone; freeze-level ablations in \S\ref{sec:freeze_ablation}.
+\textbf{Backbones.} Five backbones spanning two normalization families: instance-normalized MOMENT-small/large~\citep{goswami2024moment} (internal RevIN~\citep{kim2021revin}); LayerNorm-only Moirai~\citep{woo2024moirai} and Moirai-MoE; and Chronos~\citep{ansari2024chronos} and Timer-XL~\citep{liu2025timerxl} as no-instance-normalization negative controls (\S\ref{sec:cross_backbone}). MOMENT-small is primary. Primary results use a strictly frozen backbone; freeze-level ablations follow.
 
-{\looseness=-1 \textbf{Datasets and tasks.} ETTh1/h2/m1/m2~\citep{zhou2021informer}, Weather (21ch), Electricity (321ch), standard LTSF benchmarks~\citep{godahewa2021monash}. Chronological splits, channel-wise StandardScaler normalization~\citep{zhou2021informer, nie2023patchtst}. We evaluate forecasting ($H{=}96$) and imputation (20\% masked). DLinear calibration: $0.416$/$0.322$/$0.208$ on ETTh1/ETTm1/Weather (Appendix~\ref{app:dlinear}).}
+\textbf{Baselines.} Seven baselines: three fixed adapters, LoRA~\citep{hu2022lora} (108-run sweep; Appendix~\ref{app:lora_sweep}), TRACE~\citep{li2025trace}, an independent ensemble of 5 experts, AdaMix~\citep{wang2022adamix} (hidden-state MoE), full fine-tuning (all blocks unfrozen, best of 5 heads $\times$ 2 LRs), and a from-scratch DLinear~\citep{zeng2023dlinear} calibration anchor.
 
-\textbf{Training.} Adam optimizer, lr$=10^{-3}$, MSE loss, batch size 128, 15 epochs. Final reported numbers are 15-epoch test MSE. Multi-seed experiments use seeds $\{42, 43, 44, 45, 46\}$ ($n{=}5$) for the core table; ablations use seeds $\{42, 43, 44\}$.
+\textbf{Training and reproducibility.} Adam, MSE loss, 15 epochs; 5 seeds for the core grid, 3 for ablations. Backbone dimensions, full hyperparameters, and per-baseline configurations: Appendix~\ref{app:setup}. All code, raw JSON results, routing-weight logs, and a self-verification script (\texttt{verify.py}) that re-derives every numerical claim from raw data accompany the submission.
 
-{\looseness=-1 \textbf{Baselines.} Frozen: (i)~three fixed adapters (linear, attention, conv), (ii)~LoRA~\citep{hu2022lora} (108-run sweep; Appendix~\ref{app:lora_sweep}), (iii)~TRACE~\citep{li2025trace}, (iv)~independent ensemble (5 experts, no router), (v)~AdaMix~\citep{wang2022adamix} (hidden-state MoE). Unfrozen: (vi)~full fine-tuning (all 8 blocks, best of 5 heads $\times$ 2 LRs). Calibration anchor: (vii)~DLinear~\citep{zeng2023dlinear} (from scratch).}
-
-\textbf{Reproducibility.} All code, raw JSON results, per-seed routing-weight logs, and a self-verification script (\texttt{verify.py}) that re-derives every numerical claim from raw data are included in the supplementary material and will be open-sourced upon acceptance.
-
-\subsection{RR-MoA: Routing Collapse and Its Resolution}
+\subsection{Main Results}
 \label{sec:main_results}
 \label{sec:architectures}
 \label{sec:freeze_ablation}
@@ -664,10 +656,12 @@ In the limit where the router's signal lives entirely in the stripped statistics
 {\looseness=-1 \textbf{Cross-backbone, task and horizon generalization.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins all 21 MOMENT-small/large configurations ($27$--$81\%$; Table~\ref{tab:cross_backbone}), 18/18 Moirai ($3$--$31\%$), and 6/6 Moirai-MoE~\citep{liu2025moiraimoe} datasets ($37$--$90\%$; Table~\ref{tab:moirai_moe}): adapter-level and backbone-internal routing operate on complementary axes. The negative controls predicted by Observation~\ref{thm:mi_decomp} (Chronos and Timer-XL~\citep{liu2025timerxl}, neither using instance normalization) show no collapse and no RR-MoA gain (4/18 within chance; Appendix~\ref{app:cross_backbone}). Top-2 sparse routing retains most of the dense gain at a $+10\%$ latency cost (Appendix~\ref{app:topk}); imputation ($7/8$; Appendix~\ref{app:imputation}) and horizons $H{\in}\{96{,}192{,}336{,}720\}$ (24/24; Table~\ref{tab:horizon}) confirm robustness. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}) extends to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
 
 \vspace{-0.6em}
-\section{Conclusion}
+\section{Conclusion and Limitations}
 \vspace{-0.4em}
 
-MoE adapters on instance-normalized TSFMs fail for structural reasons: the normalization needed for distribution shift also strips the per-window statistics a downstream router needs. Raw pre-normalization routing fixes the failure and motivates Residual-IA\textsuperscript{+}; $R(\mathcal{D})$ identifies where it applies. Limitations and extensions to non-RevIN normalization are deferred to future work.
+MoE adapters on instance-normalized TSFMs fail for structural reasons: the normalization needed for distribution shift also strips the per-window statistics a downstream router needs. Raw pre-normalization routing fixes the failure and motivates Residual-IA\textsuperscript{+}; $R(\mathcal{D})$ identifies where it applies.
+
+\paragraph{Limitations.} Three boundaries scope our claims. \emph{(i)~Normalization specificity.} Our diagnosis applies to backbones with instance-level normalization (RevIN, BatchNorm, GroupNorm); backbones without it (Chronos, Timer-XL) show no collapse and no RR-MoA gain, as Observation~\ref{thm:mi_decomp} predicts. Extensions to attention-based or learned normalizers are not characterized. \emph{(ii)~Signal-ratio boundary cases.} The signal-ratio predictor $R(\mathcal{D})$ is a single monotone proxy for variance contribution; on Solar ($R{=}0.06$) it correctly flags low benefit but is not sharp. Datasets with strong shape-statistics coupling fall outside the tight regime of the bound. \emph{(iii)~Forecasting and imputation only.} We evaluate forecasting and imputation on LTSF benchmarks. Anomaly detection, classification, and irregularly-sampled tasks are deferred to future work.
 
 \label{page:end_main}
 \bibliographystyle{plainnat}
@@ -1009,6 +1003,24 @@ Xiandong Zou, Jia Li, Xiaotong Yuan, and Pan Zhou.
 
 % Routing entropy figure moved to main text (Figure 2)
 
+\section{Experimental Setup Details}
+\label{app:setup}
+
+\paragraph{Backbone specifications.} MOMENT-small ($d{=}512$, 8 encoder blocks, internal RevIN); MOMENT-large ($d{=}1024$, 24 blocks, internal RevIN); Moirai ($d{=}384$, 6 blocks, LayerNorm only); Moirai-MoE ($d{=}384$, 6 blocks, LayerNorm only with sparse internal experts); Chronos ($d{=}512$, 6 encoder blocks, no instance normalization); Timer-XL ($d{=}512$, 8 blocks, no instance normalization). Throughout, ``full fine-tuning'' means \emph{all} encoder blocks are unfrozen (8/8 for MOMENT-small, 24/24 for MOMENT-large, 6/6 for Moirai/Moirai-MoE/Chronos, 8/8 for Timer-XL).
+
+\paragraph{Training hyperparameters.} Adam optimizer, learning rate $10^{-3}$, MSE loss, batch size $128$, $15$ epochs. Final reported numbers are 15-epoch test MSE. Core multi-seed grids use seeds $\{42, 43, 44, 45, 46\}$ ($n{=}5$); ablations use seeds $\{42, 43, 44\}$ ($n{=}3$). Channel-wise StandardScaler normalization~\citep{zhou2021informer, nie2023patchtst} is applied to all inputs.
+
+\paragraph{Per-baseline configurations.}
+\begin{itemize}[leftmargin=1.2em, itemsep=0.15em, topsep=0.2em]
+\item \textbf{Fixed adapters}: linear, attention-pool, Conv1d-pool single-head topologies with $\leq 500{,}000$ trainable parameters.
+\item \textbf{LoRA}~\citep{hu2022lora}: 108-run sweep over rank, $\alpha$, and target modules; full table in Appendix~\ref{app:lora_sweep}.
+\item \textbf{TRACE}~\citep{li2025trace}: importance-based LoRA selection with default settings.
+\item \textbf{Independent ensemble}: 5 experts with the canonical pool topologies, trained independently with no router and averaged at inference.
+\item \textbf{AdaMix}~\citep{wang2022adamix}: $K{=}5$ canonical heads with hidden-state softmax router; load-balance coefficient $0.01$. Full implementation details in Appendix~\ref{app:adamix_details}.
+\item \textbf{Full fine-tuning}: all encoder blocks unfrozen; best of $5$ head topologies $\times$ $2$ learning rates ($10^{-4}$, $10^{-5}$). Extended sweeps in Appendix~\ref{app:extended_ft}.
+\item \textbf{DLinear}~\citep{zeng2023dlinear}: from-scratch supervised; calibration values $0.416 / 0.322 / 0.208$ on ETTh1/ETTm1/Weather. Full table in Appendix~\ref{app:dlinear}.
+\end{itemize}
+
 \section{Multi-Horizon Evaluation}
 \label{app:horizon}
 
@@ -1154,7 +1166,7 @@ and analogously $\dot{\ell}_2\big|_A \approx -\eta\,(1{-}p)\left\|\frac{\partial
 This update adjusts routing weights based on current expert performance, but does \emph{not} reshape $\mathbf{h}$ to favor one expert. Without the $A$-mediated feedback loop, there is no systematic bias toward entropy collapse: the router converges to a stable allocation reflecting the static geometry of the fixed representation space.
 \end{proof}
 
-\section{AAS Search Details}
+\section{Adapter Architecture Search (AAS) Details}
 \label{app:aas_details}
 
 The AAS loop maintains a population of 20 adapters over 12 generations (${\sim}240$ evaluations, 3-epoch fitness probes). Elitism preserves the top 2; an LLM variant generates candidates in the code space $\mathcal{G}_\text{code}$. Template-based generation achieves 100\% validity (vs.\ ${\sim}75\%$ for LLM). The 5 canonical pooling heads used by RR-MoA (mean, last-token, max, attention, Conv1d) were identified as the most frequent structural motifs across the ${\sim}1{,}200$ candidate adapters explored.
@@ -2137,7 +2149,7 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 
 \textbf{Training-length ablation.} We additionally ran dual-stream at 50 epochs (vs.\ 15 in Table~\ref{tab:gap_closing}). Extended training \emph{overfits} on 5/6 datasets (ETTh1: $0.453{\to}0.556$; Weather: $0.198{\to}0.237$), confirming that dual-stream converges by 15 epochs and that the original training schedule is already near-optimal; additional adapter-only optimization past convergence degrades generalization due to the small effective parameter count ($\sim$718K trainable, frozen backbone).
 
-\subsection{Residual-IA: Diagnosing and Fixing a Second Pathology}
+\subsection{Residual-IA: Closing the Remaining Gap}
 \label{app:gate_pathology}
 
 \definecolor{ridback}{RGB}{33,118,189}
@@ -2558,7 +2570,7 @@ Electricity & $0.160 \pm 0.000$ & $0.158$ & $0.156$ & $+1.2\%$ \\
 \end{tabular}
 \end{table}
 
-\subsection{Pure Raw-MLP MoE Ablation: How Much Does the TSFM Actually Contribute?}
+\subsection{Pure Raw-MLP MoE Ablation: Quantifying the TSFM's Contribution}
 \label{app:raw_mlp_moe}
 
 A natural concern about the dual-stream gap-closing result is that it could be confounded: if the TSFM destroys nonlinear temporal structure (Appendix~\ref{app:diagnostic}), and the dual-stream fix recovers that structure via the raw branch, perhaps the raw branch is doing all the work and the TSFM is dead weight. We tested this hypothesis directly by running a pure mixture-of-experts ablation in which the TSFM is removed entirely.
