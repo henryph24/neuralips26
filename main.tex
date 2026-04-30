@@ -111,10 +111,10 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 % Three input waveforms (left)
 \node[waveframe] (w1a) at (0.9, 3.30) {};
 \draw[blue!75, line width=0.5pt] plot[domain=-0.65:0.65, samples=30, smooth]
-    ({\x},{3.30+0.16*sin(deg(2.4*\x))});
+    ({\x+0.9},{3.30+0.16*sin(deg(2.4*\x))});
 \node[waveframe] (w2a) at (0.9, 2.78) {};
 \draw[red!75, line width=0.4pt] plot[domain=-0.65:0.65, samples=70]
-    ({\x},{2.78+0.09*sin(deg(35*\x))+0.05*sin(deg(11*\x))});
+    ({\x+0.9},{2.78+0.09*sin(deg(35*\x))+0.05*sin(deg(11*\x))});
 \node[waveframe] (w3a) at (0.9, 2.26) {};
 \draw[green!55!black, line width=0.5pt]
     (0.25,2.18) -- (0.55,2.18) -- (0.55,2.40) -- (0.85,2.40) --
@@ -158,10 +158,10 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 % Three input waveforms (left, same as A)
 \node[waveframe] (w1b) at (0.9, 0.90) {};
 \draw[blue!75, line width=0.5pt] plot[domain=-0.65:0.65, samples=30, smooth]
-    ({\x},{0.90+0.16*sin(deg(2.4*\x))});
+    ({\x+0.9},{0.90+0.16*sin(deg(2.4*\x))});
 \node[waveframe] (w2b) at (0.9, 0.38) {};
 \draw[red!75, line width=0.4pt] plot[domain=-0.65:0.65, samples=70]
-    ({\x},{0.38+0.09*sin(deg(35*\x))+0.05*sin(deg(11*\x))});
+    ({\x+0.9},{0.38+0.09*sin(deg(35*\x))+0.05*sin(deg(11*\x))});
 \node[waveframe] (w3b) at (0.9, -0.14) {};
 \draw[green!55!black, line width=0.5pt]
     (0.25,-0.22) -- (0.55,-0.22) -- (0.55,0.00) -- (0.85,0.00) --
@@ -349,8 +349,8 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 \end{pgfonlayer}
 
 % Routing weight labels (kept on main layer so they sit ON TOP of arrows)
-\node[font=\scriptsize, text=orange!70, anchor=south] at (8.7, 1.85) {$w_2$};
-\node[font=\scriptsize, text=orange!70, anchor=north] at (8.7, -0.55) {$w_4$};
+\node[font=\scriptsize, text=orange!70, anchor=north east] at (8.85, 1.78) {$w_2$};
+\node[font=\scriptsize, text=orange!70, anchor=north east] at (8.85, -0.62) {$w_4$};
 
 \end{tikzpicture}%
 }% end resizebox
@@ -613,12 +613,12 @@ In the limit where the router's signal lives entirely in the stripped statistics
 \addplot[only marks, mark=*, mark size=2.5pt, blue!80] coordinates {
     (0.061, -32.9) (0.135, +2.9) (0.242, -26.8) (0.566, -43.2) (0.671, -51.1) (0.703, -44.6) (1.163, -71.0) (1.241, -77.2) (2.174, -66.5)
 };
-\node[font=\scriptsize, anchor=east] at (axis cs:0.04, -32.9) {Sol};
+\node[font=\scriptsize, anchor=west] at (axis cs:0.08, -32.9) {Sol};
 \node[font=\scriptsize, anchor=west] at (axis cs:0.17, +2.9) {Traf};
 \node[font=\scriptsize, anchor=west] at (axis cs:0.27, -26.8) {Elec};
-\node[font=\scriptsize, anchor=east] at (axis cs:0.54, -43.2) {h1};
+\node[font=\scriptsize, anchor=south] at (axis cs:0.566, -39.5) {h1};
 \node[font=\scriptsize, anchor=west] at (axis cs:0.70, -51.1) {m1};
-\node[font=\scriptsize, anchor=east] at (axis cs:0.67, -44.6) {W};
+\node[font=\scriptsize, anchor=north] at (axis cs:0.703, -47.5) {W};
 \node[font=\scriptsize, anchor=west] at (axis cs:1.19, -71.0) {h2};
 \node[font=\scriptsize, anchor=west] at (axis cs:1.27, -77.2) {m2};
 \node[font=\scriptsize, anchor=west] at (axis cs:2.20, -66.5) {Exch};
