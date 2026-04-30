@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "abca7047ef22",
+  "session_id": "b99fe240-d6db-48e0-b34d-8e78a52dd53b",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-30T18:56:48.00467Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "main.tex",
+    "scripts/plot_adamix_trajectory.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c3b138732ae0",
+  "token_usage": {
+    "input_tokens": 203,
+    "cache_creation_tokens": 257709,
+    "cache_read_tokens": 21115745,
+    "output_tokens": 85353,
+    "api_call_count": 135
+  },
+  "session_metrics": {
+    "turn_count": 8
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-30T18:56:47.693364Z",
+    "agent_lines": 120,
+    "human_added": 60,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 180,
+    "agent_percentage": 66.66666666666666
+  }
+}

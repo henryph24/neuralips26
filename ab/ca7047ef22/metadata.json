@@ -3,7 +3,7 @@
   "checkpoint_id": "abca7047ef22",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 9,
+  "checkpoints_count": 16,
   "files_touched": [
     "figures/causal_contrast.pdf",
     "figures/routing_viz.pdf",
@@ -19,13 +19,19 @@
       "transcript": "/ab/ca7047ef22/0/full.jsonl",
       "content_hash": "/ab/ca7047ef22/0/content_hash.txt",
       "prompt": "/ab/ca7047ef22/0/prompt.txt"
+    },
+    {
+      "metadata": "/ab/ca7047ef22/1/metadata.json",
+      "transcript": "/ab/ca7047ef22/1/full.jsonl",
+      "content_hash": "/ab/ca7047ef22/1/content_hash.txt",
+      "prompt": "/ab/ca7047ef22/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 241,
-    "cache_creation_tokens": 313497,
-    "cache_read_tokens": 23228372,
-    "output_tokens": 69751,
-    "api_call_count": 161
+    "input_tokens": 444,
+    "cache_creation_tokens": 571206,
+    "cache_read_tokens": 44344117,
+    "output_tokens": 155104,
+    "api_call_count": 296
   }
 }

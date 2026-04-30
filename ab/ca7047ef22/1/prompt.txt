@@ -1,0 +1,29 @@
+use computer use feature to scroll through the rendered main paper, take zoomed screenshot at each visaulisation, list out visual errors, such as the above, the inconsistent color, arrow directions errors, etc and plan to fix them all. Make sure delegate images to subagent to minimise context usage
+
+---
+
+let's go one by one
+
+---
+
+keep going
+
+---
+
+recompile the paper
+
+---
+
+[Image #3] I think the bracket is not correct
+
+---
+
+recompile the paper
+
+---
+
+[Image #4] i mean the curly bracets that start at Max Pool[Image #5]
+
+---
+
+review for such subtle details across other visualisations
