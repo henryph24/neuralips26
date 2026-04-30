@@ -55,7 +55,7 @@
 \maketitle
 
 \begin{abstract}
-Time series foundation models (TSFMs) provide powerful pretrained representations, but downstream use requires attaching a lightweight adapter head. The natural improvement over today's single-head designs, a mixture-of-expert (MoE) adapter that selects a different head per input window, catastrophically fails: routing entropy collapses to $0.000$ and the remaining experts are never used. We call this \emph{normalization-induced routing collapse}: the per-window mean and variance the router needs to distinguish input regimes are stripped by the instance normalization built into most pretrained TSFMs (MOMENT, TimesFM, and others). A $720$-run sweep across five standard rescue mechanisms (load balancing, z-loss, entropy regularization, ReLU routing, expert-choice) reduces MSE by at most $10.9\%$, still $2.7\times$ worse than our fix, because the failure is not in the router's optimization but in its input. We formalize the mechanism through a mutual-information decomposition that yields a signal-ratio predictor of when collapse matters (Spearman $\rho{=}{-}0.88$, $p{<}0.002$), correctly identifying boundary cases where raw routing does not help. The fix follows from the diagnosis: \emph{Raw-Routed Mixture of Adapters} (RR-MoA) routes on the raw, pre-normalization input. RR-MoA wins $54/54$ dataset/freeze-level cells on the primary backbone with $27$--$77\%$ MSE improvement over the best fixed adapter, generalizes across four further backbones, and is confirmed to be instance-normalization-specific by two negative controls. The same principle predicts a \emph{Frozen Paradox} we verify empirically: frozen adapters beat full fine-tuning by $12$--$79\%$. A companion architecture (Residual-IA\textsuperscript{+}) restoring raw-signal access at the expert level closes the remaining gap to supervised baselines.
+Time series foundation models (TSFMs) are deployed with frozen backbones and small per-task adapters: one TSFM can serve thousands of tenants through few-MB adapter weights (${\sim}1.7$\,MB on MOMENT-small) hot-swapped from host RAM in microseconds. Standard adapters use a single static head. Since real series mix heterogeneous regimes, a natural upgrade is a mixture of expert adapters that picks a different head per input window. We show this catastrophically fails on TSFMs that use instance normalization: routing entropy collapses to $0.000$ and all but one expert die. We call this \emph{normalization-induced routing collapse}: the per-window mean and variance the router needs are stripped by the instance normalization built into most pretrained TSFMs (MOMENT, TimesFM, and others). A $720$-run sweep across five standard MoE rescue mechanisms (load balancing, z-loss, entropy regularization, ReLU routing, expert-choice) recovers at most $10.9\%$ MSE, still $2.7\times$ worse than our fix, because the failure is in the router's input, not its optimization. We formalize the mechanism through a mutual-information decomposition that yields a signal-ratio predictor of when collapse matters (Spearman $\rho{=}{-}0.88$, $p{<}0.002$), correctly flagging boundary datasets where raw routing should not help. The fix follows: \emph{Raw-Routed Mixture of Adapters} (RR-MoA) routes on the raw, pre-normalization input. RR-MoA wins $54/54$ dataset/freeze-level cells on the primary backbone ($27$--$77\%$ MSE improvement over the best fixed adapter), generalizes across four further backbones and an imputation task, and is isolated to instance normalization by eight causal controls including a vision modality. The same principle predicts a \emph{Frozen Paradox} we verify: frozen adapters beat full fine-tuning by $12$--$79\%$. Applying the same raw-signal principle at the expert level (Residual-IA\textsuperscript{+}) closes the remaining gap to per-dataset supervised baselines.
 \end{abstract}
 
 \section{Introduction}
@@ -395,12 +395,12 @@ RR-MoA's case rests on three claims: that fixed-topology adapters are suboptimal
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Freeze-level ablation} (test MSE, mean$\pm$std, 3 seeds, H=96). RR-MoA (Top-2, same 5 experts) vs.\ best of $\{$linear, attention, conv$\}$. RR-MoA wins \textbf{54/54} across 6 datasets (extended grid in Appendix~\ref{app:extended_rrmoa}); improvement is largest when frozen (``Frozen Paradox'').}
+\caption{\textbf{Freeze-level ablation} (test MSE, mean$\pm$std, 3 seeds, H=96). RR-MoA (sparse Top-2 routing over 5 experts) vs.\ the best single-head adapter from $\{$linear, attention, conv$\}$ trained with the same protocol. ``MSE $\Delta\%$ vs.\ single-head'' is the relative MSE change of RR-MoA over the single-head baseline; negative $=$ lower MSE $=$ better. RR-MoA wins \textbf{54/54} across 6 datasets (extended grid in Appendix~\ref{app:extended_rrmoa}); the gain is largest when frozen (``Frozen Paradox'').}
 \label{tab:rrmoa}
 \small
 \begin{tabular}{@{}llccc@{}}
 \toprule
-Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
+Dataset & Freeze level & RR-MoA & Best single-head & MSE $\Delta\%$ vs.\ single-head \\
 \midrule
 \multirow{3}{*}{ETTh1}
  & Frozen (0/8)   & $\mathbf{0.680 \pm 0.027}$ & $1.275 \pm 0.014$ & $\mathbf{-46.7\%}$ \\
@@ -1508,7 +1508,7 @@ The failure is striking: even on datasets where entropy is not fully collapsed (
 \small
 \begin{tabular}{@{}llccc@{}}
 \toprule
-Dataset & Freeze level & RR-MoA (Top-2) & Best fixed & $\Delta$\% \\
+Dataset & Freeze level & RR-MoA & Best single-head & MSE $\Delta\%$ vs.\ single-head \\
 \midrule
 \multirow{3}{*}{ETTh2}
  & Frozen (0/8)   & $\mathbf{0.788 \pm 0.096}$ & $2.748 \pm 0.201$ & $\mathbf{-71.3\%}$ \\
