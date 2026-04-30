@@ -1,0 +1,199 @@
+use computer use feature to scroll through the rendered main paper, take zoomed screenshot at each visaulisation, list out visual errors, such as the above, the inconsistent color, arrow directions errors, etc and plan to fix them all. Make sure delegate images to subagent to minimise context usage
+
+---
+
+<task-notification>
+<task-id>a66cd8f98436ac58c</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a66cd8f98436ac58c.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Fig F.1 + F.2 architectures" completed</summary>
+<result>**Fig F.1 (Normalization-induced collapse):**
+1. Panel labels use **(a)/(b)** style ("Raw input space" / "Normalized space"), but the caption says "*Left*/*Right*". Inconsistent labeling convention. Severity: low.
+2. Caption claims "*distinct colors (amplitude, trend, volatility)*" — the four raw waveforms in (a) appear in similar muted/dark tones rather than visually distinct colors. Diversity is hard to read. Severity: medium.
+3. The expert-assignment row at the bottom of (a) shows boxes E1–E4 (only 4), but the paper uses K=5 experts. Missing expert. Severity: medium.
+4. The "Instance normalization strips μ, σ" arrow box sits between panels but the flow direction (a)→box→(b) is ambiguous; no explicit left-to-right arrowhead into (b). Severity: low.
+5. Raw waveforms not in the paper's standard blue (appear black/dark gray). Color-scheme inconsistency with Fig 1/Fig 2. Severity: low.
+
+**Fig F.2 (SR-MoA architecture):**
+1. The σ_k self-gates are drawn as small unlabeled circles on the arrows; they are visually indistinct from routing dots and not clearly differentiated from the expert boxes. Severity: medium.
+2. Header text "STREAM A: HIDDEN STATES" / "STREAM B: ROUTER INPUT" appears clipped/very small at top — borderline readable. Severity: low.
+3. The bottom annotation line ("No external router. Each expert decides its own contribution...") appears truncated/overflowing near the right column edge. Possible margin overflow. Severity: medium.
+4. Active expert is not highlighted in orange (paper convention); all 5 experts rendered uniformly. Severity: low.
+5. Raw input X_raw box not in blue waveform style — inconsistent with Fig 1/2. Severity: low.</result>
+<usage><total_tokens>33773</total_tokens><tool_uses>1</tool_uses><duration_ms>19596</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a4f577451b3aa334b</task-id>
+<tool-use-id>toolu_01FcJe9JHjqBumu7P957Fb1J</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a4f577451b3aa334b.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Fig F.3 routing scatter" completed</summary>
+<result>Visual issues in Figure F.3 (page 21):
+
+1. **Top-of-page legend placement** — Severity: HIGH
+The legend (mean, last, max, attention, conv1d) sits at the absolute top of the page, completely detached from the figure below. It looks like a stray header rather than belonging to Figure F.3.
+
+2. **Right panel axis labels swapped/mislabeled** — Severity: HIGH
+Caption says right panel is "mean level vs amplitude," but the right panel shows "Amplitude" on Y-axis and "mean level" on X-axis with range -1.5 to 1.5. The left panel has "Volatility" (Y) vs "Amplitude" (X). Axis label conventions between panels are inconsistent with the caption description.
+
+3. **Conv1d (purple) in legend but absent from data** — Severity: LOW
+Verified: purple is listed in the legend but no purple points are visible in either scatter. This matches the caption disclaimer, so acceptable but could confuse readers.
+
+4. **Color distinguishability** — Severity: MEDIUM
+The four visible expert colors (mean, last, max, attention) appear similar in saturation/hue at thumbnail scale; mean vs last and max vs attention are hard to separate without zooming.
+
+5. **Marker overlap density** — Severity: MEDIUM
+Left panel shows heavy overplotting near low-amplitude region (dense dark cluster around amplitude 1-3), making per-expert separation hard to read at 5,000 points.
+
+6. **Panel size asymmetry** — Severity: LOW
+The two panels appear roughly aligned horizontally but the right panel's plotting area looks slightly narrower than the left, breaking visual symmetry.</result>
+<usage><total_tokens>33734</total_tokens><tool_uses>1</tool_uses><duration_ms>16209</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5ba47b119087218a</task-id>
+<tool-use-id>toolu_012VrbZ7hLVig2eA6uBohnuF</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a5ba47b119087218a.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit Fig Q.1 Residual-IA architecture" completed</summary>
+<result>Visual issues in Figure Q.1 (Residual-IA+ architecture):
+
+1. **Top-left "TSFM Backbone" box** — Location: header strip. Issue: Contains a stray pink/magenta token "STREAM 1: BACKBONE" overlapping the box border; the colored label badge collides with the rounded rectangle outline. Severity: minor.
+
+2. **Stream labels ("STREAM 1: BACKBONE", "STREAM 2: RAW")** — Location: top-left and bottom-left. Issue: Label backgrounds extend beyond/overlap the adjacent box borders rather than sitting cleanly above them. Severity: minor.
+
+3. **Expert column (right side)** — Location: 5 stacked expert boxes. Issue: Box heights and internal text are very small; the per-expert formula text (e.g., "Expert 2: Last Block", "Expert 4: Ablation") is barely legible at column width. Severity: moderate (legibility).
+
+4. **Combiner node (Sigma symbol)** — Location: far right. Issue: The summation circle is drawn but no explicit "+" addition operator is shown between the streams before it; arrows merge into Sigma without a labeled gating/blend operator. Severity: minor (acceptable but ambiguous).
+
+5. **Color consistency** — Stream 1 uses blue and Stream 2 uses orange/peach as expected, matching Fig 2 convention. No issue.
+
+6. **Legend** — Location: bottom caption strip ("Blend gate ... DLinear backbone added only when useful"). Issue: Legend is text-only, not a visual swatch legend; readers must infer color mapping. Severity: minor.
+
+7. **Arrow directions** — All arrows flow left-to-right (input → backbone/MLP → experts → Sigma → output). No reversed arrows detected. No issue.
+
+8. **Page fit** — Diagram fits within column width; no overflow. No issue.
+
+Overall: diagram is structurally correct; main concerns are label/box overlap at the stream headers and small expert-box text legibility.</result>
+<usage><total_tokens>33724</total_tokens><tool_uses>1</tool_uses><duration_ms>26148</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a082140bbc406e724</task-id>
+<tool-use-id>toolu_013gWckQteyK6bgK3t1Q733L</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a082140bbc406e724.output</output-file>
+<status>completed</status>
+<summary>Agent "Verify Fig F.3 layout issues" completed</summary>
+<result>Verification of page 21 Figure F.3:
+
+1. **Stray legend at top: CONFIRMED.** The legend (mean / last / max / attention / conv1d) sits at the very top of the page, completely detached from the figure below. The figure itself appears mid-page with no embedded legend.
+
+2. **Axis labels:**
+   - Left panel: X-axis = "Amplitude", Y-axis = "Volatility"
+   - Right panel: X-axis = "Mean level", Y-axis = "Amplitude"
+   
+   Caption says "Left: amplitude vs volatility; right: mean level vs amplitude" — **consistent** with axis labels.
+
+3. **conv1d (purple) in legend: YES**, visible as the rightmost entry in the top legend strip. However, the caption notes "conv1d (purple) is in the legend but only fires for 1 expert on ETTh1, so it is not visually present" in the panels.
+
+4. **Heavy overplotting: YES.** Both panels show dense dark/black clusters (especially central regions) that obscure smaller dot patterns. The right panel particularly has a heavy dark blob around mean level 0 / amplitude 0.5 that masks underlying structure.</result>
+<usage><total_tokens>33607</total_tokens><tool_uses>1</tool_uses><duration_ms>14706</duration_ms></usage>
+</task-notification>
+
+---
+
+[Image #6] I think the arrows of this figure looks not good "Figure F.2: SR-MoA architecture (Self-Routed Mixture of Adapters). Each of K=5 experts has its own sigmoid gate σk reading Xraw directly, with no external router. The frozen TSFM produces H, and each expert’s contribution is scaled by its self-gate. SR-MoA shares only the raw-input principle with RR-MoA (Figure 2): the routing architecture is otherwise entirely different. SR-MoA outperforms RR-MoA by 13–42% across all 6 datasets, providing architecture-agnostic validation that the principle, not the specific router, drives the gains."
+
+---
+
+let's go
+
+---
+
+<task-notification>
+<task-id>a8c4cf472da127d54</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a8c4cf472da127d54.output</output-file>
+<status>completed</status>
+<summary>Agent "Verify Fig 5 frozen_paradox fix" completed</summary>
+<result>Verification of Figure 5 (page 9):
+
+1. **Legend clearance**: Yes, "Full FT" and "Frozen RR-MoA" legend sits cleanly above the bars. The tallest -71%/-79% labels have visible whitespace between them and the legend strip.
+
+2. **Label readability**: All six percentage labels (-79%, -71%, -41%, -36%, -35%, -12%) are legible above their respective bars without overlap or clipping.
+
+3. **Panel balance**: The two panels are well-balanced. The slight height bump (3.6→3.9 cm) brings the bar chart closer to the scatter's vertical extent; both feel proportionate within the figure box.
+
+4. **New issues**: None visible. The caption sits cleanly below, and the figure no longer crowds the surrounding prose.</result>
+<usage><total_tokens>33612</total_tokens><tool_uses>1</tool_uses><duration_ms>10224</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aab758f862df84221</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/aab758f862df84221.output</output-file>
+<status>completed</status>
+<summary>Agent "Verify Figs 2, F.1, F.2, Q.1 TikZ fixes" completed</summary>
+<result>**Verification:**
+
+1. **Fig 2 (page 4):** Yes — the Top-2 active boxes ("Last Token", "Attention") are clearly orange-filled with orange borders, visually distinct from the gray inactive boxes ("Mean Pool", "Max Pool", "Conv1d"). Path A/B labels are positioned inward and readable.
+
+2. **Fig F.1 (page 20):** Yes — panel (a) shows 5 expert boxes E1-E5 with diverse routing arrows; panel (b) shows the same 5 collapsed onto E1. Panel labels render as **(a) Raw input space** and **(b) Normalized space** as intended.
+
+3. **Fig F.2 (page 20):** The σ_k self-gates are visible as orange diamonds along the right side of each expert row with σ_1...σ_5 labels readable. The bottom annotation ("No external router. Each expert decides its own contribution via σ_k(X_raw)...") fits within the text column without right-edge overflow. Stream labels (STREAM (A), SELF-ROUTING) are appropriately sized.
+
+4. **Fig Q.1 (page 28):** Yes — per-expert text is now clean and legible ("Expert 1: Mean Pool", ..., "Expert 5: Conv1d"); the equation has been moved to the caption (`y_k = y_raw + σ(blend_k(X_raw)) · Adapter_k(H)`). Active experts (Last Token, Attention) carry orange fill+border distinguishing them from gray inactive ones.
+
+**New visual issues flagged:**
+
+- **Fig 2:** Minor — the "K=5 experts" label at the far right appears slightly close to the page text margin; verify it's not clipping.
+- **Fig F.2:** The "STREAM (A): HIDDEN STATES" / "SELF-ROUTING..." stream-band labels at the top sit very close to the top edge of the figure box; spacing is tight but readable.
+- **Fig Q.1:** Tight, no overflow detected.
+
+Overall, all four TikZ changes landed correctly with no regressions.</result>
+<usage><total_tokens>34929</total_tokens><tool_uses>3</tool_uses><duration_ms>19096</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>afd3960a757a375c7</task-id>
+<tool-use-id>toolu_01QiaASiEtrRr4EJkrURY7wp</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/afd3960a757a375c7.output</output-file>
+<status>completed</status>
+<summary>Agent "Final check Fig C.1 + Fig 2" completed</summary>
+<result>**Page 17 (Figure C.1):** Only "phase transition" is visible; "+283%" is missing/clipped. The label appears near α=1.0 spike but the "+283%" portion runs off the right edge of the plot area.
+
+**Page 4 (Figure 2):** The "K=5 experts" label is clipping at the right margin (only partially visible). The bracket holding the 5 expert boxes (Mean Pool, Last Token, Max Pool, Attention, Conv1d) is visible but the accompanying "K=5 experts" annotation is cut off.</result>
+<usage><total_tokens>34104</total_tokens><tool_uses>2</tool_uses><duration_ms>15343</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a0252eb9b465c3f84</task-id>
+<tool-use-id>toolu_01Ja8TnuT9hNPApChpCgxPSY</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a0252eb9b465c3f84.output</output-file>
+<status>completed</status>
+<summary>Agent "Final verify Fig C.1 + Fig 2" completed</summary>
+<result>Both fixes verified.
+
+1) Figure C.1 (p.17): "phase transition" and "+283%" both fully visible inside the plot frame, wrapped on two lines above the spike.
+
+2) Figure 2 (p.4): "K=5 experts" fully visible under the bracket, no right-margin clipping.</result>
+<usage><total_tokens>34001</total_tokens><tool_uses>2</tool_uses><duration_ms>11022</duration_ms></usage>
+</task-notification>
+
+---
+
+take the next steps

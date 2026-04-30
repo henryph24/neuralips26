@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "abca7047ef22",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 9,
+  "files_touched": [
+    "figures/causal_contrast.pdf",
+    "figures/routing_viz.pdf",
+    "figures/tikz_collapse_mechanism.tex",
+    "main.tex",
+    "scripts/plot_adamix_trajectory.py",
+    "scripts/plot_causal_contrast.py",
+    "scripts/plot_routing_viz.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ab/ca7047ef22/0/metadata.json",
+      "transcript": "/ab/ca7047ef22/0/full.jsonl",
+      "content_hash": "/ab/ca7047ef22/0/content_hash.txt",
+      "prompt": "/ab/ca7047ef22/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 241,
+    "cache_creation_tokens": 313497,
+    "cache_read_tokens": 23228372,
+    "output_tokens": 69751,
+    "api_call_count": 161
+  }
+}
