@@ -1,0 +1,49 @@
+is our abstract good, fully deliver key results, contribution, but show our initial motivation ?
+
+---
+
+yes, but do not exceed length requirements
+
+---
+
+1.7 MB heads ?
+
+---
+
+reverify, is it always that numbers for all TSFMs (I do not think so)
+
+---
+
+the linkage from first sentence to the "the natural upgrade" is quite abrupt
+
+---
+
+"Today this adapter is a single static head" I think this is only true for moment, not other TSFMs
+
+---
+
+The standard adapter design is a single static head, yet real
+         +series mix heterogeneous regimes within the same window; the natural upgrade i
+         +s a mixture of expert adapters that picks a different head per input.
+
+^
+
+this sentence is really nested and unncessarily complex
+
+---
+
+[Image #1] one of the feedback from my senior supervisor is that Best Fixed and Delta sounds a bit confusing to her. Even the column name RR-MoA (Top-2)
+
+---
+
+now that we flipped this: "(46.7% instead of −46.7%)"
+
+are we being consistent throughout the paper ?
+
+---
+
+I think we should revert that to delta and negative sign (less prone to error) but make the column name more explicit
+
+---
+
+love the "lower MSE = better"
