@@ -1,0 +1,15 @@
+[Image #2]
+
+for figures 1, it looks like the illustrated time series did not fit in their assigned boxes
+
+---
+
+use computer use feature to scroll through the rendered main paper, take zoomed screenshot at each visaulisation, list out visual errors, such as the above, the inconsistent color, arrow directions errors, etc and plan to fix them all
+
+---
+
+continue
+
+---
+
+let's do it
