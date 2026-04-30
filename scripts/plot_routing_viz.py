@@ -46,7 +46,7 @@ cmap = plt.cm.tab10
 colors = [cmap(i) for i in range(n_experts)]
 
 # ── Figure ─────────────────────────────────────────────────────────────
-fig, axes = plt.subplots(1, 2, figsize=(6, 2.5))
+fig, axes = plt.subplots(1, 2, figsize=(6, 2.7))
 
 panels = [
     (amplitude, volatility, "Amplitude", "Volatility", axes[0]),
@@ -58,21 +58,23 @@ for x_data, y_data, xlabel, ylabel, ax in panels:
         mask = top1 == eid
         ax.scatter(
             x_data[mask], y_data[mask],
-            c=[colors[eid]], s=6, alpha=0.3,
+            c=[colors[eid]], s=3.5, alpha=0.25,
             label=expert_names[eid], rasterized=True,
+            edgecolors="none",
         )
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.tick_params(direction="in")
 
-# Single shared legend, outside the right panel
+# Single shared legend, BELOW the panels (avoids float-detachment in LaTeX)
 handles, labels = axes[1].get_legend_handles_labels()
 fig.legend(
     handles, labels,
-    loc="upper center", ncol=n_experts,
+    loc="lower center", ncol=n_experts,
     fontsize=7, frameon=False,
-    bbox_to_anchor=(0.5, 1.02),
-    markerscale=2.0,
+    bbox_to_anchor=(0.5, -0.02),
+    markerscale=2.5,
+    handletextpad=0.4, columnspacing=1.2,
 )
 
 # ── Cluster annotation (if one expert dominates a region) ──────────────
@@ -92,7 +94,7 @@ axes[0].annotate(
     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7),
 )
 
-plt.tight_layout(rect=[0, 0, 1, 0.93])
+plt.tight_layout(rect=[0, 0.08, 1, 1.0])
 fig.savefig(OUT_PATH, dpi=300, bbox_inches="tight")
 plt.close(fig)
 print(f"Saved: {OUT_PATH}")

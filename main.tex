@@ -211,9 +211,10 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 \draw[deadarr] (routerB.east) -- (e5.west);
 \draw[activearr] (e1.east) to[out=0, in=140] (yB.north);
 
-% Panel labels
-\node[font=\footnotesize\bfseries] at (-0.4, 3.65) {(a)};
-\node[font=\footnotesize\bfseries] at (-0.4, 1.30) {(b)};
+% Panel labels (matched in size + weight to the in-panel banner titles
+% so the (a)/(b) tags read as part of the same typographic system)
+\node[font=\small\bfseries, text=black] at (-0.35, 3.65) {(a)};
+\node[font=\small\bfseries, text=black] at (-0.35, 1.30) {(b)};
 
 \end{tikzpicture}%
 }% end resizebox
@@ -249,8 +250,8 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
     gatebox/.style={box, draw=orange!70, fill=orange!4, minimum width=2.0cm, minimum height=0.9cm},
     hiddenbox/.style={box, draw=blue!50, fill=blue!3, minimum width=1.4cm},
     topkbox/.style={box, draw=orange!60, fill=orange!3, minimum width=1.3cm},
-    expertactive/.style={box, draw=black!80, fill=white, minimum width=2.0cm, minimum height=0.65cm, font=\small\bfseries},
-    expertinactive/.style={box, draw=gray!50, fill=gray!6, minimum width=2.0cm, minimum height=0.65cm, font=\small, text=black!85},
+    expertactive/.style={box, draw=orange!75!black, fill=orange!18, line width=1.0pt, minimum width=2.0cm, minimum height=0.65cm, font=\small\bfseries, text=black},
+    expertinactive/.style={box, draw=gray!45, fill=gray!8, minimum width=2.0cm, minimum height=0.65cm, font=\small, text=black!55},
     sumnode/.style={circle, draw=black!70, fill=white, minimum size=0.65cm, font=\normalsize, line width=0.7pt},
     outputbox/.style={box, draw=teal!60, fill=teal!4, minimum width=1.2cm},
     % -- Arrow styles --
@@ -276,7 +277,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 };
 % Lock + FROZEN badge
 \node[font=\scriptsize\bfseries, text=red!65, fill=red!8, rounded corners=2pt, inner sep=1.5pt]
-    at ([yshift=0.15cm]tsfm.north) {\textsc{frozen}};
+    at ([xshift=-0.6cm, yshift=0.18cm]tsfm.north east) {\textsc{frozen}};
 
 % Hidden states
 \node[hiddenbox] (hidden) at (6.8, 1.8) {
@@ -304,10 +305,15 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 \node[expertactive]   (e4) at (9.8, -0.4) {\textbf{Attention}};
 \node[expertinactive] (e5) at (9.8, -1.6) {Conv1d};
 
-% Expert pool bracket label
-\draw[decorate, decoration={brace, amplitude=4pt, mirror}, gray!50, line width=0.5pt]
-    (11.0, 3.55) -- (11.0, -1.95);
-\node[font=\scriptsize, text=black, anchor=west] at (11.25, -2.3) {$K{=}5$ experts};
+% Expert pool bracket label. Use a plain right-side bracket (vertical line with
+% small inward end caps at top and bottom) instead of a curly brace, because the
+% brace's mid-curl bumps out right at Max Pool's vertical center and reads as a
+% second bracket starting there.
+\draw[gray!60, line width=0.6pt, line cap=round]
+    (10.95, 3.55) -- (11.05, 3.55) -- (11.05, -1.95) -- (10.95, -1.95);
+% Center the label under the bracket and pull inward so it never crosses the
+% right column margin under \resizebox{\columnwidth}.
+\node[font=\scriptsize, text=black, anchor=north] at (10.5, -2.15) {$K{=}5$ experts};
 
 % ====== WEIGHTED SUM + OUTPUT ======
 \node[sumnode] (sum) at (12.5, 0.8) {$\Sigma$};
@@ -318,8 +324,8 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 };
 
 % ====== PATH LABELS ======
-\node[font=\scriptsize\bfseries, text=blue!55] at (1.6, 2.8) {\textsc{Path A: Embeddings}};
-\node[font=\scriptsize\bfseries, text=orange!70] at (1.6, -2.8) {\textsc{Path B: Routing}};
+\node[font=\scriptsize\bfseries, text=blue!55, anchor=west] at (0.30, 3.10) {\textsc{Path A: Embeddings}};
+\node[font=\scriptsize\bfseries, text=orange!70, anchor=west] at (0.30, -3.10) {\textsc{Path B: Routing}};
 
 % ====== ARROWS (on background layer so they render behind boxes/text) ======
 \begin{pgfonlayer}{background}
@@ -330,11 +336,11 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 % Path A: TSFM → H → all experts (each via its own short rail at distinct x
 % so the five horizontal segments do not overlap into a single thick line)
 \draw[bluearr] (tsfm.east) -- (hidden.west);
-\draw[grayarr] (hidden.east) -- ++(0.40,0) |- (e1.west);
+\draw[bluearr] (hidden.east) -- ++(0.40,0) |- (e1.west);
 \draw[bluearr] (hidden.east) -- ++(0.55,0) |- (e2.west);
-\draw[grayarr] (hidden.east) -- ++(0.70,0) |- (e3.west);
+\draw[bluearr] (hidden.east) -- ++(0.70,0) |- (e3.west);
 \draw[bluearr] (hidden.east) -- ++(0.85,0) |- (e4.west);
-\draw[grayarr] (hidden.east) -- ++(1.00,0) |- (e5.west);
+\draw[bluearr] (hidden.east) -- ++(1.00,0) |- (e5.west);
 
 % Path B: Gate → Top-2 → active experts
 \draw[orangearr] (gate.east) -- (topk.west);
@@ -474,7 +480,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \centering
 \includegraphics[width=0.78\columnwidth]{figures/causal_contrast.pdf}
 \vspace{-4pt}
-\caption{\textbf{Causal contrast: MOMENT vs Timer-XL} (ETTh1, last-4 unfreezing). MOMENT entropy collapses $0.51{\to}0.000$ in ${\sim}40$ steps (red); Timer-XL stays at ${\approx}1.60$ for all $400$ steps (orange). Same code, same data, only normalization differs. Pattern generalizes across all 3 tested datasets.}
+\caption{\textbf{Causal contrast: MOMENT vs Timer-XL} (ETTh1, last-4 unfreezing). Solid lines: unfrozen runs. MOMENT entropy collapses $0.51{\to}0.000$ in ${\sim}40$ steps (red); Timer-XL stays at ${\approx}1.60$ for all $400$ steps (orange). Dashed lines: frozen-backbone controls for both models, neither collapses. Dotted: $\log K{=}1.609$ ceiling. Same code, same data, only normalization differs. Pattern generalizes across all 3 tested datasets.}
 \label{fig:causal_contrast}
 \end{figure}
 
@@ -569,7 +575,7 @@ In the limit where the router's signal lives entirely in the stripped statistics
 \begin{axis}[
     ybar,
     width=\textwidth,
-    height=3.6cm,
+    height=3.9cm,
     bar width=7pt,
     ylabel={Test MSE (H=96)},
     ylabel style={font=\footnotesize},
@@ -577,8 +583,8 @@ In the limit where the router's signal lives entirely in the stripped statistics
     xtick=data,
     x tick label style={font=\footnotesize},
     y tick label style={font=\footnotesize},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85},
-    ymin=0,
+    legend style={at={(0.5,1.06)}, anchor=south, font=\scriptsize, draw=none, fill=white, fill opacity=0.92, legend columns=2, column sep=0.8em},
+    ymin=0, ymax=3.35,
     enlarge x limits=0.12,
     error bars/y dir=both,
     error bars/y explicit,
@@ -589,8 +595,8 @@ In the limit where the router's signal lives entirely in the stripped statistics
 \node[font=\scriptsize, text=red!70!black] at (axis cs:ETTh1,1.25) {$-36\%$};
 \node[font=\scriptsize, text=red!70!black] at (axis cs:ETTm1,1.05) {$-35\%$};
 \node[font=\scriptsize, text=red!70!black] at (axis cs:Weath,0.62) {$-41\%$};
-\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTh2,2.83) {$-71\%$};
-\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTm2,2.83) {$-79\%$};
+\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTh2,2.85) {$-71\%$};
+\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTm2,2.78) {$-79\%$};
 \node[font=\scriptsize, text=red!70!black] at (axis cs:Elec,0.61) {$-12\%$};
 \legend{Full FT (unfrozen), Frozen RR-MoA}
 \end{axis}
@@ -610,21 +616,28 @@ In the limit where the router's signal lives entirely in the stripped statistics
     grid=major, grid style={gray!20},
     clip=false,
 ]
+% Main 7 datasets (interior of the regime where raw routing helps)
 \addplot[only marks, mark=*, mark size=2.5pt, blue!80] coordinates {
-    (0.061, -32.9) (0.135, +2.9) (0.242, -26.8) (0.566, -43.2) (0.671, -51.1) (0.703, -44.6) (1.163, -71.0) (1.241, -77.2) (2.174, -66.5)
+    (0.242, -26.8) (0.566, -43.2) (0.671, -51.1) (0.703, -44.6) (1.163, -71.0) (1.241, -77.2) (2.174, -66.5)
+};
+% Boundary cases: Traffic (low R, no benefit predicted) and Solar (outlier).
+% Use orange diamonds, NOT red — the left-panel bars use red for "Full FT", and
+% reusing red here would create a same-figure color-semantic collision.
+\addplot[only marks, mark=diamond*, mark size=3.2pt, orange!85!black] coordinates {
+    (0.135, +2.9) (0.061, -32.9)
 };
 \node[font=\scriptsize, anchor=west] at (axis cs:0.08, -32.9) {Sol};
 \node[font=\scriptsize, anchor=west] at (axis cs:0.17, +2.9) {Traf};
 \node[font=\scriptsize, anchor=west] at (axis cs:0.27, -26.8) {Elec};
 \node[font=\scriptsize, anchor=south] at (axis cs:0.566, -39.5) {h1};
-\node[font=\scriptsize, anchor=west] at (axis cs:0.70, -51.1) {m1};
-\node[font=\scriptsize, anchor=north] at (axis cs:0.703, -47.5) {W};
+\node[font=\scriptsize, anchor=west] at (axis cs:0.74, -51.1) {m1};
+\node[font=\scriptsize, anchor=east] at (axis cs:0.66, -44.6) {W};
 \node[font=\scriptsize, anchor=west] at (axis cs:1.19, -71.0) {h2};
 \node[font=\scriptsize, anchor=west] at (axis cs:1.27, -77.2) {m2};
 \node[font=\scriptsize, anchor=west] at (axis cs:2.20, -66.5) {Exch};
 \addplot[black, thin, dotted] coordinates {(0,0) (2.5,0)};
 \addplot[red, thick, dashed, domain=0.05:2.4] {-30.5*x - 7.5};
-\node[font=\scriptsize, text=red!70, anchor=south west] at (axis cs:0.02, -82) {$\rho{=}{-}0.88$};
+\node[font=\scriptsize, text=red!70, anchor=north east] at (axis cs:2.45, -10) {$\rho{=}{-}0.88$};
 \end{axis}
 \end{tikzpicture}
 \end{minipage}
@@ -1117,15 +1130,18 @@ For $\alpha < \alpha^*$, routing quality degrades continuously; for $\alpha \to 
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-    width=0.62\columnwidth, height=3.6cm,
-    xlabel={Normalization dose $\alpha$},
-    ylabel={Test MSE (H=96)},
+    width=0.70\columnwidth, height=4.0cm,
+    xlabel={Normalization dose $\alpha$ ($0{=}$raw, $1{=}$RevIN)},
+    ylabel={Test MSE (H=96, log)},
     xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
     x tick label style={font=\footnotesize}, y tick label style={font=\footnotesize},
-    xmin=-0.05, xmax=1.05, ymin=0, ymax=3.2,
+    xmin=-0.05, xmax=1.10, ymode=log, ymin=0.2, ymax=4.5,
     xtick={0, 0.25, 0.5, 0.75, 1.0},
+    ytick={0.25, 0.5, 1, 2, 4},
+    yticklabels={0.25, 0.5, 1, 2, 4},
+    log ticks with fixed point,
     grid=major, grid style={gray!15},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85, row sep=-2pt, legend columns=2, /tikz/every even column/.append style={column sep=4pt}},
+    legend style={at={(1.02,1.00)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85, row sep=-2pt},
 ]
 \addplot[blue!80, thick, mark=square*, mark size=1.8pt] coordinates {(0,0.461) (0.25,0.464) (0.5,0.466) (0.75,0.479) (1.0,1.040)};
 \addplot[red!70, thick, mark=triangle*, mark size=2pt] coordinates {(0,0.485) (0.25,0.527) (0.5,0.556) (0.75,0.573) (1.0,2.711)};
@@ -1134,10 +1150,16 @@ For $\alpha < \alpha^*$, routing quality degrades continuously; for $\alpha \to 
 \addplot[purple!70, thick, mark=pentagon*, mark size=1.8pt] coordinates {(0,0.261) (0.25,0.264) (0.5,0.268) (0.75,0.276) (1.0,0.475)};
 \addplot[cyan!60!black, thick, mark=star, mark size=2pt] coordinates {(0,0.340) (0.25,0.364) (0.5,0.350) (0.75,0.311) (1.0,2.927)};
 \legend{ETTh1, ETTh2, ETTm1, Weather, Electricity, ETTm2}
-\addplot[black!40, dashed, thick, forget plot] coordinates {(0.875,0) (0.875,3.1)};
+% Phase-transition shading + callout (anchor=south west and pull left so the
+% "+283%" suffix doesn't fall off the right edge of the plot frame)
+\draw[densely dashed, gray!55, thin] (axis cs:0.875,0.2) -- (axis cs:0.875,4.5);
+\node[font=\scriptsize\bfseries, text=red!75!black, anchor=south east,
+      align=right, inner sep=1pt]
+    at (axis cs:0.86,2.95) {phase transition\\$+283\%$};
+\draw[->, thick, red!75!black] (axis cs:0.86,2.95) -- (axis cs:0.99,2.78);
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{Normalization dose-response} (frozen, 5 seeds $\times$ 6 datasets). MSE vs $\alpha$ ($0{=}$raw, $1{=}$RevIN). Phase transition at $\alpha{=}1.0$ ($+283\%$), mild for $\alpha{\leq}0.75$ ($+5.4\%$); routing entropy stays in $[1.43,1.57]$ across all $\alpha$ (Appendix~\ref{app:routing_ablations}).}
+\caption{\textbf{Normalization dose-response} (frozen, 5 seeds $\times$ 6 datasets; std smaller than markers). MSE vs $\alpha$ ($0{=}$raw, $1{=}$RevIN). Phase transition at $\alpha{=}1.0$ ($+283\%$), mild for $\alpha{\leq}0.75$ ($+5.4\%$); routing entropy stays in $[1.43,1.57]$ across all $\alpha$ (Appendix~\ref{app:routing_ablations}).}
 \label{fig:dose_response}
 \end{figure}
 
@@ -1243,7 +1265,7 @@ Dataset & Rank & Targets & Head & MSE (mean$\pm$std) \\
 \resizebox{0.95\columnwidth}{!}{%
 \input{figures/tikz_collapse_mechanism.tex}%
 }
-\caption{\textbf{Normalization-induced routing collapse mechanism.} \textit{Left:} Raw input windows with distinct characteristics (amplitude, trend, volatility) are routed to different experts. \textit{Right:} After instance normalization strips $\mu$ and $\sigma$, all windows become indistinguishable, and the router collapses to a single expert (entropy $\to 0.000$).}
+\caption{\textbf{Normalization-induced routing collapse mechanism.} \textbf{(a)}~Raw input windows with distinct characteristics (amplitude, trend, volatility) route to different experts ($K{=}5$, color carries the window-to-expert identity). \textbf{(b)}~After instance normalization strips $\mu$ and $\sigma$, all windows become indistinguishable, and the router collapses to a single expert (entropy $\to 0.000$).}
 \label{fig:collapse_mechanism}
 \end{figure}
 
@@ -1286,8 +1308,8 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
     expertbox/.style={rectangle, draw=black, fill=white, rounded corners=2pt,
         minimum width=3.4cm, minimum height=0.85cm, font=\scriptsize\bfseries,
         align=center, line width=0.8pt, text=black, inner sep=4pt},
-    sigmagate/.style={diamond, draw=srgate, fill=srgate!8, line width=0.8pt,
-        minimum size=0.65cm, font=\scriptsize, inner sep=0pt, text=srgate!85!black},
+    sigmagate/.style={diamond, draw=srgate, fill=srgate!18, line width=1.0pt,
+        minimum size=0.80cm, font=\scriptsize\bfseries, inner sep=0pt, text=srgate!75!black},
     sumnode/.style={circle, draw=black, fill=white,
         minimum size=0.7cm, font=\normalsize\bfseries, line width=0.8pt},
     outputbox/.style={rectangle, draw=srout, fill=white, rounded corners=2pt,
@@ -1316,7 +1338,7 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \node[font=\scriptsize\bfseries, text=white,
     fill={rgb,255:red,200;green,55;blue,55},
     rounded corners=1.5pt, inner sep=2pt]
-    at ([yshift=0.18cm]tsfm.north west) {\textsc{frozen}};
+    at ([xshift=-0.6cm, yshift=0.18cm]tsfm.north east) {\textsc{frozen}};
 
 % H box
 \node[hiddenbox] (hidden) at (5.6, 1.6) {$\mathbf{H}$};
@@ -1337,10 +1359,11 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \node[outputbox] (output) at (14.5, 0.1) {%
     $\hat{\mathbf{y}}$\\[-1pt]{\scriptsize\mdseries forecast}};
 
-% Stream labels
-\node[font=\scriptsize\bfseries, text=srback] at (8.0, 3.55)
+% Stream labels (pulled inward from the top/bottom edges so they don't
+% touch the figure bounding box at \resizebox{0.95\columnwidth})
+\node[font=\footnotesize\bfseries, text=srback] at (8.0, 3.30)
     {\textsc{Stream A: Hidden States}};
-\node[font=\scriptsize\bfseries, text=srgate] at (8.0, -3.30)
+\node[font=\footnotesize\bfseries, text=srgate] at (8.0, -3.05)
     {\textsc{Self-routing: per-expert} $\sigma_k(\mathbf{X}_\mathrm{raw})$};
 
 % ====== Arrows on background layer (so they render BEHIND boxes/text) ======
@@ -1373,11 +1396,11 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \draw[outarr] (sum.east) -- (output.west);
 \end{pgfonlayer}
 
-% Bottom annotation
-\node[font=\scriptsize, align=center, text=black] at (7.5, -4.0) {%
-    No external router. Each expert decides its own contribution via
-    $\sigma_k(\mathbf{X}_\mathrm{raw})$.
-    Output: $\hat{\mathbf{y}} = \sum_k \sigma_k(\mathbf{X}_\mathrm{raw}) \cdot \mathrm{Adapter}_k(\mathbf{H})$.};
+% Bottom annotation (parbox to prevent overflow at column width)
+\node[anchor=center] at (7.3, -4.0) {%
+    \parbox{12cm}{\centering\footnotesize
+    No external router. Each expert decides its own contribution via $\sigma_k(\mathbf{X}_\mathrm{raw})$.\\[1pt]
+    Output: $\hat{\mathbf{y}} = \sum_k \sigma_k(\mathbf{X}_\mathrm{raw}) \cdot \mathrm{Adapter}_k(\mathbf{H})$.}};
 \end{tikzpicture}%
 }
 \caption{\textbf{SR-MoA architecture (Self-Routed Mixture of Adapters).} Each of $K{=}5$ experts has its own sigmoid gate $\sigma_k$ reading $\mathbf{X}_\mathrm{raw}$ directly, with no external router. The frozen TSFM produces $\mathbf{H}$, and each expert's contribution is scaled by its self-gate. SR-MoA shares only the \emph{raw-input} principle with RR-MoA (Figure~\ref{fig:framework}): the routing architecture is otherwise entirely different. SR-MoA outperforms RR-MoA by $13$--$42\%$ across all 6 datasets, providing architecture-agnostic validation that the principle, not the specific router, drives the gains.}
@@ -1454,7 +1477,7 @@ Weather & Frozen  & Timer-XL  & $\mathbf{0.197 \pm 0.010}$ & $1.54$ \\
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.95\columnwidth]{figures/routing_viz.pdf}
-\caption{\textbf{Per-sample expert assignment vs.\ input statistics} (ETTh1, seed 42, $N{=}5{,}000$ test windows). Left: amplitude vs.\ volatility; right: mean level vs.\ amplitude. Colors indicate dominant expert (top-1 routing weight). Expert selection clusters by amplitude and volatility (the very statistics RevIN strips), empirically validating the conditional independence assumption $(M,\Sigma) \perp\!\!\!\perp S$ from Observation~\ref{thm:mi_decomp}(iii).}
+\caption{\textbf{Per-sample expert assignment vs.\ input statistics} (ETTh1, seed 42, $N{=}5{,}000$ test windows). Left: amplitude vs.\ volatility; right: mean level vs.\ amplitude. Colors indicate dominant expert (top-1 routing weight). Expert selection clusters by amplitude and volatility (the very statistics RevIN strips), empirically validating the conditional independence assumption $(M,\Sigma) \perp\!\!\!\perp S$ from Observation~\ref{thm:mi_decomp}(iii). Note: conv1d (purple) is in the legend but rarely the top-1 expert on ETTh1, so it is not visually present.}
 \label{fig:routing_viz}
 \end{figure}
 
@@ -2126,12 +2149,12 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
         minimum width=1.0cm, minimum height=0.7cm},
     rawforebox/.style={box, draw=ridraw, fill=ridraw!6,
         minimum width=1.2cm, minimum height=0.7cm},
-    expertactive/.style={box, draw=black, fill=white,
-        minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize\bfseries,
+    expertactive/.style={box, draw=ridgate!75!black, fill=ridgate!12,
+        minimum width=3.4cm, minimum height=0.80cm, font=\small\bfseries,
         align=center, line width=1.1pt, text=black},
-    expertinactive/.style={box, draw=black!50, fill=white,
-        minimum width=4.2cm, minimum height=0.95cm, font=\scriptsize,
-        text=black!85, align=center, line width=0.5pt, dashed},
+    expertinactive/.style={box, draw=black!45, fill=gray!4,
+        minimum width=3.4cm, minimum height=0.80cm, font=\small,
+        text=black!60, align=center, line width=0.5pt, dashed},
     sigmagate/.style={diamond, draw=ridgate, fill=ridgate!15,
         minimum size=0.55cm, font=\scriptsize, inner sep=0pt, line width=0.7pt},
     sumnode/.style={circle, draw=black!70, fill=white,
@@ -2158,7 +2181,7 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 };
 \node[font=\scriptsize\bfseries, text=white,
     fill=ridfrozen, rounded corners=2pt, inner sep=2pt]
-    at ([xshift=0.6cm,yshift=0.18cm]tsfm.north east) {\textsc{frozen}};
+    at ([xshift=-0.6cm, yshift=0.18cm]tsfm.north east) {\textsc{frozen}};
 \node[hiddenbox] (hidden) at (5.7, 1.6) {$\mathbf{H}$};
 
 % Stream 2: Shared NLinear (bottom)
@@ -2175,20 +2198,22 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \node[font=\scriptsize\bfseries, text=ridraw]
     at (1.6, -2.55) {\textsc{Stream 2: Raw (DLinear-eq.)}};
 
-% 5 experts (right side, stacked) — narrower, σ gate moved outside
-\node[expertinactive] (e1) at (10.4, 3.0) {Expert 1: Mean Pool\\$\mathbf{y}_1 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_1) \cdot \mathrm{Adapter}_1(\mathbf{H})$};
-\node[expertactive]   (e2) at (10.4, 1.5) {Expert 2: Last Token\\$\mathbf{y}_2 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_2) \cdot \mathrm{Adapter}_2(\mathbf{H})$};
-\node[expertinactive] (e3) at (10.4, 0.0) {Expert 3: Max Pool\\$\mathbf{y}_3 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_3) \cdot \mathrm{Adapter}_3(\mathbf{H})$};
-\node[expertactive]   (e4) at (10.4, -1.5) {Expert 4: Attention\\$\mathbf{y}_4 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_4) \cdot \mathrm{Adapter}_4(\mathbf{H})$};
-\node[expertinactive] (e5) at (10.4, -3.0) {Expert 5: Conv1d\\$\mathbf{y}_5 = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_5) \cdot \mathrm{Adapter}_5(\mathbf{H})$};
+% 5 experts (right side, stacked) — names only; per-expert formula given in
+% the caption to keep the boxes readable after resize-to-column-width.
+\node[expertinactive] (e1) at (10.4, 3.0) {Expert 1: Mean Pool};
+\node[expertactive]   (e2) at (10.4, 1.5) {Expert 2: Last Token};
+\node[expertinactive] (e3) at (10.4, 0.0) {Expert 3: Max Pool};
+\node[expertactive]   (e4) at (10.4, -1.5) {Expert 4: Attention};
+\node[expertinactive] (e5) at (10.4, -3.0) {Expert 5: Conv1d};
 
 % Sigmoid gates (small diamonds before each active expert, no overlap)
 \node[sigmagate] (g2) at (7.6, 1.5) {$\sigma$};
 \node[sigmagate] (g4) at (7.6, -1.5) {$\sigma$};
 
-% Weighted sum + output
+% Weighted sum + output (Σ is the gated-sum combiner; + signs visually shown
+% on each incoming arrow via labelled `+` nodes)
 \node[sumnode] (sum) at (13.5, 0.0) {$\Sigma$};
-\node[font=\tiny, text=black] at (13.5, -0.65) {weighted};
+\node[font=\tiny, text=black, anchor=north] at (13.5, -0.45) {weighted sum};
 \node[outputbox] (output) at (15.2, 0.0) {
     $\hat{\mathbf{y}}$\\[-2pt]
     {\scriptsize forecast}
@@ -2200,26 +2225,23 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 \draw[bluearr]  (input.north) |- (tsfm.west);
 \draw[greenarr] (input.south) |- (nlinear.west);
 
-% Stream 1: TSFM -> H -> all five experts. Each arrow uses a distinct rail
-% offset so the five horizontal stubs do not collapse into one fat line.
+% Stream 1: TSFM -> H -> all five experts. Uniform blue (Stream 1 reaches
+% every expert; activation status conveyed by expert-box style only).
 \draw[bluearr] (tsfm.east) -- (hidden.west);
-\draw[grayarr] (hidden.east) -- ++(0.30,0) |- ([yshift=0.20cm]e1.west);
+\draw[bluearr] (hidden.east) -- ++(0.30,0) |- ([yshift=0.20cm]e1.west);
 \draw[bluearr] (hidden.east) -- ++(0.45,0) |- ([yshift=0.20cm]e2.west);
-\draw[grayarr] (hidden.east) -- ++(0.60,0) |- ([yshift=0.20cm]e3.west);
+\draw[bluearr] (hidden.east) -- ++(0.60,0) |- ([yshift=0.20cm]e3.west);
 \draw[bluearr] (hidden.east) -- ++(0.75,0) |- ([yshift=0.20cm]e4.west);
-\draw[grayarr] (hidden.east) -- ++(0.90,0) |- ([yshift=0.20cm]e5.west);
+\draw[bluearr] (hidden.east) -- ++(0.90,0) |- ([yshift=0.20cm]e5.west);
 
-% Stream 2: NLinear -> y_raw -> all five experts (entering at lower-half so
-% the green raw stream is visually distinct from the blue hidden-state stream)
+% Stream 2: NLinear -> y_raw -> all five experts. Uniform green (every expert
+% receives the shared raw branch).
 \draw[greenarr] (nlinear.east) -- (yraw.west);
-\draw[greenarr, dashed, line width=0.6pt] (yraw.east) -- ++(0.30,0)
-    |- ([yshift=-0.25cm]e1.west);
+\draw[greenarr] (yraw.east) -- ++(0.30,0) |- ([yshift=-0.25cm]e1.west);
 \draw[greenarr] (yraw.east) -- ++(0.45,0) |- ([yshift=-0.25cm]e2.west);
-\draw[greenarr, dashed, line width=0.6pt] (yraw.east) -- ++(0.60,0)
-    |- ([yshift=-0.25cm]e3.west);
+\draw[greenarr] (yraw.east) -- ++(0.60,0) |- ([yshift=-0.25cm]e3.west);
 \draw[greenarr] (yraw.east) -- ++(0.75,0) |- ([yshift=-0.25cm]e4.west);
-\draw[greenarr, dashed, line width=0.6pt] (yraw.east) -- ++(0.90,0)
-    |- ([yshift=-0.25cm]e5.west);
+\draw[greenarr] (yraw.east) -- ++(0.90,0) |- ([yshift=-0.25cm]e5.west);
 
 % Self-routing gates from X_raw: route entirely BELOW the NLinear box
 % (NLinear spans y in [-2.2, -1.0]; we route along y=-3.4 and rise up to g2/g4)

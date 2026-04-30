@@ -67,19 +67,24 @@
     plot[domain=0.20:3.80, samples=130]
     ({\x},{2.15+0.16*rand});
 
-% Experts in a horizontal row below
-\node[expert=cmDustyBlue] (e1) at (0.50, 1.20) {E1};
-\node[expert=cmSageGreen] (e2) at (1.50, 1.20) {E2};
-\node[expert=cmBrickRed]  (e3) at (2.50, 1.20) {E3};
-\node[expert=cmOchre]     (e4) at (3.50, 1.20) {E4};
+% Experts in a horizontal row below (K=5 to match the paper).
+% Spread across [0.20, 3.80] so the routing arrows fan out from beneath the
+% panel stack without crossing each other.
+\node[expert=cmDustyBlue] (e1) at (0.30, 1.20) {E1};
+\node[expert=cmSageGreen] (e2) at (1.20, 1.20) {E2};
+\node[expert=cmBrickRed]  (e3) at (2.10, 1.20) {E3};
+\node[expert=cmOchre]     (e4) at (3.00, 1.20) {E4};
+\node[expert=cmGhost]     (e5) at (3.90, 1.20) {E5};
 
-% Routing arrows: emerge from below the bottom panel (p4) at four different
+% Routing arrows: emerge from below the bottom panel (p4) at five different
 % x positions, each going down to its color-matched expert.
-% Color carries the waveform-to-expert identity.
-\draw[arr=cmDustyBlue] (0.50, 1.83) -- (e1.north);
-\draw[arr=cmSageGreen] (1.50, 1.83) -- (e2.north);
-\draw[arr=cmBrickRed]  (2.50, 1.83) -- (e3.north);
-\draw[arr=cmOchre]     (3.50, 1.83) -- (e4.north);
+% Color carries the waveform-to-expert identity. E5 stays unused on this
+% sample window (gray) — the diagram shows that *different* windows light up
+% different experts, not that every expert fires every window.
+\draw[arr=cmDustyBlue] (0.30, 1.83) -- (e1.north);
+\draw[arr=cmSageGreen] (1.20, 1.83) -- (e2.north);
+\draw[arr=cmBrickRed]  (2.10, 1.83) -- (e3.north);
+\draw[arr=cmOchre]     (3.00, 1.83) -- (e4.north);
 
 \node[caption] at (2.0, 0.60) {Diverse routing};
 
@@ -111,18 +116,20 @@
         ({\x},{\y+0.10*sin(deg(3.0*(\x-10.0)))});
 }
 
-% Experts: only E1 highlighted, E2-E4 ghosted
-\node[expertactive] (re1) at (8.50, 1.20) {E1};
-\node[expertghost]  (re2) at (9.50, 1.20) {E2};
-\node[expertghost]  (re3) at (10.50, 1.20) {E3};
-\node[expertghost]  (re4) at (11.50, 1.20) {E4};
+% Experts: only E1 highlighted, E2-E5 ghosted (K=5 matches the paper).
+\node[expertactive] (re1) at (8.20, 1.20) {E1};
+\node[expertghost]  (re2) at (9.10, 1.20) {E2};
+\node[expertghost]  (re3) at (10.00, 1.20) {E3};
+\node[expertghost]  (re4) at (10.90, 1.20) {E4};
+\node[expertghost]  (re5) at (11.80, 1.20) {E5};
 
-% Convergent ghost arrows: four arrows below the panel stack, all pointing
-% diagonally to E1 — the visual signature of routing collapse.
-\draw[arr=cmGhost] (8.50, 1.83) -- (re1.north);
-\draw[arr=cmGhost] (9.50, 1.83) -- ([xshift=0.07cm]re1.north);
-\draw[arr=cmGhost] (10.50, 1.83) -- ([xshift=0.14cm]re1.north);
-\draw[arr=cmGhost] (11.50, 1.83) -- ([xshift=0.21cm]re1.north);
+% Convergent ghost arrows: five arrows below the panel stack, all pointing
+% to E1 — the visual signature of routing collapse.
+\draw[arr=cmGhost] (8.20, 1.83) -- (re1.north);
+\draw[arr=cmGhost] (9.10, 1.83) -- ([xshift=0.07cm]re1.north);
+\draw[arr=cmGhost] (10.00, 1.83) -- ([xshift=0.14cm]re1.north);
+\draw[arr=cmGhost] (10.90, 1.83) -- ([xshift=0.21cm]re1.north);
+\draw[arr=cmGhost] (11.80, 1.83) -- ([xshift=0.28cm]re1.north);
 
 \node[caption] at (10.0, 0.60) {Collapse: $H = 0.000$};
 

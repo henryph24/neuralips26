@@ -52,7 +52,7 @@ def plot_trajectory(collapse_path, control_path, out_path, K=5):
     max_steps = max(len(collapse), len(control) if control else 0)
     log_max = math.log(K)
 
-    fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.3), dpi=150)
+    fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.6), dpi=150)
 
     # --- Panel (a): routing entropy over steps ---
     ax = axes[0]
@@ -67,33 +67,43 @@ def plot_trajectory(collapse_path, control_path, out_path, K=5):
                 label="AdaMix, strictly frozen (ETTh1, control)")
     ax.axhline(log_max, color="gray", linestyle=":", linewidth=1,
                label=r"$\log K = \log 5$ (uniform max)")
-    ax.set_xlabel("Optimizer step")
+    ax.set_xlabel("(a) Optimizer step")
     ax.set_ylabel("Router entropy (nats)")
-    ax.set_title("(a) Router entropy trajectory")
     ax.set_ylim(-0.05, log_max + 0.1)
     ax.grid(alpha=0.3)
-    ax.legend(loc="best", fontsize=7, frameon=True)
+    # Move legend OUTSIDE the data area so the early-step traces stay clear
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
+              fontsize=7, frameon=False, borderaxespad=0.)
 
     # --- Panel (b): per-expert grad norm for the collapse case ---
     ax = axes[1]
     grad_matrix = np.array([r["expert_grad_norms"] for r in collapse])  # (T, K)
-    colors = ["tab:red", "tab:orange", "tab:green", "tab:blue", "tab:purple"]
+    # Use a perceptually-uniform palette so we don't reuse the red/blue
+    # semantics established in panel (a) (red=collapsed, blue=frozen control).
+    cmap = plt.cm.viridis
+    colors = [cmap(0.05), cmap(0.30), cmap(0.55), cmap(0.75), cmap(0.92)]
     labels = ["Mean", "Last", "Max", "Attn", "Conv1d"]
-    # Order by peak gradient norm -> the dominant expert becomes the red line
+    # Order by peak gradient norm -> the dominant expert is drawn last+thicker
     peak_idx = np.argsort(-grad_matrix.max(axis=0))
-    for rank, k in enumerate(peak_idx):
-        style = "-" if rank == 0 else "--"
-        lw = 2.0 if rank == 0 else 1.0
-        alpha = 1.0 if rank == 0 else 0.7
-        ax.plot(steps_c, grad_matrix[:, k], color=colors[rank % len(colors)],
+    # Plot non-dominant first so dominant draws on top
+    for rank in range(len(peak_idx) - 1, -1, -1):
+        k = peak_idx[rank]
+        is_dom = (rank == 0)
+        style = "-" if is_dom else "--"
+        lw = 2.2 if is_dom else 1.0
+        alpha = 1.0 if is_dom else 0.65
+        # Highlight the dominant expert with a distinct accent (orange) so it
+        # pops without colliding with panel (a)'s red.
+        c = "tab:orange" if is_dom else colors[rank % len(colors)]
+        ax.plot(steps_c, grad_matrix[:, k], color=c,
                 linestyle=style, linewidth=lw, alpha=alpha,
-                label=("%s (dominant)" % labels[k]) if rank == 0 else labels[k])
-    ax.set_xlabel("Optimizer step")
-    ax.set_ylabel(r"$\|\nabla_{\phi_k}\mathcal{L}\|_2$")
-    ax.set_title("(b) Per-expert gradient norm (last-4 unfrozen)")
+                label=("%s (dominant)" % labels[k]) if is_dom else labels[k])
+    ax.set_xlabel("(b) Optimizer step")
+    ax.set_ylabel(r"$\|\nabla_{\phi_k}\mathcal{L}\|_2$ (log scale)")
     ax.set_yscale("log")
     ax.grid(alpha=0.3, which="both")
-    ax.legend(loc="best", fontsize=7, frameon=True, ncol=2)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
+              fontsize=7, frameon=False, borderaxespad=0.)
 
     fig.tight_layout()
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
