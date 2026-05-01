@@ -1,0 +1,66 @@
+[Image #6] I think the arrows of this figure looks not good "Figure F.2: SR-MoA architecture (Self-Routed Mixture of Adapters). Each of K=5 experts has its own sigmoid gate σk reading Xraw directly, with no external router. The frozen TSFM produces H, and each expert’s contribution is scaled by its self-gate. SR-MoA shares only the raw-input principle with RR-MoA (Figure 2): the routing architecture is otherwise entirely different. SR-MoA outperforms RR-MoA by 13–42% across all 6 datasets, providing architecture-agnostic validation that the principle, not the specific router, drives the gains."
+
+---
+
+<task-notification>
+<task-id>af5224d8a3cb86cd9</task-id>
+<tool-use-id>toolu_01BXSJYendB3SLd41b8BFi2E</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/af5224d8a3cb86cd9.output</output-file>
+<status>completed</status>
+<summary>Agent "Inspect SR-MoA arrows" completed</summary>
+<result>Based on visual inspection of Figure F.2 in `/tmp/main_pdf_pages/srmoa_v2_hd-20.png`:
+
+**1. Cleaner than fanned routes?** Yes, substantially. The single vertical blue trunk from H and the orange-dashed riser from X_raw eliminate the previous spaghetti of crossing diagonals. The right-side blue convergence trunk is also tidy.
+
+**2. New visual problems:**
+- **Σ node interaction (x=12.20):** The blue convergence trunk visually appears to terminate cleanly at the Σ circle area, but it looks like the trunk passes adjacent to/behind the Σ node rather than feeding directly into a single inlet. The geometry reads as "trunk + Σ + arrow to Y" but the connection point between trunk and Σ is slightly ambiguous.
+- **Bottom orange-dashed bus (y=-3.55):** It runs underneath the figure cleanly. The "Self-routing..." label sits just below it in orange and is readable, not overlapped. The "weighted sum" annotation is on the right side near Y and is clear of the bus.
+- **σ gates receiving orange:** The 5 σ diamonds clearly receive westward orange-dashed taps from the x=8.0 riser; arrows are visible.
+- **σ → expert short orange arrows:** Readable but cramped — the σ diamonds sit close to the expert boxes, so the connecting arrow stubs are short. Still legible.
+- **H trunk stub:** The short stub from H down into the blue trunk is visible and connected, not detached.
+
+**3. Arrowheads:** Correctly placed — taps into experts and σ gates have arrowheads pointing inward. The vertical trunks themselves do not show terminal arrowheads, behaving as conduits as intended. The final Σ→Y arrow has its arrowhead.
+
+Overall: clear improvement; the only minor issue is the trunk-to-Σ junction at x=12.20 reads slightly ambiguously.</result>
+<usage><total_tokens>33850</total_tokens><tool_uses>1</tool_uses><duration_ms>21349</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aae356abfeabf5b1f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/aae356abfeabf5b1f.output</output-file>
+<status>completed</status>
+<summary>Agent "Confirm SR-MoA v3 final" completed</summary>
+<result>Verification:
+
+1. **Junction dot visible?** No - I cannot discern a filled blue dot at the trunk-Sigma intersection in the rendered figure. The trunk line still appears to pass through/near Sigma without a clearly visible junction marker.
+
+2. **Reads as "tap into Sigma"?** Ambiguous. The trunk still visually reads as passing by Sigma rather than terminating into it. Without a visible dot, the connection semantics remain unclear.
+
+3. **Other issues:** The "weighted sum" label below Sigma is rendered but small; expert-to-Sigma arrows look fine; the "After routing collapse..." caption text in F.1 is properly placed.
+
+Recommendation: increase dot radius (e.g., 1.5-2pt) and ensure it's drawn *after* the trunk line so it renders on top.</result>
+<usage><total_tokens>33473</total_tokens><tool_uses>1</tool_uses><duration_ms>14568</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5cfccdab3fb08e96</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a5cfccdab3fb08e96.output</output-file>
+<status>completed</status>
+<summary>Agent "Confirm junction dot at 600dpi" completed</summary>
+<result>Based on inspection of Figure F.2 in the rendered page:
+
+1. **Visible? N** — At 600 dpi, no distinct blue junction dot is discernible at the trunk-to-Σ tap point. The vertical blue trunk and short horizontal arrow into the Σ circle are visible, but no filled dot stands out at their intersection.
+
+2. **On top? Indeterminate** — Cannot confirm z-order since the dot is not perceptible against the trunk line.
+
+3. **Reads as tap point? Partially** — The connection reads as a line meeting Σ via an arrow, but without a visible junction marker the "tap" semantics are weak; it looks more like a terminal arrow than an explicit branch tap.
+
+Recommend increasing the dot radius (e.g., 4–5pt) and forcing it above the trunk in draw order.</result>
+<usage><total_tokens>33613</total_tokens><tool_uses>1</tool_uses><duration_ms>13051</duration_ms></usage>
+</task-notification>
