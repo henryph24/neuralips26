@@ -15,7 +15,7 @@
 \item {\bf Theory assumptions and proofs}
     \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (and correct) proof?
     \item[] Answer: \answerYes{}
-    \item[] Justification: Proposition~1 states two explicit independence assumptions: $(M,\Sigma) \perp S$ and $E \perp S \mid (M,\Sigma)$. The first is RevIN's design assumption; the second is empirically validated via Figure~4. A complete proof is provided in Appendix~A (Proposition Proofs). The proof relies only on the data processing inequality and the chain rule of mutual information.
+    \item[] Justification: Proposition~1 states two explicit independence assumptions: $(M,\Sigma) \perp S$ and $E \perp S \mid (M,\Sigma)$. The first is RevIN's design assumption; the second is empirically validated via Figure~4. A complete proof is provided in Appendix~\ref{app:proofs} (Proposition Proofs). The proof relies only on the data processing inequality and the chain rule of mutual information.
 
     \item {\bf Experimental result reproducibility}
     \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper (regardless of whether the code and data are provided or not)?
@@ -50,7 +50,7 @@
 \item {\bf Broader impacts}
     \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?
     \item[] Answer: \answerNA{}
-    \item[] Justification: This is foundational research on adapter routing for time series models. The work improves parameter-efficient adaptation of pretrained models, which has positive implications for computational efficiency. We do not foresee direct negative societal impacts from improved adapter routing mechanisms.
+    \item[] Justification: The work is methodological --- it diagnoses and fixes a routing-collapse failure mode in MoE adapters on Time-Series Foundation Models. \textbf{Positive impacts}: more parameter-efficient adaptation enables shared-backbone deployment serving thousands of tenants with $\sim$1.7\,MB per-tenant adapters (Appendix~\ref{app:deployment}), which reduces compute and energy footprint relative to per-tenant fine-tuning. \textbf{Negative impacts}: we identify none specific to this work --- the routing fix neither generates synthetic content, performs decision-making on protected populations, nor lowers the cost of any high-risk capability. The pretrained TSFMs we adapt (MOMENT, Moirai, Chronos, Timer-XL) already exist and are publicly released; our adapters do not introduce new generative or autonomous capabilities. We mark NA on the question of \emph{discussing} both directions because there is no asymmetric negative impact that warrants a dedicated discussion section.
 
 \item {\bf Safeguards}
     \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models that have a high risk for misuse (e.g., pre-trained language models, image generators, or scraped datasets)?
