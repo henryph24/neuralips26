@@ -1,0 +1,254 @@
+[Image #6] I think the arrows of this figure looks not good "Figure F.2: SR-MoA architecture (Self-Routed Mixture of Adapters). Each of K=5 experts has its own sigmoid gate σk reading Xraw directly, with no external router. The frozen TSFM produces H, and each expert’s contribution is scaled by its self-gate. SR-MoA shares only the raw-input principle with RR-MoA (Figure 2): the routing architecture is otherwise entirely different. SR-MoA outperforms RR-MoA by 13–42% across all 6 datasets, providing architecture-agnostic validation that the principle, not the specific router, drives the gains."
+
+---
+
+<task-notification>
+<task-id>af5224d8a3cb86cd9</task-id>
+<tool-use-id>toolu_01BXSJYendB3SLd41b8BFi2E</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/af5224d8a3cb86cd9.output</output-file>
+<status>completed</status>
+<summary>Agent "Inspect SR-MoA arrows" completed</summary>
+<result>Based on visual inspection of Figure F.2 in `/tmp/main_pdf_pages/srmoa_v2_hd-20.png`:
+
+**1. Cleaner than fanned routes?** Yes, substantially. The single vertical blue trunk from H and the orange-dashed riser from X_raw eliminate the previous spaghetti of crossing diagonals. The right-side blue convergence trunk is also tidy.
+
+**2. New visual problems:**
+- **Σ node interaction (x=12.20):** The blue convergence trunk visually appears to terminate cleanly at the Σ circle area, but it looks like the trunk passes adjacent to/behind the Σ node rather than feeding directly into a single inlet. The geometry reads as "trunk + Σ + arrow to Y" but the connection point between trunk and Σ is slightly ambiguous.
+- **Bottom orange-dashed bus (y=-3.55):** It runs underneath the figure cleanly. The "Self-routing..." label sits just below it in orange and is readable, not overlapped. The "weighted sum" annotation is on the right side near Y and is clear of the bus.
+- **σ gates receiving orange:** The 5 σ diamonds clearly receive westward orange-dashed taps from the x=8.0 riser; arrows are visible.
+- **σ → expert short orange arrows:** Readable but cramped — the σ diamonds sit close to the expert boxes, so the connecting arrow stubs are short. Still legible.
+- **H trunk stub:** The short stub from H down into the blue trunk is visible and connected, not detached.
+
+**3. Arrowheads:** Correctly placed — taps into experts and σ gates have arrowheads pointing inward. The vertical trunks themselves do not show terminal arrowheads, behaving as conduits as intended. The final Σ→Y arrow has its arrowhead.
+
+Overall: clear improvement; the only minor issue is the trunk-to-Σ junction at x=12.20 reads slightly ambiguously.</result>
+<usage><total_tokens>33850</total_tokens><tool_uses>1</tool_uses><duration_ms>21349</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aae356abfeabf5b1f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/aae356abfeabf5b1f.output</output-file>
+<status>completed</status>
+<summary>Agent "Confirm SR-MoA v3 final" completed</summary>
+<result>Verification:
+
+1. **Junction dot visible?** No - I cannot discern a filled blue dot at the trunk-Sigma intersection in the rendered figure. The trunk line still appears to pass through/near Sigma without a clearly visible junction marker.
+
+2. **Reads as "tap into Sigma"?** Ambiguous. The trunk still visually reads as passing by Sigma rather than terminating into it. Without a visible dot, the connection semantics remain unclear.
+
+3. **Other issues:** The "weighted sum" label below Sigma is rendered but small; expert-to-Sigma arrows look fine; the "After routing collapse..." caption text in F.1 is properly placed.
+
+Recommendation: increase dot radius (e.g., 1.5-2pt) and ensure it's drawn *after* the trunk line so it renders on top.</result>
+<usage><total_tokens>33473</total_tokens><tool_uses>1</tool_uses><duration_ms>14568</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5cfccdab3fb08e96</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a5cfccdab3fb08e96.output</output-file>
+<status>completed</status>
+<summary>Agent "Confirm junction dot at 600dpi" completed</summary>
+<result>Based on inspection of Figure F.2 in the rendered page:
+
+1. **Visible? N** — At 600 dpi, no distinct blue junction dot is discernible at the trunk-to-Σ tap point. The vertical blue trunk and short horizontal arrow into the Σ circle are visible, but no filled dot stands out at their intersection.
+
+2. **On top? Indeterminate** — Cannot confirm z-order since the dot is not perceptible against the trunk line.
+
+3. **Reads as tap point? Partially** — The connection reads as a line meeting Σ via an arrow, but without a visible junction marker the "tap" semantics are weak; it looks more like a terminal arrow than an explicit branch tap.
+
+Recommend increasing the dot radius (e.g., 4–5pt) and forcing it above the trunk in draw order.</result>
+<usage><total_tokens>33613</total_tokens><tool_uses>1</tool_uses><duration_ms>13051</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a877abbc2739789c1</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a877abbc2739789c1.output</output-file>
+<status>completed</status>
+<summary>Agent "Final SR-MoA arrow check" completed</summary>
+<result>Verification of Figure F.2 redesign:
+
+1. **Σ as confluence point**: Yes. Σ sits cleanly to the right of all 5 experts and reads unambiguously as the merge node before Y.
+
+2. **Mini-bus merging**: Yes, visible. Experts 1+2 join into a single arrow entering Σ.north; Expert 3 feeds Σ.west directly; Experts 4+5 merge into a single arrow into Σ.south. Three inbound arrows total, not five.
+
+3. **Boundary cleanliness**: Clean. Σ→Y fits within the figure box; no overflow on the right edge.
+
+4. **Other arrows**: The orange dashed bottom router bus runs below the experts and does not interfere with the new Σ inflows. The σ→expert routing arrows remain legible. One minor note: the bottom router-bus label text ("No external router. Each expert decides...") sits close to Expert 5's outbound merge arrow but does not collide.
+
+5. **Overall**: Cleaner. The previous pass-by trunk ambiguity is gone, the 2+1+2 grouping reinforces the architectural symmetry, and arrow count into Σ dropped from 5 to 3. No new clutter introduced.</result>
+<usage><total_tokens>33664</total_tokens><tool_uses>1</tool_uses><duration_ms>14370</duration_ms></usage>
+</task-notification>
+
+---
+
+/commit-push
+
+---
+
+recompile
+
+---
+
+is it true that Rescue Mechanimsm are mainly used for other modality different from time series
+
+---
+
+so is it fair that we used it as control ?
+
+---
+
+let's check
+
+---
+
+/commit-push
+
+---
+
+is our appendix structure currently good
+
+---
+
+is our appendix structure currently good and follow neurips requirements (2026)
+
+---
+
+Each of the above 3 recommended actions, do one by one
+
+---
+
+"""he MoE community has long treated routing collapse as an optimization problem (load
+balancing, entropy regularization, z-loss all attack the training dynamics), and these succeed when
+the router’s input is informative but under-optimized. We show that normalization-induced collapse
+is a fundamentally different, information problem"""
+
+
+do you think this is a risky claim based on literature review
+
+---
+
+use exa mcp to search for related papers
+
+---
+
+Yes please
+
+---
+
+I think our paper should be sharper in terms of this:
+"""
+This is a sharp question and it cuts at something the paper doesn't fully defend. Let me work through it carefully because there's a real argument here, but also a counter-argument that the paper's evidence partially addresses.
+
+## The argument you're making (steel-manned)
+
+The logic chain:
+
+1. **Why MoE adapters in the first place?** The paper's motivation is that "real time series are not so uniform: ETTh1 mixes quiet baseline segments with sharp seasonal excursions, and a single adapter topology cannot be optimal for every input window."
+2. **What does RevIN do?** It removes per-window mean and variance, mapping every window to roughly the same scale and offset.
+3. **Implication:** After RevIN, the diversity that MoE was supposed to handle has *already been homogenized away* by the time hidden states are produced. The encoder sees normalized shapes, not raw heterogeneous windows.
+4. **Conclusion:** A single adapter on those normalized hidden states should suffice. The need for per-window expert selection only existed because of pre-normalization heterogeneity, which the normalization eliminated.
+
+This is a coherent argument. It implies the paper is solving a problem partially of its own making — proposing a mixture of experts to handle diversity that the backbone has already removed.
+
+## Why the paper would push back
+
+The paper has implicit answers, though not in one place:
+
+**Answer 1: Hidden state heterogeneity persists despite normalization.**
+
+Even if RevIN normalizes the *input*, the *hidden states* H still carry information that varies across windows. Patch positions, attention patterns, and learned features all encode regime-specific structure that survives normalization. A "quiet baseline" window and a "seasonal excursion" window produce different H even after RevIN, because the *shape* differs even when scale doesn't.
+
+The fixed-adapter baselines (linear, attention, conv) all operate on these same hidden states, and they perform substantially differently from each other on different datasets — which would be hard to explain if the hidden states were truly homogenized. The fact that *some* adapter topology beats others *per dataset* suggests heterogeneity exists at the H level, just not in a form the router can easily access.
+
+**Answer 2: The 54/54 RR-MoA wins are themselves the empirical answer.**
+
+If a single adapter were sufficient, then a per-window mixture wouldn't beat the best single adapter. But RR-MoA wins every configuration by 27-77% (Table 1). Whatever per-window structure the experts are exploiting must exist, otherwise routing wouldn't help.
+
+The Figure F5 evidence is more direct: routing decisions correlate with raw amplitude and volatility, and quartile analysis shows RR-MoA wins on all four amplitude quartiles with the *largest* gains on the quietest windows (4.6× better on ETTh1's bottom quartile). If the backbone had truly homogenized everything, expert assignment shouldn't track raw amplitude this cleanly.
+
+**Answer 3: The expert pool's architectural diversity matters.**
+
+The five experts (mean-pool, last-token, max-pool, attention-pool, Conv1d) extract *different aggregations* from the same hidden states. Even if H is identical for two windows, mean-pool gives a different output than max-pool. The router's job isn't to handle scale heterogeneity — RevIN already did that — it's to choose which *aggregation* of H best matches each window's *temporal structure*. That structure isn't normalized away.
+
+## Where your argument lands cleanly anyway
+
+Your argument doesn't fully fail — it lands in a more limited but still important way:
+
+**If the *only* heterogeneity that mattered were per-window scale and offset, then post-RevIN you wouldn't need a mixture.** This is logically true. The paper implicitly concedes this is *partially* the case: on Traffic (R = 0.14), where the stripped statistics carry little information, RR-MoA *doesn't help* (+2.9%). The paper frames this as a "boundary case" but it's actually direct evidence for your argument: when the per-window heterogeneity lives mostly in (M, Σ), and RevIN strips that, then yes — a single adapter is fine.
+
+So the more precise statement is: **MoE adapters help when there's per-window heterogeneity in *shape* (temporal structure beyond scale/offset) that the encoder preserves. They don't help when the only heterogeneity is in scale, because RevIN already handled that.**
+
+R(D) is essentially a measurement of "how much of the heterogeneity lives in the part RevIN strips." Your intuition would predict: high R datasets (where heterogeneity *is* in scale) should not benefit from MoE post-RevIN, because the backbone has already handled it. Low R datasets (where heterogeneity is in shape) should benefit because the shape variation passes through.
+
+But the empirical result is the *opposite* — high R datasets benefit *more* from RR-MoA. Why? Because the router needs the raw input to *make routing decisions*, even if the backbone already normalized the experts' inputs. The fix isn't restoring heterogeneity to the experts — they have enough heterogeneity in H — it's giving the *router* enough signal to dispatch correctly.
+
+## The deeper conceptual point
+
+Here's what your question actually exposes that the paper doesn't articulate clearly:
+
+The paper conflates two distinct questions throughout:
+
+- **Q1: Do we need diverse experts?** (Yes, because hidden states still vary in shape-relevant ways.)
+- **Q2: Does the router need raw input?** (Yes, because RevIN strips the cues the router uses to dispatch.)
+
+The paper's experimental design tangles these together. RR-MoA changes the router's input *and* uses diverse experts. To cleanly separate them, you'd want experiments like:
+
+- **Single best adapter (no MoE) on RevIN-normalized hidden states** — already in the paper as the "best fixed adapter" baseline. Loses to RR-MoA by 47%, suggesting MoE *does* add value beyond what a single adapter captures.
+- **MoE with hidden-state router (AdaMix)** — already in the paper. Collapses, so we can't tell if MoE itself would help with a working router.
+- **MoE with raw-input router (RR-MoA)** — already in the paper. Wins.
+
+The 47% gap between "best fixed adapter on H" and "RR-MoA on H with raw routing" is the cleanest answer to your question. If a single adapter were sufficient post-RevIN, the gap would be ≤0%. Since it's 47%, MoE adapters *do* extract value from hidden-state heterogeneity that a single adapter misses — RevIN didn't fully homogenize what matters.
+
+## But your argument still has bite in one place
+
+Even granting the above, your argument has real force on a specific question: **Why are the gains so large on high-R datasets?**
+
+If the experts are exploiting H-level shape heterogeneity (which RevIN preserves), then RR-MoA's gains should correlate with how much *shape* heterogeneity exists, not how much *(M, Σ)* heterogeneity exists. But the paper's R(D) result is the opposite — gains correlate with stripped-statistics variance, not preserved-shape variance.
+
+The paper's resolution is: high R(D) doesn't mean the experts need (M, Σ); it means the *router* benefits from access to (M, Σ) to make dispatch decisions, because (M, Σ) happens to correlate with which expert performs best. That's plausible but somewhat post-hoc.
+
+A skeptical reading would be: maybe RR-MoA's gains on high-R datasets aren't really about per-window expert selection at all. Maybe the Conv1d gate, by reading raw input, is acting as an additional *prediction-time feature extractor* that supplements the backbone's lossy representation — and the "routing" framing is a story imposed on what's really just "raw-input residual prediction."
+
+The Appendix R.3 result (pure Raw-MLP MoE on raw input matches dual-stream on 3/6 datasets, with routing entropy near uniform indicating the "router" is barely routing) supports this skeptical reading. If the router isn't actually making meaningful per-sample decisions (entropy near max log K), then "MoE" might be the wrong description of what's happening — it might just be "ensemble of raw-input MLPs."
+
+## My net answer to your question
+
+Your intuition is partially right, in a way the paper underplays:
+
+1. **For datasets dominated by scale/offset heterogeneity**, you're correct that post-RevIN MoE shouldn't be necessary. Traffic supports this.
+
+2. **For datasets with shape heterogeneity that RevIN preserves**, MoE adds value because hidden states still carry expert-relevant differences. ETT and Weather support this.
+
+3. **The paper's R(D) framing slightly obscures this** by predicting MoE gains from stripped-statistics variance, when the more honest story might be "MoE gains come from a mix of (a) genuine expert specialization on H-level shape variation and (b) router-as-feature-extractor reading raw input directly."
+
+4. **Your argument should make us more skeptical about whether MoE is the right framing** for what RR-MoA does, especially in light of the Appendix R.3 result. A simpler description might be: "When you bypass the lossy encoder by reading raw input at the router or expert level, you recover predictive power. Whether you call that bypass 'routing' or 'ensembling' or 'feature extraction' may be more about architectural taste than mechanism."
+
+So: yes, your skepticism is well-founded. RevIN does eliminate one form of heterogeneity, and the paper's motivation ("a single adapter topology cannot be optimal for every input window") is somewhat inflated for the post-normalization regime. The 54/54 wins are real but their mechanism may be partly about raw-input access rather than per-window expert specialization. The paper would be sharper if it engaged with this directly rather than letting the MoE framing carry rhetorical weight the mechanism doesn't fully support.
+
+This is, incidentally, the same observation as Appendix R.3 from a different angle. You're independently arriving at the conclusion that "the foundation model and the MoE structure may both be doing less work than the paper claims, with raw-input access doing more." That's a coherent and defensible reading of the evidence.
+
+"""
+
+---
+
+review paper for overgeneralisation claims or risky claims
+
+---
+
+review paper for overgeneralisation claims or risky claims. Propose to me first before making any changes
+
+---
+
+first let not use "catastrophically"
+
+---
+
+now let's address the mentioned proposals
