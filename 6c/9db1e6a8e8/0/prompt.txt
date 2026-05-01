@@ -1,0 +1,5 @@
+now audit the RACE ARCHIVE locally for: "  Remaining caveat I haven't audited deeply:
+  - Line 648: RR-MoA wins all 21 MOMENT-small/large configurations ($27$--$81\%$). I didn't trace the "21" or "81%" to a primary source — likely from a
+  fuller cross-backbone grid in Appendix referenced by tab:residual_ia_plus_mhcb area, not tab:cross_backbone. Could be stale, could be fine. It's
+  outside the changes I just made today (MOMENT-large numbers untouched). If you want me to verify it before commit, I can; otherwise it's a reasonable
+  risk."
