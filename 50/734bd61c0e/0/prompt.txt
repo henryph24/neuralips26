@@ -1,0 +1,33 @@
+I need better titles, Think deep
+
+---
+
+what would be very scholarly substantial but also catchy
+
+---
+
+I need to priorised the fix a bit
+
+---
+
+I think "Raw" is not an adjective I like
+
+---
+
+I mean, any other semantically similar word to "raw"
+
+---
+
+a few title that emphaises the diagnose, include "causal fix"
+
+---
+
+A few more title that starts with: "Diagnosing Routing Collapse in Time Series Foundation Models:"
+
+---
+
+is this a good one: "A Mutual-Information Lower Bound"
+
+---
+
+let's go with: "Diagnosing Routing Collapse in Time Series Foundation Models: A Mutual-Information Bound, a Signal-Ratio Predictor, and a Causal Fix"
