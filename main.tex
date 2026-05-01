@@ -233,8 +233,6 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 
 {\looseness=-1 \textbf{Normalization in Time Series.} RevIN~\citep{kim2021revin} mitigates distribution shift; DishTS~\citep{fan2023dishts} and Non-stationary Transformers~\citep{liu2022nonstationary} partially recover stripped statistics. Concurrently, \citet{berthelier2026revin} independently show that several RevIN components are redundant or detrimental, and \citet{zou2025ibnorm} argue that variance-centric normalization (BatchNorm, LayerNorm, RMSNorm) is suboptimal for representation learning because two representations with identical mean and variance can encode different amounts of task-relevant information. We identify a specific, mechanistic consequence of this principle that has not been characterized in the MoE literature: when the stripped statistics carry the \emph{routing} signal in a downstream MoE adapter, instance normalization causes the router to collapse to a single expert under unfreezing, a failure mode distinct from the optimization-induced collapse studied in standard MoE rescue literature.}
 
-\textbf{NAS and LLM-Guided Search.} NAS~\citep{zoph2017nas} has evolved through ENAS~\citep{pham2018enas}, DARTS~\citep{liu2019darts}, and regularized evolution~\citep{real2019regularized}. Shears~\citep{munoz2024shears} and RZ-NAS~\citep{ji2025rznas} search adapter hyperparameters for LLMs; NAS-LoRA~\citep{chen2025naslora} targets vision adapters. FunSearch~\citep{romera2024funsearch}, EvoPrompting~\citep{chen2023evoprompting}, PartEvo~\citep{hu2025partevo}, and ReEvo~\citep{ye2024reevo} demonstrate LLM-guided program synthesis. We use this paradigm for expert pool construction (Appendix~\ref{app:aas_details}).
-
 \section{Method}
 \label{sec:method}
 
@@ -378,7 +376,7 @@ An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{
 \end{equation}
 where $G_\psi$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params) operating directly on the raw time series, and each $\text{Expert}_k$ is a canonical adapter head. Routing is restricted to the Top-$k$ experts with the highest gate logits, so only $k$ of $K$ experts execute per sample. With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense FLOPs while retaining $63\%$ of the dense MSE gain (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
 
-\textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), identified from structural motifs across ${\sim}1{,}200$ architectures in an LLM-guided search (Appendix~\ref{app:aas_details}). Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}). Pseudocode in Algorithm~\ref{alg:rrmoa} (Appendix~\ref{app:setup}).
+\textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), spanning the canonical pooling families used in sequence representation learning~\citep{reimers2019sentencebert}. Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}). Pseudocode in Algorithm~\ref{alg:rrmoa} (Appendix~\ref{app:setup}).
 
 \section{Experiments}
 
@@ -858,61 +856,6 @@ Yong Liu, Haixu Wu, Jianmin Wang, and Mingsheng Long.
 \newblock Non-stationary transformers: Exploring the stationarity in time series forecasting.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
 
-\bibitem[Zoph and Le(2017)]{zoph2017nas}
-Barret Zoph and Quoc~V. Le.
-\newblock Neural architecture search with reinforcement learning.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2017.
-
-\bibitem[Pham et~al.(2018)]{pham2018enas}
-Hieu Pham, Melody~Y. Guan, Barret Zoph, Quoc~V. Le, and Jeff Dean.
-\newblock Efficient neural architecture search via parameter sharing.
-\newblock In \textit{Proceedings of the 35th International Conference on Machine Learning (ICML)}, pages 4095--4104, 2018.
-
-\bibitem[Liu et~al.(2019)]{liu2019darts}
-Hanxiao Liu, Karen Simonyan, and Yiming Yang.
-\newblock {DARTS}: Differentiable architecture search.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2019.
-
-\bibitem[Real et~al.(2019)]{real2019regularized}
-Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc~V. Le.
-\newblock Regularized evolution for image classifier architecture search.
-\newblock In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~33, pages 4780--4789, 2019.
-
-\bibitem[Munoz et~al.(2024)]{munoz2024shears}
-J.~Pablo Munoz, Jinjie Yuan, and Nilesh Jain.
-\newblock Shears: Unstructured sparsity with neural low-rank adapter search.
-\newblock \textit{arXiv preprint arXiv:2404.10934}, 2024.
-
-\bibitem[Ji et~al.(2025)]{ji2025rznas}
-Zipeng Ji, Guanghui Zhu, Chunfeng Yuan, and Yihua Huang.
-\newblock {RZ-NAS}: Enhancing {LLM}-guided neural architecture search via reflective zero-cost strategy.
-\newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
-
-\bibitem[Chen et~al.(2025b)]{chen2025naslora}
-Renqi Chen, Haoyang Su, and Shixiang Tang.
-\newblock {NAS-LoRA}: Empowering parameter-efficient fine-tuning for visual foundation models with searchable adaptation.
-\newblock \textit{arXiv preprint arXiv:2512.03499}, 2025.
-
-\bibitem[Romera-Paredes et~al.(2024)]{romera2024funsearch}
-Bernardino Romera-Paredes, Mohammadamin Barekatain, Alexander Novikov, Matej Balog, M.~Pawan Kumar, Emilien Dupont, Francisco~J.R. Ruiz, Jordan~S. Ellenberg, Pengming Wang, Omar Fawzi, Pushmeet Kohli, and Alhussein Fawzi.
-\newblock Mathematical discoveries from program search with large language models.
-\newblock \textit{Nature}, 625(7995):468--475, 2024.
-
-\bibitem[Chen et~al.(2023)]{chen2023evoprompting}
-Angelica Chen, David~M. Dohan, and David~R. So.
-\newblock {EvoPrompting}: Language models for code-level neural architecture search.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2023.
-
-\bibitem[Hu and Zhang(2025)]{hu2025partevo}
-Qinglong Hu and Qingfu Zhang.
-\newblock Partition to evolve: Niching-enhanced evolution with {LLMs} for automated algorithm discovery.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
-
-\bibitem[Ye et~al.(2024)]{ye2024reevo}
-Haoran Ye, Jiarui Wang, Zhiguang Cao, Federico Berto, Chuanbo Hua, Haeyeon Kim, Jinkyoo Park, and Guojie Song.
-\newblock {ReEvo}: Large language models as hyper-heuristics with reflective evolution.
-\newblock \textit{arXiv preprint arXiv:2402.01145}, 2024.
-
 \bibitem[Zhou et~al.(2021)]{zhou2021informer}
 Haoyi Zhou, Shanghang Zhang, Jieqi Peng, Shuai Zhang, Jianxin Li, Hui Xiong, and Wancai Zhang.
 \newblock Informer: Beyond efficient transformer for long sequence time-series forecasting.
@@ -997,6 +940,11 @@ Zewen Chi, Li Dong, Shaohan Huang, Damai Dai, Shuming Ma, Barun Patra, Saksham S
 YongXiang Hua, Haoyu Cao, Zhou Tao, Bocheng Li, Zihao Wu, Chaohu Liu, and Linli Xu.
 \newblock Input domain aware {MoE}: Decoupling routing decisions from task optimization in mixture of experts.
 \newblock In \textit{Proceedings of the 33rd ACM International Conference on Multimedia (MM '25)}, 2025.
+
+\bibitem[Reimers and Gurevych(2019)]{reimers2019sentencebert}
+Nils Reimers and Iryna Gurevych.
+\newblock {Sentence-BERT}: Sentence embeddings using {Siamese BERT}-networks.
+\newblock In \textit{Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP)}, 2019.
 
 \end{thebibliography}
 
@@ -1243,11 +1191,6 @@ and analogously $\dot{\ell}_2\big|_A \approx -\eta\,(1{-}p)\left\|\frac{\partial
 \end{equation*}
 This update adjusts routing weights based on current expert performance, but does \emph{not} reshape $\mathbf{h}$ to favor one expert. Without the $A$-mediated feedback loop, there is no systematic bias toward entropy collapse: the router converges to a stable allocation reflecting the static geometry of the fixed representation space.
 \end{proof}
-
-\section{Adapter Architecture Search (AAS) Details}
-\label{app:aas_details}
-
-The AAS loop maintains a population of 20 adapters over 12 generations (${\sim}240$ evaluations, 3-epoch fitness probes). Elitism preserves the top 2; an LLM variant generates candidates in the code space $\mathcal{G}_\text{code}$. Template-based generation achieves 100\% validity (vs.\ ${\sim}75\%$ for LLM). The 5 canonical pooling heads used by RR-MoA (mean, last-token, max, attention, Conv1d) were identified as the most frequent structural motifs across the ${\sim}1{,}200$ candidate adapters explored.
 
 \section{LoRA Sweep (Full Results)}
 \label{app:lora_sweep}
@@ -2160,7 +2103,7 @@ FiLM (neg.\ control) & $0.843 \pm 0.289$ {\scriptsize($+147\%$)} & $0.297 \pm 0.
 
 \textbf{Why this matters for the diagnosis.} The fact that the gap closes precisely when experts recover the information our diagnosis identified as destroyed, and remains open when they cannot (FiLM re-injects only $\mu,\sigma$, yielding $+48\%$ on ETTh1 vs.\ $+9\%$ for dual-stream), is direct evidence that the diagnosis is both \emph{correct} and \emph{actionable}. The normalization--encoding bottleneck is not merely an observation; it is the causal mechanism whose resolution closes the gap. Importantly, the frozen backbone and raw-routed paradigm remain unchanged: these variants extend the \emph{expert architecture}, not the routing mechanism, confirming that the routing diagnosis (the core contribution of this paper) is orthogonal to expert design.
 
-\textbf{Expert pool ablation: canonical vs.\ macro pool.} To test whether RR-MoA's benefits depend on the specific choice of 5 canonical pooling heads, we replace the canonical pool with 5 AAS-discovered \emph{macro motifs} (Appendix~\ref{app:aas_details}) and rerun RR-MoA across all 6 forecasting datasets. Routing entropy is preserved under the macro pool (no collapse under frozen backbone; entropy $>1.3$ across all configurations), confirming that the collapse-prevention mechanism is \emph{pool-independent}. Absolute MSEs (frozen, Top-2, 3 seeds): ETTh1 $0.764{\pm}0.015$, ETTh2 $0.667{\pm}0.069$, ETTm1 $0.583{\pm}0.075$, ETTm2 $0.844{\pm}0.241$, Weather $0.274{\pm}0.024$, Electricity $0.401{\pm}0.039$. The canonical pool is stronger by $8$--$24\%$ on the three datasets where we have both numbers, indicating that while RR-MoA generalizes across diverse pool designs, the canonical heads are better tuned for the forecasting benchmark: the routing architecture is the orthogonal contribution.
+\textbf{Expert pool ablation: canonical vs.\ alternative pool.} To test whether RR-MoA's benefits depend on the specific choice of 5 canonical pooling heads, we replace the canonical pool with 5 alternative expert motifs (multi-scale temporal blocks combining strided Conv1d, dilation, and residual gating) and rerun RR-MoA across all 6 forecasting datasets. Routing entropy is preserved under the alternative pool (no collapse under frozen backbone; entropy $>1.3$ across all configurations), confirming that the collapse-prevention mechanism is \emph{pool-independent}. Absolute MSEs (frozen, Top-2, 3 seeds): ETTh1 $0.764{\pm}0.015$, ETTh2 $0.667{\pm}0.069$, ETTm1 $0.583{\pm}0.075$, ETTm2 $0.844{\pm}0.241$, Weather $0.274{\pm}0.024$, Electricity $0.401{\pm}0.039$. The canonical pool is stronger by $8$--$24\%$ on the three datasets where we have both numbers, indicating that while RR-MoA generalizes across diverse pool designs, the canonical heads are better tuned for the forecasting benchmark: the routing architecture is the orthogonal contribution.
 
 \textbf{Training-length ablation.} We additionally ran dual-stream at 50 epochs (vs.\ 15 in Table~\ref{tab:gap_closing}). Extended training \emph{overfits} on 5/6 datasets (ETTh1: $0.453{\to}0.556$; Weather: $0.198{\to}0.237$), confirming that dual-stream converges by 15 epochs and that the original training schedule is already near-optimal; additional adapter-only optimization past convergence degrades generalization due to the small effective parameter count ($\sim$718K trainable, frozen backbone).
 

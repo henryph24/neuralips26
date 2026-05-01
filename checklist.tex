@@ -40,7 +40,7 @@
 \item {\bf Experiments compute resources}
     \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?
     \item[] Answer: \answerYes{}
-    \item[] Justification: Experiments were conducted on NVIDIA A10G GPUs (23GB VRAM). Each RR-MoA run takes $\sim$1--3 minutes per dataset. The full experimental suite (all tables and ablations) requires $\sim$8 GPU-hours total. The LLM-guided architecture search (Appendix) uses $\sim$4 GPU-hours plus $\sim$\$0.05 in OpenAI API calls per run.
+    \item[] Justification: Experiments were conducted on NVIDIA A10G GPUs (23GB VRAM). Each RR-MoA run takes $\sim$1--3 minutes per dataset. The full experimental suite (all tables and ablations) requires $\sim$8 GPU-hours total.
 
 \item {\bf Code of ethics}
     \item[] Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics \url{https://neurips.cc/public/EthicsGuidelines}?
@@ -79,7 +79,7 @@
 
 \item {\bf Declaration of LLM usage}
     \item[] Question: Does the paper describe the usage of LLMs if it is an important, original, or non-standard component of the core methods in this research? Note that if the LLM is used only for writing, editing, or formatting purposes and does \emph{not} impact the core methodology, scientific rigor, or originality of the research, declaration is not required.
-    \item[] Answer: \answerYes{}
-    \item[] Justification: An LLM (GPT-4o-mini) is used in the Adapter Architecture Search (AAS) component to generate candidate PyTorch adapter code (Appendix). AAS is a supporting methodology for expert pool construction, not the core contribution (RR-MoA routing). The LLM's role, prompt structure, and validity rates are described in Appendix~\ref{app:aas_details}.
+    \item[] Answer: \answerNA{}
+    \item[] Justification: LLMs are not used as a component of the core methodology. The expert pool consists of standard pooling heads (mean, last-token, max, attention, Conv1d) drawn from the canonical sequence-representation literature.
 
 \end{enumerate}
