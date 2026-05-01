@@ -1,0 +1,17 @@
+[Image #3] [Image #4]
+
+Look like there is a rendering error here
+
+Full proof in Appendix D.
+
+Cross-backbone, task and horizon generalization. RR-MoA wins all 21 MOMENT-small/large
+
+configurations (26–79%; Table N.1), 18/18 Moirai (3–31%), and 6/6 Moirai-MoE [12] datasets
+
+---
+
+review for similar class of error
+
+---
+
+Figure F.2: SR-MoA architecture (Self-Routed Mixture of Adapters). " <- looks so broken[Image #6] the arrows look really messy
