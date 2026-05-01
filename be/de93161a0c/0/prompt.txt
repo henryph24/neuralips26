@@ -1,0 +1,17 @@
+Review the required checklist to see if we are over-exposing details that may likely not very relevant or being mentioned in the paper. Review the consistency of the claims in checklist against the paper
+
+---
+
+let's go
+
+---
+
+sanity checks everything as per the above changes
+
+---
+
+re-verify that
+
+---
+
+go
