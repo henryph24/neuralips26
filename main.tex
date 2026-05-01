@@ -399,7 +399,7 @@ RR-MoA's case rests on three claims: that fixed-topology adapters are suboptimal
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Freeze-level ablation} (test MSE, mean$\pm$std, 3 seeds, H=96). RR-MoA (sparse Top-2 routing over 5 experts) vs.\ the best single-head adapter from $\{$linear, attention, conv$\}$ trained with the same protocol. ``MSE $\Delta\%$ vs.\ single-head'' is the relative MSE change of RR-MoA over the single-head baseline; negative $=$ lower MSE $=$ better. RR-MoA wins \textbf{54/54} across 6 datasets (extended grid in Appendix~\ref{app:extended_rrmoa}); the gain is largest when frozen (``Frozen Paradox'').}
+\caption{\textbf{Freeze-level ablation} (test MSE, mean$\pm$std, 3 seeds $\{42,43,44\}$, H=96). RR-MoA (sparse Top-2 routing over 5 experts) vs.\ the best single-head adapter from $\{$linear, attention, conv$\}$ trained with the same protocol. ``MSE $\Delta\%$ vs.\ single-head'' is the relative MSE change of RR-MoA over the single-head baseline; negative $=$ lower MSE $=$ better. RR-MoA wins \textbf{27/27} paired (cell, seed) comparisons in this table; combined with Appendix~\ref{app:extended_rrmoa} the score is \textbf{54/54} across 6 datasets $\times$ 3 freeze levels $\times$ 3 seeds. The gain is largest when frozen (``Frozen Paradox'').}
 \label{tab:rrmoa}
 \small
 \begin{tabular}{@{}llccc@{}}
@@ -407,19 +407,19 @@ RR-MoA's case rests on three claims: that fixed-topology adapters are suboptimal
 Dataset & Freeze level & RR-MoA & Best single-head & MSE $\Delta\%$ vs.\ single-head \\
 \midrule
 \multirow{3}{*}{ETTh1}
- & Frozen (0/8)   & $\mathbf{0.680 \pm 0.027}$ & $1.275 \pm 0.014$ & $\mathbf{-46.7\%}$ \\
- & Last-2 (2/8)   & $\mathbf{0.723 \pm 0.064}$ & $1.030 \pm 0.139$ & $-29.8\%$ \\
- & Last-4 (4/8)   & $\mathbf{0.747 \pm 0.041}$ & $1.101 \pm 0.120$ & $-32.2\%$ \\
+ & Frozen (0/8)   & $\mathbf{0.690 \pm 0.021}$ & $1.241 \pm 0.015$ & $\mathbf{-44.4\%}$ \\
+ & Last-2 (2/8)   & $\mathbf{0.727 \pm 0.074}$ & $1.030 \pm 0.139$ & $-29.4\%$ \\
+ & Last-4 (4/8)   & $\mathbf{0.749 \pm 0.036}$ & $1.101 \pm 0.120$ & $-31.9\%$ \\
 \midrule
 \multirow{3}{*}{ETTm1}
- & Frozen (0/8)   & $\mathbf{0.564 \pm 0.059}$ & $1.116 \pm 0.036$ & $\mathbf{-49.5\%}$ \\
- & Last-2 (2/8)   & $\mathbf{0.610 \pm 0.041}$ & $0.891 \pm 0.049$ & $-31.5\%$ \\
- & Last-4 (4/8)   & $\mathbf{0.562 \pm 0.032}$ & $0.866 \pm 0.016$ & $-35.1\%$ \\
+ & Frozen (0/8)   & $\mathbf{0.571 \pm 0.073}$ & $1.115 \pm 0.075$ & $\mathbf{-48.7\%}$ \\
+ & Last-2 (2/8)   & $\mathbf{0.623 \pm 0.032}$ & $0.891 \pm 0.049$ & $-30.1\%$ \\
+ & Last-4 (4/8)   & $\mathbf{0.571 \pm 0.034}$ & $0.866 \pm 0.016$ & $-34.1\%$ \\
 \midrule
 \multirow{3}{*}{Weather}
- & Frozen (0/8)   & $\mathbf{0.276 \pm 0.017}$ & $0.538 \pm 0.026$ & $-48.7\%$ \\
- & Last-2 (2/8)   & $\mathbf{0.255 \pm 0.006}$ & $0.474 \pm 0.022$ & $-46.3\%$ \\
- & Last-4 (4/8)   & $\mathbf{0.263 \pm 0.017}$ & $0.504 \pm 0.031$ & $\mathbf{-47.8\%}$ \\
+ & Frozen (0/8)   & $\mathbf{0.289 \pm 0.008}$ & $0.530 \pm 0.020$ & $-45.5\%$ \\
+ & Last-2 (2/8)   & $\mathbf{0.251 \pm 0.005}$ & $0.478 \pm 0.025$ & $-47.4\%$ \\
+ & Last-4 (4/8)   & $\mathbf{0.256 \pm 0.014}$ & $0.497 \pm 0.033$ & $\mathbf{-48.4\%}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -721,8 +721,8 @@ Xu Liu, Juncheng Liu, Gerald Woo, Taha Aksu, Yuxuan Liang, Roger Zimmermann, Che
 \newblock {Moirai-MoE}: Empowering time series foundation models with sparse mixture of experts.
 \newblock In \textit{Proceedings of the 42nd International Conference on Machine Learning (ICML)}, 2025.
 
-\bibitem[Lee et~al.(2024)]{lee2024units}
-Gerald Lee, Chenghao Liu, and Doyen Sahoo.
+\bibitem[Gao et~al.(2024)]{lee2024units}
+Shanghua Gao, Teddy Koker, Owen Queen, Thomas Hartvigsen, Theodoros Tsiligkaridis, and Marinka Zitnik.
 \newblock {UniTS}: A unified multi-task time series model.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2024.
 
@@ -786,13 +786,13 @@ Alexander Kraskov, Harald St\"ogbauer, and Peter Grassberger.
 \newblock Estimating mutual information.
 \newblock \textit{Physical Review E}, 69(6):066138, 2004.
 
-\bibitem[Kim et~al.(2021)]{kim2021revin}
+\bibitem[Kim et~al.(2022)]{kim2021revin}
 Taesung Kim, Jinhee Kim, Yunwon Tae, Cheonbok Park, Jang-Ho Choi, and Jaegul Choo.
 \newblock Reversible instance normalization for accurate time-series forecasting against distribution shift.
-\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2021.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}, 2022.
 
-\bibitem[Zhang et~al.(2025c)]{zhang2025remoe}
-Haotian Zhang, Ye~Yuan, Zhuohan Li, and Ion Stoica.
+\bibitem[Wang et~al.(2025)]{zhang2025remoe}
+Ziteng Wang, Jun Zhu, and Jianfei Chen.
 \newblock {ReMoE}: Fully differentiable mixture-of-experts with ReLU routing.
 \newblock In \textit{International Conference on Learning Representations (ICLR)}, 2025.
 
@@ -836,8 +836,8 @@ Weiyang Zhang, Xinyang Chen, Xiucheng Li, Kehai Chen, Weili Guan, and Liqiang Ni
 \newblock Unified transferability metrics for time series foundation models.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2025.
 
-\bibitem[Woo et~al.(2024b)]{woo2024gifteval}
-Gerald Woo et~al.
+\bibitem[Aksu et~al.(2024)]{woo2024gifteval}
+Taha Aksu, Gerald Woo, Juncheng Liu, Xu Liu, Chenghao Liu, Silvio Savarese, Caiming Xiong, and Doyen Sahoo.
 \newblock {GIFT-Eval}: A benchmark for general time series forecasting model evaluation.
 \newblock \textit{arXiv preprint arXiv:2410.10393}, 2024.
 
@@ -1559,7 +1559,7 @@ Dataset & Freeze level & RR-MoA & Best single-head & MSE $\Delta\%$ vs.\ single-
  & Last-4 (4/8)   & $\mathbf{1.745 \pm 0.187}$ & $2.540 \pm 0.110$ & $-31.3\%$ \\
 \midrule
 \multirow{3}{*}{ETTm2}
- & Frozen (0/8)   & $\mathbf{0.588 \pm 0.021}$ & $2.556 \pm 0.028$ & $\mathbf{-77.0\%}$ \\
+ & Frozen (0/8)   & $\mathbf{0.588 \pm 0.021}$ & $2.744 \pm 0.266$ & $\mathbf{-78.6\%}$ \\
  & Last-2 (2/8)   & $\mathbf{0.867 \pm 0.083}$ & $2.915 \pm 0.202$ & $-70.3\%$ \\
  & Last-4 (4/8)   & $\mathbf{0.731 \pm 0.157}$ & $2.740 \pm 0.092$ & $-73.3\%$ \\
 \midrule
@@ -1935,11 +1935,11 @@ $N$ & DLinear & RR-MoA & DLinear & RR-MoA & DLinear & RR-MoA \\
 \cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
 Dataset & RR-MoA & Best fixed & RR-MoA & Best fixed & RR-MoA & Best fixed \\
 \midrule
-ETTh1       & $0.690{\pm}0.021$ & $1.220$ {\scriptsize($-43\%$)} & $0.803{\pm}0.032$ & $1.173$ {\scriptsize($-32\%$)} & $\mathbf{0.471{\pm}0.002}$ & $0.664$ {\scriptsize($-29\%$)} \\
+ETTh1       & $0.690{\pm}0.021$ & $1.241$ {\scriptsize($-44\%$)} & $0.803{\pm}0.032$ & $1.173$ {\scriptsize($-32\%$)} & $\mathbf{0.471{\pm}0.002}$ & $0.664$ {\scriptsize($-29\%$)} \\
 ETTh2       & & & $1.224{\pm}0.311$ & $3.075$ {\scriptsize($-60\%$)} & & \\
-ETTm1       & $0.572{\pm}0.073$ & $1.169$ {\scriptsize($-51\%$)} & $0.732{\pm}0.038$ & $1.126$ {\scriptsize($-35\%$)} & $\mathbf{0.396{\pm}0.041}$ & $0.471$ {\scriptsize($-16\%$)} \\
+ETTm1       & $0.571{\pm}0.073$ & $1.115$ {\scriptsize($-49\%$)} & $0.732{\pm}0.038$ & $1.126$ {\scriptsize($-35\%$)} & $\mathbf{0.396{\pm}0.041}$ & $0.471$ {\scriptsize($-16\%$)} \\
 ETTm2       & & & $0.790{\pm}0.117$ & $3.136$ {\scriptsize($-75\%$)} & & \\
-Weather     & $0.289{\pm}0.008$ & $0.522$ {\scriptsize($-45\%$)} & $0.276{\pm}0.017$ & $0.606$ {\scriptsize($-54\%$)} & $\mathbf{0.209{\pm}0.004}$ & $0.238$ {\scriptsize($-12\%$)} \\
+Weather     & $0.289{\pm}0.008$ & $0.530$ {\scriptsize($-45\%$)} & $0.276{\pm}0.017$ & $0.606$ {\scriptsize($-54\%$)} & $\mathbf{0.209{\pm}0.004}$ & $0.238$ {\scriptsize($-12\%$)} \\
 Electricity & & & $0.659{\pm}0.148$ & $1.029$ {\scriptsize($-36\%$)} & & \\
 \bottomrule
 \end{tabular}

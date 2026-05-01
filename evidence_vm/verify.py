@@ -48,13 +48,15 @@ TAB3_RRMOA = {
 }
 
 TAB3_BASELINE = {
-    ("ETTh1", "frozen"):  (1.220, 0.023),
+    # 3-seed (42-44) min(linear, attention, conv); frozen rows use new
+    # baselines from results/baselines_only/ (Modal backfill 2026-05-01).
+    ("ETTh1", "frozen"):  (1.241, 0.015),
     ("ETTh1", "last2"):   (1.030, 0.139),
     ("ETTh1", "last4"):   (1.101, 0.120),
-    ("ETTm1", "frozen"):  (1.169, 0.006),
+    ("ETTm1", "frozen"):  (1.115, 0.075),
     ("ETTm1", "last2"):   (0.891, 0.049),
     ("ETTm1", "last4"):   (0.866, 0.016),
-    ("Weather", "frozen"): (0.522, 0.003),
+    ("Weather", "frozen"): (0.530, 0.020),
     ("Weather", "last2"):  (0.478, 0.025),
     ("Weather", "last4"):  (0.497, 0.033),
 }
@@ -107,13 +109,14 @@ TAB5_TOPK = {
 # Each cell is (rr_moa_mse, best_fixed_mse, claimed_percentage_improvement).
 # check_percentage() verifies (fixed - rr_moa) / fixed * 100 == claimed_pct.
 TAB_BACKBONE_PCT = {
-    ("ETTh1", "moment-small"):   (0.690, 1.220, 43),
+    # MOMENT-small frozen baselines updated 2026-05-01 with Modal re-runs.
+    ("ETTh1", "moment-small"):   (0.690, 1.241, 44),
     ("ETTh1", "moment-large"):   (0.803, 1.173, 32),  # was -35 pre-audit (2026-04-10)
     ("ETTh1", "moirai"):         (0.471, 0.664, 29),
-    ("ETTm1", "moment-small"):   (0.572, 1.169, 51),
+    ("ETTm1", "moment-small"):   (0.571, 1.115, 49),
     ("ETTm1", "moment-large"):   (0.704, 1.126, 38),
     ("ETTm1", "moirai"):         (0.396, 0.471, 16),
-    ("Weather", "moment-small"): (0.289, 0.522, 45),
+    ("Weather", "moment-small"): (0.289, 0.530, 45),
     ("Weather", "moment-large"): (0.267, 0.606, 56),
     ("Weather", "moirai"):       (0.209, 0.238, 12),
 }
@@ -207,6 +210,11 @@ def main():
     checks = 0
 
     # --- Table 3: RR-MoA freeze ablation + baselines ---
+    # Frozen-row baselines were re-run on Modal on 2026-05-01 (the original
+    # RACE snapshot was from a different RNG state). Where a sidecar JSON in
+    # results/baselines_only/ exists for the same (cell, seed), prefer it
+    # over the baselines field embedded in evidence_vm/rr_moa/.
+    BASE_OVERLAY = os.path.join(os.path.dirname(EVID), "results", "baselines_only")
     rr_groups = defaultdict(list)
     bl_groups = defaultdict(list)
     for f in sorted(glob.glob(f"{EVID}/rr_moa/*_top2_*_4?.json")):
@@ -215,7 +223,16 @@ def main():
             continue
         key = (d["dataset"], d["unfreeze"])
         rr_groups[key].append(d["rr_moa"]["mse"])
-        bl_groups[key].append(min(x["mse"] for x in d["baselines"].values()))
+        # Prefer overlay (Modal re-run) baselines if present.
+        overlay_path = os.path.join(
+            BASE_OVERLAY,
+            f"{d['dataset']}_H96_K5_top2_{d['unfreeze']}_{d['seed']}_baselines.json",
+        )
+        if os.path.exists(overlay_path):
+            ov = json.load(open(overlay_path))["baselines"]
+            bl_groups[key].append(min(x["mse"] for x in ov.values()))
+        else:
+            bl_groups[key].append(min(x["mse"] for x in d["baselines"].values()))
 
     for key, expected in TAB3_RRMOA.items():
         checks += 1
