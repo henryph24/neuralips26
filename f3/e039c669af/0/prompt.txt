@@ -1,0 +1,27 @@
+are we having this exact sentence: ""﻿Today, every public TSFM benchmark uses a single static head ""
+
+---
+
+" "Today's TSFM benchmarks use a single static head over hidden states."" 
+
+is this factually correct ? can you use exa mcp to look for academic evidence
+
+---
+
+why that still reads quite over-generalisation to me
+
+---
+
+pick the most reviewer-proof of course right ?
+
+---
+
+Public TSFM checkpoints still sound over-generalisating. We had many TSFM that does not use fixed head per task is that correct (verify with exa mcp paper search first)
+
+---
+
+"no input-content-driven routing" is unnecessarily complex
+
+---
+
+let's do it
