@@ -1,0 +1,9 @@
+let now review each item in the bib carefully. make sure each cited paper in bib does exist and an url is there, with exa mcp search (academic paper). make sure they are strictly academic source, one by one. export to a .xlxs file, and verify the count mechanically
+
+---
+
+let's do it
+
+---
+
+recompile locally
