@@ -362,7 +362,6 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 \label{fig:framework}
 \vspace{-0.8em}
 \end{figure}
-\vspace{-1.2em}
 
 \subsection{Raw-Routed Mixture of Adapters (RR-MoA)}
 \label{sec:rrmoa}
@@ -646,7 +645,6 @@ In the full-information corner case where the router's signal lives entirely in 
 \label{fig:frozen_paradox}
 \label{fig:signal_ratio}
 \end{figure}
-\vspace{-1em}
 
 {\looseness=-1 \textbf{Cross-backbone, task and horizon generalization.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins all 21 MOMENT-small/large configurations ($26$--$79\%$; Table~\ref{tab:cross_backbone}), 18/18 Moirai ($3$--$31\%$), and 6/6 Moirai-MoE~\citep{liu2025moiraimoe} datasets ($37$--$90\%$; Table~\ref{tab:moirai_moe}): adapter-level and backbone-internal routing operate on complementary axes. The negative controls predicted by Observation~\ref{thm:mi_decomp} (Chronos and Timer-XL~\citep{liu2025timerxl}, neither using instance normalization) show no collapse and no RR-MoA gain (4/18 within chance; Appendix~\ref{app:cross_backbone}). Top-2 sparse routing retains most of the dense gain at a $+10\%$ latency cost (Appendix~\ref{app:topk}); imputation ($7/8$; Appendix~\ref{app:imputation}) and horizons $H{\in}\{96{,}192{,}336{,}720\}$ (24/24; Table~\ref{tab:horizon}) confirm robustness. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}) extends to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
 
@@ -1380,33 +1378,33 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
     {\textsc{Self-routing: per-expert} $\sigma_k(\mathbf{X}_\mathrm{raw})$};
 
 % ====== Arrows on background layer (so they render BEHIND boxes/text) ======
-% Layout principle: use shared "trunks" instead of fanning 5 separate lines
-% from H or the input. Each trunk has 5 short tap-offs, which reads as a
-% single broadcast ("H feeds every expert"; "X_raw feeds every gate") rather
-% than 5 individually-routed paths.
+% Layout principle: H stream and X_raw stream both flow LEFT-TO-RIGHT into
+% their targets, so no head-to-head arrow clashes. H horizontals run at
+% y+0.40 (above each σ.top apex) so the blue stream visibly clears the
+% σ_k diamonds rather than appearing to pass through them.
 \begin{pgfonlayer}{background}
 % Input -> TSFM (blue, hidden-state stream)
 \draw[bluearr] (input.east) -- ++(0.4, 0) |- (tsfm.west);
 % TSFM -> H
 \draw[bluearr] (tsfm.east) -- (hidden.west);
 
-% H broadcast trunk: H -> short east stub, then a vertical trunk at x=6.20
-% spanning all 5 expert rows; 5 short eastward taps from the trunk into the
-% upper half of each expert.
+% H broadcast: trunk at x=6.20 (left of X_raw bus and σ_k), 5 horizontal
+% tap-offs at y+0.40 into expert.west.upper. y+0.40 is tangent to σ.top
+% (size 0.80cm half-diagonal = 0.40), so H clears each σ_k visually.
 \draw[bluearr, -] (hidden.east) -- (6.20, 1.6);
-\draw[bluearr, -] (6.20, 2.7) -- (6.20, -2.5);  % vertical trunk
+\draw[bluearr, -] (6.20, 3.10) -- (6.20, -2.10);  % vertical trunk spanning y+0.40 levels
 \foreach \i/\y in {1/2.7, 2/1.4, 3/0.1, 4/-1.2, 5/-2.5} {
-    \draw[bluearr] (6.20, \y) -- ([yshift=0.18cm]e\i.west);
+    \pgfmathsetmacro{\yt}{\y + 0.40}
+    \draw[bluearr] (6.20, \yt) -- ([yshift=0.40cm]e\i.west);
 }
 
-% X_raw broadcast trunk: input.south -> drop to y=-3.55 -> run east to
-% x=8.0 -> rise as a single trunk on the right side of the gates -> 5
-% short westward taps into each gate's south.
+% X_raw broadcast bus on the LEFT of σ_k (x=6.60), rightward taps into σ.west.
+% Same flow direction as σ.east -> expert.west, so no head-to-head clash.
 \draw[gatedasharr, -] (input.south) -- ++(0, -0.55) -| (0.40, -3.55);
-\draw[gatedasharr, -] (0.40, -3.55) -- (8.00, -3.55);   % under-figure bus
-\draw[gatedasharr, -] (8.00, -3.55) -- (8.00, 2.7);     % vertical riser
+\draw[gatedasharr, -] (0.40, -3.55) -- (6.60, -3.55);   % under-figure bus
+\draw[gatedasharr, -] (6.60, -3.55) -- (6.60, 2.7);     % vertical riser (left of σ_k)
 \foreach \i/\y in {1/2.7, 2/1.4, 3/0.1, 4/-1.2, 5/-2.5} {
-    \draw[gatedasharr] (8.00, \y) -- ([xshift=0.05cm]g\i.east);
+    \draw[gatedasharr] (6.60, \y) -- (g\i.west);
 }
 % sigma_k -> expert (short solid orange arrow into LOWER half of expert)
 \foreach \i in {1,2,3,4,5} {
