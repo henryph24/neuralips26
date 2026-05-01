@@ -1352,11 +1352,13 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
     \node[expertbox] (e\i) at (10.6, \y) {Expert \i: \name};
 }
 
-% Sum + output
-\node[sumnode] (sum) at (13.0, 0.1) {$\Sigma$};
+% Sum + output. Sigma sits to the east of all 5 experts. Experts above and
+% below Sigma converge into a short vertical mini-bus that taps Sigma's
+% north/south; expert 3 (in-line with Sigma) feeds Sigma.west directly.
+\node[sumnode] (sum) at (13.50, 0.1) {$\Sigma$};
 \node[font=\tiny, text=black!65, anchor=north]
     at ([yshift=-0.05cm]sum.south) {weighted sum};
-\node[outputbox] (output) at (14.5, 0.1) {%
+\node[outputbox] (output) at (15.00, 0.1) {%
     $\hat{\mathbf{y}}$\\[-1pt]{\scriptsize\mdseries forecast}};
 
 % Stream labels (pulled inward from the top/bottom edges so they don't
@@ -1367,31 +1369,55 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
     {\textsc{Self-routing: per-expert} $\sigma_k(\mathbf{X}_\mathrm{raw})$};
 
 % ====== Arrows on background layer (so they render BEHIND boxes/text) ======
+% Layout principle: use shared "trunks" instead of fanning 5 separate lines
+% from H or the input. Each trunk has 5 short tap-offs, which reads as a
+% single broadcast ("H feeds every expert"; "X_raw feeds every gate") rather
+% than 5 individually-routed paths.
 \begin{pgfonlayer}{background}
 % Input -> TSFM (blue, hidden-state stream)
 \draw[bluearr] (input.east) -- ++(0.4, 0) |- (tsfm.west);
 % TSFM -> H
 \draw[bluearr] (tsfm.east) -- (hidden.west);
-% H -> each expert (5 blue arrows fanning out, entering UPPER half of expert
-% so they don't visually collide with the orange sigma->expert arrows)
-\foreach \i in {1,2,3,4,5} {
-    \draw[bluearr] (hidden.east) -- ++(0.30, 0)
-        |- ([yshift=0.18cm]e\i.west);
-}
-% X_raw -> each sigma_k (5 dashed orange arrows, routed via a rail to the
-% LEFT of the backbone box at x=1.50 so they never get hidden behind it)
+
+% H broadcast trunk: H -> short east stub, then a vertical trunk at x=6.20
+% spanning all 5 expert rows; 5 short eastward taps from the trunk into the
+% upper half of each expert.
+\draw[bluearr, -] (hidden.east) -- (6.20, 1.6);
+\draw[bluearr, -] (6.20, 2.7) -- (6.20, -2.5);  % vertical trunk
 \foreach \i/\y in {1/2.7, 2/1.4, 3/0.1, 4/-1.2, 5/-2.5} {
-    \draw[gatedasharr] (input.east)
-        -- (1.50, 0) -- (1.50, \y) -- (g\i.west);
+    \draw[bluearr] (6.20, \y) -- ([yshift=0.18cm]e\i.west);
 }
-% sigma_k -> expert (solid orange arrow, entering LOWER half of expert)
+
+% X_raw broadcast trunk: input.south -> drop to y=-3.55 -> run east to
+% x=8.0 -> rise as a single trunk on the right side of the gates -> 5
+% short westward taps into each gate's south.
+\draw[gatedasharr, -] (input.south) -- ++(0, -0.55) -| (0.40, -3.55);
+\draw[gatedasharr, -] (0.40, -3.55) -- (8.00, -3.55);   % under-figure bus
+\draw[gatedasharr, -] (8.00, -3.55) -- (8.00, 2.7);     % vertical riser
+\foreach \i/\y in {1/2.7, 2/1.4, 3/0.1, 4/-1.2, 5/-2.5} {
+    \draw[gatedasharr] (8.00, \y) -- ([xshift=0.05cm]g\i.east);
+}
+% sigma_k -> expert (short solid orange arrow into LOWER half of expert)
 \foreach \i in {1,2,3,4,5} {
     \draw[gatearr] (g\i.east) -- ([yshift=-0.18cm]e\i.west);
 }
-% Experts -> Sigma (5 blue arrows converging)
-\foreach \i in {1,2,3,4,5} {
-    \draw[bluearr, opacity=0.8] (e\i.east) -| (sum.north);
-}
+% Experts -> Sigma. Three convergence routes (north / west / south):
+%  - experts 1+2 (above Sigma) merge into a tiny vertical mini-bus at
+%    x=12.80 that taps Sigma's north
+%  - expert 3 (in-line with Sigma) feeds Sigma's west directly
+%  - experts 4+5 (below Sigma) merge into a tiny vertical mini-bus at
+%    x=12.80 that taps Sigma's south
+% This places Sigma as the explicit confluence point — no ambiguous
+% pass-by trunk, no junction dot needed.
+\draw[bluearr, -, opacity=0.85] (e1.east) -- (12.80, 2.7);
+\draw[bluearr, -, opacity=0.85] (e2.east) -- (12.80, 1.4);
+\draw[bluearr, -, opacity=0.85] (12.80, 2.7) -- (12.80, 1.4);
+\draw[bluearr, opacity=0.85] (12.80, 1.4) -- (sum.north);
+\draw[bluearr, opacity=0.85] (e3.east) -- (sum.west);
+\draw[bluearr, -, opacity=0.85] (e4.east) -- (12.80, -1.2);
+\draw[bluearr, -, opacity=0.85] (e5.east) -- (12.80, -2.5);
+\draw[bluearr, -, opacity=0.85] (12.80, -1.2) -- (12.80, -2.5);
+\draw[bluearr, opacity=0.85] (12.80, -1.2) -- (sum.south);
 % Sigma -> output (teal)
 \draw[outarr] (sum.east) -- (output.west);
 \end{pgfonlayer}
