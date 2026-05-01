@@ -974,7 +974,7 @@ Nils Reimers and Iryna Gurevych.
 \paragraph{Per-baseline configurations.}
 \begin{itemize}[leftmargin=1.2em, itemsep=0.15em, topsep=0.2em]
 \item \textbf{Fixed adapters}: linear, attention-pool, Conv1d-pool single-head topologies with $\leq 500{,}000$ trainable parameters.
-\item \textbf{LoRA}~\citep{hu2022lora}: 108-run sweep over rank, $\alpha$, and target modules; full table in Appendix~\ref{app:lora_sweep}.
+\item \textbf{LoRA}~\citep{hu2022lora}: 108-run sweep (12 configurations $\times$ 3 seeds $\times$ 3 datasets) over rank, target projections, and forecast head; full table in Appendix~\ref{app:lora_sweep}.
 \item \textbf{TRACE}~\citep{li2025trace}: importance-based LoRA selection with default settings.
 \item \textbf{Independent ensemble}: 5 experts with the canonical pool topologies, trained independently with no router and averaged at inference.
 \item \textbf{AdaMix}~\citep{wang2022adamix}: $K{=}5$ canonical heads with hidden-state softmax router; load-balance coefficient $0.01$. Full implementation details in Appendix~\ref{app:adamix_details}.
@@ -1195,7 +1195,7 @@ This update adjusts routing weights based on current expert performance, but doe
 \section{LoRA Sweep (Full Results)}
 \label{app:lora_sweep}
 
-We sweep LoRA~\citep{hu2022lora} across three axes to ensure the comparison in Table~\ref{tab:baselines} is not cherry-picked: rank $r{\in}\{8,16,32\}$, target projections ${\in}\{q{+}v,\; q{+}k{+}v{+}o\}$, and forecast head ${\in}\{$linear, 2-layer MLP$\}$, for 12 configurations $\times$ 3 seeds $=$ 108 runs per dataset. All runs use a strictly frozen backbone (matching Table~\ref{tab:rrmoa}'s primary setting).
+We sweep LoRA~\citep{hu2022lora} across three axes to ensure the comparison in Table~\ref{tab:baselines} is not cherry-picked: rank $r{\in}\{8,16,32\}$, target projections ${\in}\{q{+}v,\; q{+}k{+}v{+}o\}$, and forecast head ${\in}\{$linear, 2-layer MLP$\}$, for 12 configurations $\times$ 3 seeds $=$ 36 runs per dataset (108 runs total across the 3 datasets). All runs use a strictly frozen backbone (matching Table~\ref{tab:rrmoa}'s primary setting).
 
 \begin{table}[h]
 \centering
