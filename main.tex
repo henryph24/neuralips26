@@ -645,7 +645,7 @@ In the limit where the router's signal lives entirely in the stripped statistics
 \end{figure}
 \vspace{-1em}
 
-{\looseness=-1 \textbf{Cross-backbone, task and horizon generalization.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins all 21 MOMENT-small/large configurations ($27$--$81\%$; Table~\ref{tab:cross_backbone}), 18/18 Moirai ($3$--$31\%$), and 6/6 Moirai-MoE~\citep{liu2025moiraimoe} datasets ($37$--$90\%$; Table~\ref{tab:moirai_moe}): adapter-level and backbone-internal routing operate on complementary axes. The negative controls predicted by Observation~\ref{thm:mi_decomp} (Chronos and Timer-XL~\citep{liu2025timerxl}, neither using instance normalization) show no collapse and no RR-MoA gain (4/18 within chance; Appendix~\ref{app:cross_backbone}). Top-2 sparse routing retains most of the dense gain at a $+10\%$ latency cost (Appendix~\ref{app:topk}); imputation ($7/8$; Appendix~\ref{app:imputation}) and horizons $H{\in}\{96{,}192{,}336{,}720\}$ (24/24; Table~\ref{tab:horizon}) confirm robustness. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}) extends to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
+{\looseness=-1 \textbf{Cross-backbone, task and horizon generalization.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins all 21 MOMENT-small/large configurations ($26$--$79\%$; Table~\ref{tab:cross_backbone}), 18/18 Moirai ($3$--$31\%$), and 6/6 Moirai-MoE~\citep{liu2025moiraimoe} datasets ($37$--$90\%$; Table~\ref{tab:moirai_moe}): adapter-level and backbone-internal routing operate on complementary axes. The negative controls predicted by Observation~\ref{thm:mi_decomp} (Chronos and Timer-XL~\citep{liu2025timerxl}, neither using instance normalization) show no collapse and no RR-MoA gain (4/18 within chance; Appendix~\ref{app:cross_backbone}). Top-2 sparse routing retains most of the dense gain at a $+10\%$ latency cost (Appendix~\ref{app:topk}); imputation ($7/8$; Appendix~\ref{app:imputation}) and horizons $H{\in}\{96{,}192{,}336{,}720\}$ (24/24; Table~\ref{tab:horizon}) confirm robustness. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}) extends to all 6 datasets across 5 backbones and 4 horizons (Table~\ref{tab:residual_ia_plus_mhcb}).}
 
 \vspace{-0.6em}
 \section{Conclusion and Limitations}
@@ -1926,7 +1926,7 @@ $N$ & DLinear & RR-MoA & DLinear & RR-MoA & DLinear & RR-MoA \\
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Cross-backbone RR-MoA} (strictly frozen, Top-2 sparse, H=96, 5 seeds). Best fixed: strongest single-adapter baseline. RR-MoA wins all 15 configurations. MOMENT-large expanded to 6 datasets confirms generalization ($-32\%$ to $-75\%$).}
+\caption{\textbf{Cross-backbone RR-MoA} (strictly frozen, Top-2 sparse, H=96). MOMENT-small/Moirai-small RR-MoA at 3 seeds (matching Tables~\ref{tab:rrmoa},~\ref{tab:rrmoa_extended}); MOMENT-large RR-MoA at 5 seeds. Best fixed: strongest single-adapter baseline. RR-MoA wins all 15 configurations. MOMENT-large expanded to 6 datasets confirms generalization ($-32\%$ to $-75\%$).}
 \label{tab:cross_backbone}
 \footnotesize
 \begin{tabular}{@{}lcccccc@{}}
