@@ -368,12 +368,14 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 
 An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{R}^{B \times h}$ maps a pretrained backbone's hidden states (batch $B$, sequence length $T$, hidden dim $d$) to forecasts of horizon $h$, with $n_g \leq 500{,}000$ trainable parameters. (We use lowercase $h$ for forecast horizon to disambiguate from $\mathbf{H}_\mathrm{FM}$ below, the backbone hidden state.) The goal of per-window routing is to select, for each input window, the subset of expert adapters best suited to that window's characteristics, so that a quiet baseline and a volatile spike are handled by different adapter topologies rather than forced through the same head. As shown in the introduction, this fails when the router reads normalized hidden states, because RevIN removes the per-window statistics that distinguish input regimes. \textbf{RR-MoA} avoids this by splitting the information into two streams: the frozen TSFM produces deep embeddings $\mathbf{H}$ for the experts, while a separate lightweight gate reads the \textit{raw, pre-normalization} input $\mathbf{X}_\text{raw}$ to decide which experts to activate:
 \begin{equation}
-\mathbf{Y} = \sum_{j=1}^{K} \widetilde{w}_j \cdot \text{Expert}_j(\mathbf{H}_\text{FM}),\qquad
-\widetilde{w}_j = \begin{cases}
+\begin{aligned}
+\mathbf{Y} &= \sum_{j=1}^{K} \widetilde{w}_j \cdot \text{Expert}_j(\mathbf{H}_\text{FM}), \qquad
+\mathcal{T} = \mathrm{TopK}\!\bigl(G_\psi(\mathbf{X}_\text{raw}),\, k\bigr), \\
+\widetilde{w}_j &= \begin{cases}
 \dfrac{\exp\!\bigl(G_\psi(\mathbf{X}_\text{raw})_j\bigr)}{\sum_{j'\in\mathcal{T}}\exp\!\bigl(G_\psi(\mathbf{X}_\text{raw})_{j'}\bigr)}, & j\in\mathcal{T},\\[4pt]
-0, & j\notin\mathcal{T},
-\end{cases}\quad
-\mathcal{T} = \mathrm{TopK}\!\bigl(G_\psi(\mathbf{X}_\text{raw}),\, k\bigr)
+0, & j\notin\mathcal{T}.
+\end{cases}
+\end{aligned}
 \label{eq:rrmoa}
 \end{equation}
 where $G_\psi: \mathbb{R}^{T} \to \mathbb{R}^K$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params) operating directly on the raw time series, $\mathcal{T} \subset \{1,\ldots,K\}$ is the set of Top-$k$ expert indices, and each $\mathrm{Expert}_j$ is a canonical adapter head. By construction $\sum_j \widetilde{w}_j = 1$ with support only on $\mathcal{T}$, so only $k$ of $K$ experts contribute per sample (the remaining $K{-}k$ are masked out and do not execute). With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense ($k{=}K$) expert FLOPs while retaining $63\%$ of the dense MSE improvement over the best fixed adapter (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
@@ -494,21 +496,24 @@ In contrast, \textbf{RR-MoA} maintains healthy routing entropy ($1.0$--$1.57$) a
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Eight causal controls.} Each tests a different alternative hypothesis for routing collapse; all results converge on normalization as the cause.}
+\caption{\textbf{Eight causal controls.} Each rules out a competing explanation; the only mechanism consistent with all 8 is that \emph{instance normalization strips the per-window $(\mu,\sigma)$ signal the router needs}.}
 \label{tab:causal_controls}
 \footnotesize
-\begin{tabular}{@{}clll@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}clp{3.1cm}p{6.0cm}@{}}
 \toprule
-\# & Control & What it tests & Key result \\
+\# & Control & Alternative explanation tested & Observed result {\small$\Rightarrow$} verdict \\
 \midrule
-C1 & RevIN ablation & Is RevIN the cause? & Entropy $0.000 \to 0.66$--$1.32$ (Table~\ref{tab:adamix}) \\
-C2 & MOMENT vs Timer-XL & Same code, only norm differs & Opposite trajectories (Fig.~\ref{fig:causal_contrast}) \\
-C3 & BatchNorm1d / GroupNorm & RevIN-specific or general? & All 3 normalizers collapse identically (App.~\ref{app:norm_generalization}) \\
-C4 & Rescue sweep (5 families) & Optimization problem? & 0/11 configs recover; $2.7{\times}$ worse (Table~\ref{tab:rescue}) \\
-C5 & AdaMix + raw router & Router architecture or input? & Entropy $\to 1.41$--$1.57$; MSE $-41$--$88\%$ (App.~\ref{app:adamix_details}) \\
-C6 & SR-MoA raw vs hidden & Generalizes beyond RR-MoA? & Hidden: $+87$--$768\%$ worse (Table~\ref{tab:self_routed}) \\
-C7 & Vision ViT + InstanceNorm & Domain-specific? & Same collapse on CIFAR-10 (App.~\ref{app:vision_moe}) \\
-C8 & $(\mu,\sigma)$ re-injection & Just append stats back? & $+42$--$239\%$ worse; 11/18 collapsed (App.~\ref{app:reinjection}) \\
+C1 & RevIN ablation & Collapse intrinsic to MoE on TSFMs & Entropy $0.000 \to 0.66$--$1.32$ when RevIN disabled (Table~\ref{tab:adamix}) {\small$\Rightarrow$} RevIN is \emph{necessary} for collapse \\
+C2 & MOMENT vs Timer-XL & Architecture, not normalization, causes collapse & Opposite trajectories with identical code, only norm differs (Fig.~\ref{fig:causal_contrast}) {\small$\Rightarrow$} normalization is \emph{sufficient} \\
+C3 & BatchNorm1d / GroupNorm & RevIN-specific anomaly & All three per-window normalizers collapse identically (App.~\ref{app:norm_generalization}) {\small$\Rightarrow$} any norm that strips $(\mu,\sigma)$ triggers collapse \\
+C4 & 5-family rescue sweep & Optimization problem (load-balance, z-loss, ReLU, expert-choice) & 0/11 configs recover; best is $2.7{\times}$ worse than RR-MoA (Table~\ref{tab:rescue}) {\small$\Rightarrow$} not in the optimizer \\
+C5 & AdaMix with raw router & Router architecture is the bottleneck & Same router, swap input only: entropy $\to 1.41$--$1.57$; MSE $-41$--$88\%$ (App.~\ref{app:adamix_details}) {\small$\Rightarrow$} the \emph{input} matters, not the router \\
+C6 & SR-MoA raw vs hidden routing & Specific to RR-MoA's Conv1d gate & Different router (per-expert sigmoid); hidden-routed $+87$--$768\%$ worse (Table~\ref{tab:self_routed}) {\small$\Rightarrow$} raw-input principle generalizes \\
+C7 & Vision ViT + InstanceNorm & Time-series-specific phenomenon & ResNet/ViT MoE on CIFAR-10 collapses identically (App.~\ref{app:vision_moe}) {\small$\Rightarrow$} mechanism is modality-general \\
+C8 & $(\mu,\sigma)$ re-injection & Just appending stripped stats back fixes it & Re-injected hidden states still $+42$--$239\%$ worse, 11/18 still collapsed (App.~\ref{app:reinjection}) {\small$\Rightarrow$} only \emph{raw} pre-normalization input restores routing \\
+\midrule
+\multicolumn{4}{@{}p{0.97\textwidth}@{}}{\textbf{Root cause (surviving hypothesis after C1--C8).} The collapse is not intrinsic to MoE (C1), not architecture-specific (C2, C6, C7), not RevIN-specific (C3), not an optimization problem (C4), not a router-design problem (C5), and not fixable by appending statistics post-hoc (C8). The single mechanism consistent with all 8 controls: \textbf{instance normalization removes the per-window $(\mu,\sigma)$ that carries the routing signal}, so the fix must restore it from \emph{raw pre-normalization} input.} \\
 \bottomrule
 \end{tabular}
 \end{table}
