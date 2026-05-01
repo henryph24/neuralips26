@@ -1,0 +1,25 @@
+"""Experiments compute resources
+Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce
+the experiments?
+Answer: [Yes]
+Justification: Experiments were conducted on NVIDIA A10G GPUs (23GB VRAM). Each
+RR-MoA run takes ∼1–3 minutes per dataset. The full experimental suite (all tables and
+ablations) requires ∼8 GPU-hours total. The LLM-guided architecture search (Appendix)
+uses ∼4 GPU-hours plus ∼$0.05 in OpenAI API calls per run ""
+<== is this worth mentioning (the LLM-guided architecture search), because I think this is no longer very relevant to our paper
+
+---
+
+I find AAS currently not very strongly related to our paper
+
+---
+
+Conduct a few literatutre search with exa mcp to confirm: "The 5 canonical
+
+pooling heads used by RR-MoA (mean, last-token, max, attention, Conv1d) were identified as the
+
+most frequent structural motifs across the ∼1,200 candidate adapters explored."
+
+---
+
+yes, AAS would even dilute our paper right ? AAS was our initial experiment to NeurIPS
