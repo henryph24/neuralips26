@@ -1,0 +1,97 @@
+"a self-verification script are included" shall we write about this in the checklist ? I think we should not. But, let verify if the script itself is correct first
+
+---
+
+let strip of course, but also investigate where is the difference
+
+---
+
+I think we had run 5 seed already, check the RACE Archive (we had that locally)
+
+---
+
+but race is no longer accessible
+
+---
+
+let just focus on writing or edittig now, what's the best approach now
+
+---
+
+so 54/54 is incorrect ?
+
+---
+
+look more closely on our logged JSON, or the RACE VM Archive available here locally
+
+---
+
+decompose 52
+
+---
+
+did we write about this decomposition clearly and explicitly somewhere
+
+---
+
+so resotring to 54/54 will be best right ? if so, use Modal.com to run code we had at RACE ARCHIVE
+
+---
+
+let's go
+
+---
+
+<task-notification>
+<task-id>bpjq0vzi7</task-id>
+<tool-use-id>toolu_01GxWyiGHgncYQ4xtzsMmYGm</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/1c0228f5-d504-400d-86ca-66e2f4639af5/tasks/bpjq0vzi7.output</output-file>
+<status>completed</status>
+<summary>Background command "Smoke test 1 cell on Modal A10G (no timeout wrapper)" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Continue the 54/54 baseline backfill. Modal smoke test was kicked off in background; check tail of /private/tmp/claude-501/-Users-hungpq2412-neuralips26/1c0228f5-d504-400d-86ca-66e2f4639af5/tasks/bpjq0vzi7.output for progress, decide whether to launch the full 10-cell run with --all, or fix any errors first.
+
+---
+
+inform me once experiments done
+
+---
+
+<task-notification>
+<task-id>b7cfun88f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/1c0228f5-d504-400d-86ca-66e2f4639af5/tasks/b7cfun88f.output</output-file>
+<status>completed</status>
+<summary>Background command "Launch full 10-cell baseline backfill on Modal" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+did we scale the modal instance to 0 ? do it first then proceed
+
+---
+
+so we are 5 seed consistent right ? and the results continue to make sense
+
+---
+
+Continue the 54/54 baseline backfill. The full Modal run was kicked off (background ID b7cfun88f, log /private/tmp/claude-501/-Users-hungpq2412-neuralips26/1c0228f5-d504-400d-86ca-66e2f4639af5/tasks/b7cfun88f.output). Check whether all 10 result JSONs landed in results/baselines_only/. If yes: (a) verify all 10 paired comparisons win (RR-MoA archive seed N < min(new baseline seed N)) for restoring 54/54; (b) re-tabulate tab:rrmoa to uniform 3-seed using RR-MoA from archive seeds 42-44 + new baselines; (c) restore "54/54" throughout main.tex (revert "52/52" → "54/54", "18/18 cells; 52/52 paired" → "54/54 (3 seeds × 18 cells)"); (d) update extended ETTm2 frozen row with new seed-42 baseline; (e) rebuild PDF. If any runs failed or any paired loss appeared, stop and report instead of editing.
+
+---
+
+Continue the 54/54 baseline backfill. Background Modal job ID b7cfun88f, log /tmp/modal_full_run.log. Check (a) ls /Users/hungpq2412/neuralips26/results/baselines_only/ for all 10 JSONs (ETTh1/ETTm1/Weather frozen seeds 42-44, plus ETTm2 frozen seed 42), (b) tail /tmp/modal_full_run.log for completion/errors. If all 10 present: verify each paired comparison wins (RR-MoA archive seed N < min(linear,attention,conv) seed N) — paste a small Python script to do this. If yes 10/10 wins, proceed to: re-tabulate tab:rrmoa main values to 3-seed (42-44), update tab:rrmoa_extended ETTm2 frozen baseline cell, restore "54/54" everywhere (revert "52/52", "18/18 cells; 52/52 paired", caption tweaks). Rebuild PDF. If any run failed or any paired loss: stop and report.
+
+---
+
+Modal baseline backfill (background ID b7cfun88f, log /tmp/modal_full_run.log) should be done by now. Do this in order: (1) ls /Users/hungpq2412/neuralips26/results/baselines_only/ — confirm 10 JSONs (ETTh1/ETTm1/Weather frozen × seeds 42,43,44 + ETTm2 frozen seed 42). (2) tail /tmp/modal_full_run.log for any errors. (3) Run a Python check that for each new baseline JSON, the paired RR-MoA from RACE archive (`/Users/hungpq2412/RACE_VM_archive_2026-04-28/extracted/neuralips26/results/rr_moa/{ds}_H96_K5_top2_frozen_{seed}.json`) wins: rr_moa.mse < min(linear, attention, conv) of the new baselines. (4) STOP and message the user with results — do NOT edit main.tex yet. Report: 10/10 JSONs present? 10/10 paired wins? if any failure, what failed.
+
+---
+
+but we should aim for 5 seeds with real experiments (new one to be launch on Modal ?)
+
+---
+
+but we should aim for 5 seeds with real experiments (new one to be launch on Modal ?) Should we ?

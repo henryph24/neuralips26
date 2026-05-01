@@ -3,9 +3,13 @@
   "checkpoint_id": "7d3f28970498",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 3,
+  "checkpoints_count": 22,
   "files_touched": [
-    "main.tex"
+    "checklist.tex",
+    "evidence_vm/verify.py",
+    "main.tex",
+    "scripts/modal_run_baselines.py",
+    "scripts/run_baselines_only.py"
   ],
   "sessions": [
     {
@@ -13,13 +17,19 @@
       "transcript": "/7d/3f28970498/0/full.jsonl",
       "content_hash": "/7d/3f28970498/0/content_hash.txt",
       "prompt": "/7d/3f28970498/0/prompt.txt"
+    },
+    {
+      "metadata": "/7d/3f28970498/1/metadata.json",
+      "transcript": "/7d/3f28970498/1/full.jsonl",
+      "content_hash": "/7d/3f28970498/1/content_hash.txt",
+      "prompt": "/7d/3f28970498/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 74,
-    "cache_creation_tokens": 293042,
-    "cache_read_tokens": 5830196,
-    "output_tokens": 31586,
-    "api_call_count": 29
+    "input_tokens": 308,
+    "cache_creation_tokens": 575767,
+    "cache_read_tokens": 34263092,
+    "output_tokens": 163858,
+    "api_call_count": 163
   }
 }
