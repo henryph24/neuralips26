@@ -1,0 +1,9 @@
+recompile locally
+
+---
+
+[Image #8] [Image #9] why the math formula is falling outside of the right margin
+
+---
+
+review for similar class of error
