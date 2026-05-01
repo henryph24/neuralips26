@@ -1,0 +1,70 @@
+recompile the paper
+
+---
+
+I am not happy with the current abstract. Several details am not happy with: specifically mentioning the 1.7 MB on MOMENT-small, RAM in micrsecond... This is NeurIPS, scientific and rigorous, but not too engineering-orirented
+
+---
+
+review the abstract as a whole
+
+---
+
+so it start with deployment ?
+
+---
+
+I do not think it is good. Even without deployment, these TSFMs comes built-in with such an adapter by its design, hence it is a problem
+
+---
+
+verify: " Time series foundation models (TSFMs) are designed to be used with a frozen backbone and a small task head: the backbone is shared and the head
+  ▎ specializes per task" with exa mcp academic paper search first
+
+---
+
+search more paper and reason
+
+---
+
+apply
+
+---
+
+Since this paper is diagnosis first and claiming improvements later, is the current abstracvt good in that angle ?
+
+---
+
+let's do it, make sure to use "converge" and "causal fix"
+
+---
+
+but why is this necessary: "upgrading that single head to a mixture of expert heads is the natural way to specialize per-window across", we should write about it
+
+---
+
+Two first sentences sound compleetely separated
+
+---
+
+I find it is not reading very sequentially logical
+
+---
+
+I find it is not reading very sequentially logical, consider spliting sentences when needed
+
+---
+
+why is this even considered an upgrade: "The standard mixture-of-experts (MoE) upgrade", what is the benefit of MoE here (it is in the paper)
+
+---
+
+why "address" the "a single head must aveage across them" <- why is this likely sub-optimal ?
+
+---
+
+how strongly logical is our abstract now
+
+---
+
+write more clearly than: "all but one expert receive ..."
