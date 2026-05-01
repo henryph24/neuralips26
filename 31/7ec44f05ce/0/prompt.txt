@@ -64,3 +64,25 @@ Recommendation: increase dot radius (e.g., 1.5-2pt) and ensure it's drawn *after
 Recommend increasing the dot radius (e.g., 4–5pt) and forcing it above the trunk in draw order.</result>
 <usage><total_tokens>33613</total_tokens><tool_uses>1</tool_uses><duration_ms>13051</duration_ms></usage>
 </task-notification>
+
+---
+
+<task-notification>
+<task-id>a877abbc2739789c1</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/70c08514-8a68-45b0-8438-8206b07392fc/tasks/a877abbc2739789c1.output</output-file>
+<status>completed</status>
+<summary>Agent "Final SR-MoA arrow check" completed</summary>
+<result>Verification of Figure F.2 redesign:
+
+1. **Σ as confluence point**: Yes. Σ sits cleanly to the right of all 5 experts and reads unambiguously as the merge node before Y.
+
+2. **Mini-bus merging**: Yes, visible. Experts 1+2 join into a single arrow entering Σ.north; Expert 3 feeds Σ.west directly; Experts 4+5 merge into a single arrow into Σ.south. Three inbound arrows total, not five.
+
+3. **Boundary cleanliness**: Clean. Σ→Y fits within the figure box; no overflow on the right edge.
+
+4. **Other arrows**: The orange dashed bottom router bus runs below the experts and does not interfere with the new Σ inflows. The σ→expert routing arrows remain legible. One minor note: the bottom router-bus label text ("No external router. Each expert decides...") sits close to Expert 5's outbound merge arrow but does not collide.
+
+5. **Overall**: Cleaner. The previous pass-by trunk ambiguity is gone, the 2+1+2 grouping reinforces the architectural symmetry, and arrow count into Σ dropped from 5 to 3. No new clutter introduced.</result>
+<usage><total_tokens>33664</total_tokens><tool_uses>1</tool_uses><duration_ms>14370</duration_ms></usage>
+</task-notification>
