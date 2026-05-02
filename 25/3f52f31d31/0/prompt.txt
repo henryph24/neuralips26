@@ -1,0 +1,46 @@
+1/ abstract still clunky, a bit long, naming out many TSFMs (must be a generalised way of writing). "﻿ on every TSFM that uses
+instance normalization". I want to avoid "every" claims.
+
+---
+
+The first sentence reads very generalised. It may be just a class of TSFMs, not all TSFMs
+
+---
+
+Good. I do not like: "a fix below".
+
+---
+
+causal intervention please
+
+---
+
+we name it ... should we write that we formalized/ theorised ?
+
+---
+
+can we mention somehow the word SOTA ?
+
+---
+
+Actually that's not what I wanted. Is our 54 win SOTA in some aspect?
+
+---
+
+But in the academic community the word SOTA usually means that it is the best of its kind from a certain comparison perspective. Can we also write about that clearly? How do we contextualize the 54 wins here?
+
+---
+
+Do you think that it poses a risk of overclaiming? We actually deliver that value right? And we wrote clearly about it enough.
+
+---
+
+but it is necessary, how do we safely add the word with context
+
+---
+
+But our family is still our work, right? So I can think we can still use the word SOTA very directly here.
+
+---
+
+let's revify one more time with the literature using Exa MCP
