@@ -1074,7 +1074,7 @@ $H$ & RR-MoA & Best fix & DLin & RR-MoA & Best fix & DLin & RR-MoA & Best fix & 
 \section{Proposition Proofs}
 \label{app:proofs}
 
-\textbf{Proof of Observation~\ref{thm:mi_decomp}} (Routing Information Loss Under RevIN, revised form).
+\textbf{Proof of Observation~\ref{thm:mi_decomp}} (Routing Information Loss Under RevIN).
 
 \begin{proof}
 Throughout, $X$ denotes a raw window, $(M,\Sigma)$ its per-window mean/scale, $S = (X-M)/\Sigma$ its RevIN-normalized shape (defined whenever $\Sigma > 0$; constant windows form a measure-zero exception that we exclude by convention), and $E$ a deterministic (possibly randomized) router assignment. On the support $\{\Sigma > 0\}$ the map $X \leftrightarrow (S, M, \Sigma)$ is a measurable bijection, so $I(X; Y) = I(S, M, \Sigma; Y)$ for any $Y$, and in particular $I(X; E) = I(S, M, \Sigma; E)$.
@@ -1111,7 +1111,7 @@ where the residual $\varepsilon := I(M,\Sigma; S) \geq 0$ is the \emph{leakage} 
 \emph{Tightness condition.} The bound~(ii) is informative when $I(M,\Sigma; E) \gg \varepsilon$. Since $I(M,\Sigma; E)$ increases with the location-scale variance, the signal ratio $R(\mathcal{D}) = [\mathrm{Var}(M) + \mathrm{Var}(\Sigma)] / \overline{\mathrm{Var}(S)}$ is a monotone proxy for the tightness of the bound. This explains the $\rho{=}{-}0.88$ correlation: high-$R$ datasets (Exchange, $R{=}2.17$) have $I(M,\Sigma; E) \gg \varepsilon$, producing large gains ($-68.5\%$); low-$R$ datasets (Traffic, $R{=}0.14$) have $I(M,\Sigma; E) \approx \varepsilon$, producing no gain ($+2.9\%$).
 \end{proof}
 
-\textbf{Remark on the classical form.} The earlier version assumed $(M,\Sigma) \perp\!\!\!\perp S$ outright. The revised form~(ii) keeps $\varepsilon$ explicit and Part~(iv) measures it via both parametric (CCA) and non-parametric (KSG) methods, eliminating the independence assumption. Appendix~\ref{app:mi_tightness} bypasses the bound entirely by directly measuring $H(E \mid S)$, confirming the gap $I(M,\Sigma; S \mid E)$ averages $0.075$ nats (Table~\ref{tab:mi_tightness}). The agreement between Gaussian reference and distribution-free KSG estimates ($\pm 0.26$ nats) confirms the CCA-based values are reliable despite non-Gaussianity.
+\textbf{Remark on the classical bound.} Assuming $(M,\Sigma) \perp\!\!\!\perp S$ outright recovers the classical statement $I(X;E)-I(S;E)\geq I(M,\Sigma;E)$ as a corollary of Part~(ii). Our form keeps the leakage $\varepsilon = I(M,\Sigma; S)$ explicit, and Part~(iv) measures it via both parametric (CCA) and non-parametric (KSG) methods, so the bound holds without any independence assumption. Appendix~\ref{app:mi_tightness} bypasses the bound entirely by directly measuring $H(E \mid S)$, confirming the gap $I(M,\Sigma; S \mid E)$ averages $0.075$ nats (Table~\ref{tab:mi_tightness}). The agreement between Gaussian reference and distribution-free KSG estimates ($\pm 0.26$ nats) confirms the CCA-based values are reliable despite non-Gaussianity.
 
 \subsection{Theoretical Depth of Observation~\ref{thm:mi_decomp}}
 \label{app:prop2_depth}
