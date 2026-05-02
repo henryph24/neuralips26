@@ -502,15 +502,15 @@ In contrast, \textbf{RR-MoA} maintains healthy routing entropy ($1.0$--$1.57$) a
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}clp{3.1cm}p{6.0cm}@{}}
 \toprule
-\# & Control & Alternative explanation tested & Observed result {\small$\Rightarrow$} verdict \\
+\# & \textbf{Control} & \textbf{Hypothesis (rejected)} & \textbf{Observed result} $\Rightarrow$ \textbf{verdict} \\
 \midrule
-C1 & RevIN ablation & Collapse intrinsic to MoE on TSFMs & Entropy $0.000 \to 0.66$--$1.32$ when RevIN disabled (Table~\ref{tab:adamix}) {\small$\Rightarrow$} RevIN is \emph{necessary} for collapse \\
+C1 & RevIN ablation & Collapse is intrinsic to MoE itself, not caused by normalization & Entropy $0.000 \to 0.66$--$1.32$ when RevIN disabled (Table~\ref{tab:adamix}) {\small$\Rightarrow$} RevIN is \emph{necessary} for collapse \\
 C2 & MOMENT vs Timer-XL & Architecture, not normalization, causes collapse & Opposite trajectories with identical code, only norm differs (Fig.~\ref{fig:causal_contrast}) {\small$\Rightarrow$} normalization is \emph{sufficient} \\
-C3 & BatchNorm1d / GroupNorm & RevIN-specific anomaly & All three per-window normalizers collapse identically (App.~\ref{app:norm_generalization}) {\small$\Rightarrow$} any norm that strips $(\mu,\sigma)$ triggers collapse \\
+C3 & BatchNorm1d / GroupNorm & Collapse is unique to RevIN; other per-window normalizers are immune & All three per-window normalizers collapse identically (App.~\ref{app:norm_generalization}) {\small$\Rightarrow$} any norm that strips $(\mu,\sigma)$ triggers collapse \\
 C4 & 5-family rescue sweep & Optimization problem (load-balance, z-loss, ReLU, expert-choice) & 0/11 configs recover; best is $2.7{\times}$ worse than RR-MoA (Table~\ref{tab:rescue}) {\small$\Rightarrow$} not in the optimizer \\
 C5 & AdaMix with raw router & Router architecture is the bottleneck & Same router, swap input only: entropy $\to 1.41$--$1.57$; MSE $-41$--$88\%$ (App.~\ref{app:adamix_details}) {\small$\Rightarrow$} the \emph{input} matters, not the router \\
-C6 & SR-MoA raw vs hidden routing & Specific to RR-MoA's Conv1d gate & Different router (per-expert sigmoid); hidden-routed $+87$--$768\%$ worse (Table~\ref{tab:self_routed}) {\small$\Rightarrow$} raw-input principle generalizes \\
-C7 & Vision ViT + InstanceNorm & Time-series-specific phenomenon & ResNet/ViT MoE on CIFAR-10 collapses identically (App.~\ref{app:vision_moe}) {\small$\Rightarrow$} mechanism is modality-general \\
+C6 & SR-MoA raw vs hidden routing & The fix only works for RR-MoA's specific Conv1d router design & Different router (per-expert sigmoid); hidden-routed $+87$--$768\%$ worse (Table~\ref{tab:self_routed}) {\small$\Rightarrow$} raw-input principle generalizes \\
+C7 & Vision ViT + InstanceNorm & Collapse only happens in time series, not other modalities & ResNet/ViT MoE on CIFAR-10 collapses identically (App.~\ref{app:vision_moe}) {\small$\Rightarrow$} mechanism is modality-general \\
 C8 & $(\mu,\sigma)$ re-injection & Just appending stripped stats back fixes it & Re-injected hidden states still $+42$--$239\%$ worse, 11/18 still collapsed (App.~\ref{app:reinjection}) {\small$\Rightarrow$} only \emph{raw} pre-normalization input restores routing \\
 \midrule
 \multicolumn{4}{@{}p{0.97\textwidth}@{}}{\textbf{Root cause (surviving hypothesis after C1--C8).} The collapse is not intrinsic to MoE (C1), not architecture-specific (C2, C6, C7), not RevIN-specific (C3), not an optimization problem (C4), not a router-design problem (C5), and not fixable by appending statistics post-hoc (C8). The single mechanism consistent with all 8 controls: \textbf{instance normalization removes the per-window $(\mu,\sigma)$ that carries the routing signal}, so the fix must restore it from \emph{raw pre-normalization} input.} \\
