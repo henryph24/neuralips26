@@ -1,0 +1,15 @@
+2/ Did we causally prove: "﻿Frozen Paradox: frozen adapters beat full fine-tuning by 12–79%."
+
+---
+
+let be more explicit then
+
+---
+
+So everything was good now on this matter causally proving this right ?
+
+---
+
+but this is not the main contribution selling point of the whole paper right: " One residual caveat to flag (not a correctness issue, just a robustness note): RDGF is run on 3 datasets, not 6, and reports no significance test.
+  If a reviewer pushes hard on M2's causal evidence, that's the most likely pressure point. Adding 3 more datasets + a Wilcoxon would close it; the
+  current text is defensible but not bulletproof."
