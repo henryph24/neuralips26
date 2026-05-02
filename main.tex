@@ -1220,7 +1220,9 @@ This corollary identifies raw routing as the \emph{minimal causal fix}: it inter
 \section{LoRA Sweep (Full Results)}
 \label{app:lora_sweep}
 
-We sweep LoRA~\citep{hu2022lora} across three axes to ensure the comparison in Table~\ref{tab:baselines} is not cherry-picked: rank $r{\in}\{8,16,32\}$, target projections ${\in}\{q{+}v,\; q{+}k{+}v{+}o\}$, and forecast head ${\in}\{$linear, 2-layer MLP$\}$, for 12 configurations $\times$ 3 seeds $=$ 36 runs per dataset (108 runs total across the 3 datasets). All runs use a strictly frozen backbone (matching Table~\ref{tab:rrmoa}'s primary setting).
+We sweep LoRA~\citep{hu2022lora} across three axes to ensure the comparison in Table~\ref{tab:baselines} is not cherry-picked: rank $r{\in}\{8,16,32\}$, target projections ${\in}\{q{+}v,\; q{+}k{+}v{+}o\}$, and forecast head ${\in}\{$linear, 2-layer MLP$\}$, for 12 configurations $\times$ 3 seeds $=$ 36 runs per dataset (108 runs total across the 3 datasets). All runs use a strictly frozen backbone (matching Table~\ref{tab:rrmoa}'s primary setting). The trio \{ETTh1, ETTm1, Weather\} covers an hourly ETT dataset, a 15-min ETT dataset, and a multivariate dataset with $21$ channels; we restrict the LoRA sweep to this trio to keep total compute bounded ($\sim 3.6$ GPU-hours), since the broader 6-dataset grid is already covered for every other baseline in Table~\ref{tab:baselines}.
+
+\textbf{LoRA hyperparameters.} Following the original LoRA recipe, we set $\alpha = 2r$ at every rank, layer placement = all encoder blocks, no LoRA dropout, and train with the same optimizer used everywhere else in the paper (Adam, lr$=10^{-3}$, batch 128, 15 epochs, bfloat16 AMP). Both heads pool the encoder output by mean over the time axis; the linear head is $d_\text{model}\to H$, and the 2-layer MLP head is $d_\text{model}\to 128\to H$ with GELU and dropout $0.1$ between the two linear layers. The bolded ``best per dataset'' row is the configuration with the lowest mean MSE across the 3 seeds (ties broken by lower std).
 
 \begin{table}[h]
 \centering
@@ -1275,6 +1277,10 @@ Dataset & Rank & Targets & Head & MSE (mean$\pm$std) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\textbf{Gap to RR-MoA.} The best LoRA configuration on each dataset still trails the RR-MoA Top-2 frozen result by a wide margin: $1.154$ vs $0.690$ on ETTh1 ($+67.2\%$), $0.956$ vs $0.571$ on ETTm1 ($+67.4\%$), and $0.600$ vs $0.289$ on Weather ($+107.6\%$); average gap ${\approx}81\%$. Since the strongest LoRA per dataset is computed by enumerating all 12 configurations, this is the worst case for our claim, and it still leaves RR-MoA decisively ahead.
+
+\textbf{Sweep takeaways.} Three patterns are visible in the table. (i)~The best head type is dataset-dependent: 2-layer MLP wins on ETTh1 (the bolded $1.154$) but the linear head wins on ETTm1 (bolded $0.956$, vs.\ MLP rows clustered near $1.123$). This is consistent with the DLinear-gap analysis (Appendix~\ref{app:gap_closing}): on datasets where linear extrapolation is strong, additional head capacity is unnecessary or harmful. (ii)~Rank does not monotonically help: on ETTm1, $r{=}32$ qkvo linear ($1.345 \pm 0.360$) is worse than $r{=}16$ qkvo linear ($0.956 \pm 0.072$), with high seed variance suggesting optimization instability at the wider rank. (iii)~Several MLP-head rows on Weather collapse to identical values across seeds ($0.606 \pm 0.001$ at six configurations), indicating that LoRA-MLP is converging to a near-fixed mean-prediction solution rather than adapting to the input. None of these failure modes affect RR-MoA, whose router-level capacity is allocated per window rather than absorbed by a static head.
 
 \section{Routing Ablations}
 \label{app:routing_ablations}
