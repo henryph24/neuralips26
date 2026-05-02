@@ -1,0 +1,13 @@
+11/ """﻿E LoRA Sweep (Full Results)
+We sweep LoRA [20] across three axes to ensure the comparison in Table 4 is not cherry-picked: rank
+r∈{8, 16, 32}, target projections ∈{q+v, q+k+v+o}, and forecast head ∈{linear, 2-layer MLP},
+for 12 configurations × 3 seeds = 36 runs per dataset (108 runs total across the 3 datasets). All runs
+use a strictly frozen backbone (matching Table 1’s primary setting)""" This part of the appendix looks really brief. Are we missing something? Verify.
+
+---
+
+Is the recommended edition still within the appendix discussion only? If so try to do it.
+
+---
+
+did we compute or run new experiments or it just reusing exising content and results ?
