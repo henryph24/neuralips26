@@ -1,0 +1,9 @@
+[Image #2] 
+
+Are we having some spacing issue here? "Table 3: Eight causal controls. Each rules out a competing explanation; the only mechanism
+
+"
+
+---
+
+add to memory: always recompile the main file after changes are made
