@@ -1,0 +1,9 @@
+[Image #1] for this table, I think the column name can be better formatted
+
+---
+
+Should we rename it into columns: control, hypothesis, observed results and verdict, with the hypothesis being self-contained in its writing and more explicit ? Should we
+
+---
+
+let's go
