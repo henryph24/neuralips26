@@ -1,0 +1,22 @@
+3/ """﻿ one TSFM in GPU memory can serve thousands of tenants through
+small (∼1.7 MB)""" <- the writing is unnecessary detailed, 1.7 MB for what TSFMs ? We do not need to write about one specific TSFM like that
+
+---
+
+review similar class of errors, unnecessarily detailed writing on a remote discussions
+
+---
+
+scan comprehensive for likely wrong number in specific configs, use web search with exa if needed
+
+---
+
+another round please, any inaccuracies here are very risky for my paper, launch multiple subagents with exa mcp to web search for grounded truths
+
+---
+
+let fix that as well
+
+---
+
+let fix that as well
