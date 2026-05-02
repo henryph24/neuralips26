@@ -1,0 +1,9 @@
+9/ ﻿B.1 Inference Benchmark <- Why this part is reading a bit contradictory to me Particularly the honest caveats
+
+---
+
+so no more contradiction, any our recommended architectures do convery practical values ?
+
+---
+
+I mean, answer me, by now, is it contradiction-free now
