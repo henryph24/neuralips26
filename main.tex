@@ -1320,10 +1320,10 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
         minimum width=0.85cm, minimum height=0.7cm, font=\normalsize\bfseries,
         align=center, line width=0.7pt},
     expertbox/.style={rectangle, draw=black, fill=white, rounded corners=2pt,
-        minimum width=3.4cm, minimum height=0.85cm, font=\scriptsize\bfseries,
+        minimum width=3.4cm, minimum height=0.95cm, font=\scriptsize\bfseries,
         align=center, line width=0.8pt, text=black, inner sep=4pt},
     sigmagate/.style={diamond, draw=srgate, fill=srgate!18, line width=1.0pt,
-        minimum size=0.80cm, font=\scriptsize\bfseries, inner sep=0pt, text=srgate!75!black},
+        minimum size=0.70cm, font=\scriptsize\bfseries, inner sep=0pt, text=srgate!75!black},
     sumnode/.style={circle, draw=black, fill=white,
         minimum size=0.7cm, font=\normalsize\bfseries, line width=0.8pt},
     outputbox/.style={rectangle, draw=srout, fill=white, rounded corners=2pt,
@@ -1385,8 +1385,8 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 % ====== Arrows on background layer (so they render BEHIND boxes/text) ======
 % Layout principle: H stream and X_raw stream both flow LEFT-TO-RIGHT into
 % their targets, so no head-to-head arrow clashes. H horizontals run at
-% y+0.40 (above each σ.top apex) so the blue stream visibly clears the
-% σ_k diamonds rather than appearing to pass through them.
+% y+0.45 (clearly above each σ.top apex at y+0.35; σ size 0.70cm gives
+% half-diagonal 0.35) so the blue stream has a 0.10cm gap above each σ_k.
 \begin{pgfonlayer}{background}
 % Input -> TSFM (blue, hidden-state stream)
 \draw[bluearr] (input.east) -- ++(0.4, 0) |- (tsfm.west);
@@ -1394,26 +1394,28 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 \draw[bluearr] (tsfm.east) -- (hidden.west);
 
 % H broadcast: trunk at x=6.20 (left of X_raw bus and σ_k), 5 horizontal
-% tap-offs at y+0.40 into expert.west.upper. y+0.40 is tangent to σ.top
-% (size 0.80cm half-diagonal = 0.40), so H clears each σ_k visually.
+% tap-offs at y+0.45 into expert.west.upper. With σ.top at y+0.35 the
+% blue stream clears each σ_k by 0.10cm (~3pt) visually.
 \draw[bluearr, -] (hidden.east) -- (6.20, 1.6);
-\draw[bluearr, -] (6.20, 3.10) -- (6.20, -2.10);  % vertical trunk spanning y+0.40 levels
+\draw[bluearr, -] (6.20, 3.15) -- (6.20, -2.05);  % vertical trunk spanning y+0.45 levels
 \foreach \i/\y in {1/2.7, 2/1.4, 3/0.1, 4/-1.2, 5/-2.5} {
-    \pgfmathsetmacro{\yt}{\y + 0.40}
-    \draw[bluearr] (6.20, \yt) -- ([yshift=0.40cm]e\i.west);
+    \pgfmathsetmacro{\yt}{\y + 0.45}
+    \draw[bluearr] (6.20, \yt) -- ([yshift=0.45cm]e\i.west);
 }
 
-% X_raw broadcast bus on the LEFT of σ_k (x=6.60), rightward taps into σ.west.
-% Same flow direction as σ.east -> expert.west, so no head-to-head clash.
+% X_raw broadcast bus tucked next to σ.west (x=6.95, σ.west at 7.05): the
+% per-σ taps shrink to 0.10cm ticks instead of long horizontal arrows, so
+% each σ_k visually reads as "fed by the bus" rather than "lassoed by an
+% arrow". Same flow direction as σ.east -> expert.west, so no head clashes.
 \draw[gatedasharr, -] (input.south) -- ++(0, -0.55) -| (0.40, -3.55);
-\draw[gatedasharr, -] (0.40, -3.55) -- (6.60, -3.55);   % under-figure bus
-\draw[gatedasharr, -] (6.60, -3.55) -- (6.60, 2.7);     % vertical riser (left of σ_k)
+\draw[gatedasharr, -] (0.40, -3.55) -- (6.95, -3.55);   % under-figure bus
+\draw[gatedasharr, -] (6.95, -3.55) -- (6.95, 2.7);     % vertical riser flush against σ.west
 \foreach \i/\y in {1/2.7, 2/1.4, 3/0.1, 4/-1.2, 5/-2.5} {
-    \draw[gatedasharr] (6.60, \y) -- (g\i.west);
+    \draw[gatedasharr] (6.95, \y) -- (g\i.west);
 }
-% sigma_k -> expert (short solid orange arrow into LOWER half of expert)
+% sigma_k -> expert (solid orange arrow into LOWER half of expert)
 \foreach \i in {1,2,3,4,5} {
-    \draw[gatearr] (g\i.east) -- ([yshift=-0.18cm]e\i.west);
+    \draw[gatearr] (g\i.east) -- ([yshift=-0.30cm]e\i.west);
 }
 % Experts -> Sigma. Three convergence routes (north / west / south):
 %  - experts 1+2 (above Sigma) merge into a tiny vertical mini-bus at
