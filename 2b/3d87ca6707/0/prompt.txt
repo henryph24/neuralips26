@@ -1,0 +1,8 @@
+13/ ﻿Figure F.2: SR-MoA architecture (Self-Routed Mixture of Adapters). Each of K=5 experts has
+<- The orange arrow that points from the sigmoid to the expert looks tilted. I want it to look straight.
+
+First take a screenshot at that image with computer usce mcp
+
+---
+
+good, let's go
