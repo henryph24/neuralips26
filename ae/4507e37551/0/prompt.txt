@@ -1,0 +1,29 @@
+for the abstract, it looks like MOMENT and TimesFM are not from NeurIPS right ? REvIN is not briefly mentioned ?
+
+---
+
+I think let's just add additively, and yes slighltly make the RevIN more understandable
+
+---
+
+Verify if all dimensions of the time series foundation model indeed pair with a static head.
+
+---
+
+recompile
+
+---
+
+I think we had some issue with the overall structure. For 3.method, we only had one sub-section 3.1 3.1 Raw-Routed Mixture of Adapters (RR-MoA)
+
+---
+
+does it follow good neurips published paper structure ? use exa search mcp to see if we should improve
+
+---
+
+does it follow good neurips published paper structure ? use exa search mcp to find 2025 accpeted papers for time series to see  if we should improve
+
+---
+
+so we should absorb ?
