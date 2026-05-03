@@ -1,0 +1,27 @@
+recompile
+
+---
+
+remove all emdash from the abstract
+
+---
+
+can we describe this part a bit more concisely: "We
+
+identify a failure mode of this upgrade under instance normalization: any joint training of the adapter and backbone, even with only a single backbone layer receiving
+
+gradients, drives the router to a one-hot assignment, routing entropy to 0.000, and
+
+starves all but one expert of gradients. We name this normalization-induced routing
+
+collapse: instance-normalization layers (e.g., RevIN) strip the per-window mean
+
+and variance the router needs"
+
+---
+
+starves all but one expert of gradients do not read explicitly enough. Be more understandable and explicit
+
+---
+
+is undertrain a proper word here ? how about activated ? research a bit if needed ?
