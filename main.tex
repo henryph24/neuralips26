@@ -287,7 +287,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 % ====== PATH B: CONV1D GATE (bottom) ======
 \node[gatebox] (gate) at (3.5, -1.8) {
     \textbf{Conv1d Gate}\\[-2pt]
-    {\scriptsize 1{,}100 params}
+    {\scriptsize 853 params}
 };
 
 % Top-K
@@ -358,7 +358,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 
 \end{tikzpicture}%
 }% end resizebox
-\caption{\textbf{RR-MoA architecture.} \textit{Path~A} (blue): frozen TSFM produces $\mathbf{H}$ for all experts. \textit{Path~B} (orange): Conv1d gate (1{,}100 params) reads $\mathbf{X}_\mathrm{raw}$ and selects Top-2 experts; inactive experts (gray) receive no gradient. Standard hidden-state MoE collapses (Table~\ref{tab:adamix}); RR-MoA wins \textbf{54/54} (Table~\ref{tab:rrmoa}).}
+\caption{\textbf{RR-MoA architecture.} \textit{Path~A} (blue): frozen TSFM produces $\mathbf{H}$ for all experts. \textit{Path~B} (orange): Conv1d gate ($853$ params) reads $\mathbf{X}_\mathrm{raw}$ and selects Top-2 experts; inactive experts (gray) receive no gradient. Standard hidden-state MoE collapses (Table~\ref{tab:adamix}); RR-MoA wins \textbf{54/54} (Table~\ref{tab:rrmoa}).}
 \label{fig:framework}
 \vspace{-0.8em}
 \end{figure}
@@ -378,7 +378,7 @@ An \emph{adapter} $g_\phi: \mathbb{R}^{B \times T \times d} \rightarrow \mathbb{
 \end{aligned}
 \label{eq:rrmoa}
 \end{equation}
-where $G_\psi: \mathbb{R}^{T} \to \mathbb{R}^K$ is a small Conv1d\,+\,pooling\,+\,linear gate ($\sim$1.1K params) operating directly on the raw time series, $\mathcal{T} \subset \{1,\ldots,K\}$ is the set of Top-$k$ expert indices, and each $\mathrm{Expert}_j$ is a canonical adapter head. By construction $\sum_j \widetilde{w}_j = 1$ with support only on $\mathcal{T}$, so only $k$ of $K$ experts contribute per sample (the remaining $K{-}k$ are masked out and do not execute). With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense ($k{=}K$) expert FLOPs while retaining $63\%$ of the dense MSE improvement over the best fixed adapter (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
+where $G_\psi: \mathbb{R}^{T} \to \mathbb{R}^K$ is a small Conv1d\,+\,pooling\,+\,linear gate ($853$ params) operating directly on the raw time series, $\mathcal{T} \subset \{1,\ldots,K\}$ is the set of Top-$k$ expert indices, and each $\mathrm{Expert}_j$ is a canonical adapter head. By construction $\sum_j \widetilde{w}_j = 1$ with support only on $\mathcal{T}$, so only $k$ of $K$ experts contribute per sample (the remaining $K{-}k$ are masked out and do not execute). With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense ($k{=}K$) expert FLOPs while retaining $63\%$ of the dense MSE improvement over the best fixed adapter (\S\ref{sec:topk}). The raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away, enabling per-sample routing that reflects the physical characteristics of each time series window.
 
 \textbf{Expert pool.} We maintain $K{=}5$ topologically distinct expert adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), spanning the canonical pooling families used in sequence representation learning~\citep{reimers2019sentencebert}. Architectural diversity is critical: replacing the five distinct heads with five identical experts (same topology, different initialization) degrades MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}). Pseudocode in Algorithm~\ref{alg:rrmoa} (Appendix~\ref{app:setup}). We now empirically validate that this minimal fix recovers routing diversity, beats the comprehensive baseline suite, and that its predictions hold under eight causal controls.
 
@@ -490,7 +490,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 
 In contrast, \textbf{RR-MoA} maintains healthy routing entropy ($1.0$--$1.57$) and wins \textbf{54/54} configurations, with MSE improvements of $26\%$ to $79\%$ over the best fixed adapter. Notably, on Traffic ($R{=}0.14$, where the stripped statistics carry little information), RR-MoA does not improve over fixed adapters, exactly as Observation~\ref{thm:mi_decomp} predicts (Figure~\ref{fig:signal_ratio}).
 
-\textbf{Rescue-baseline sweep.} To rule out that the collapse is merely under-tuned, we sweep five standard MoE rescue families (Switch load-balance~\citep{fedus2022switch}, ST-MoE z-loss~\citep{zoph2022stmoe}, entropy regularization, ReMoE ReLU routing~\citep{wang2025remoe}, and expert-choice routing~\citep{zhou2022expertchoice}) across twelve configurations on 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $= 720$ runs (Table~\ref{tab:rescue}, Appendix~\ref{app:rescue_details}). The best rescue (z-loss $c_z{=}0.01$) reduces MSE by only $10.9\%$, still $2.7{\times}$ worse than RR-MoA. Excessive balancing ($\alpha{=}10.0$) actively hurts MSE ($+67.7\%$). This confirms Observation~\ref{thm:mi_decomp}(ii): when routing information is structurally absent from the hidden states, none of the standard rescue mechanisms we tested can compensate.
+\textbf{Rescue-baseline sweep.} To rule out that the collapse is merely under-tuned, we sweep five standard MoE rescue families (Switch load-balance~\citep{fedus2022switch}, ST-MoE z-loss~\citep{zoph2022stmoe}, entropy regularization, ReMoE ReLU routing~\citep{wang2025remoe}, and expert-choice routing~\citep{zhou2022expertchoice}) across eleven new rescue configurations plus the load-balance baseline already in Table~\ref{tab:adamix} (twelve configurations total) on 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $= 720$ run-cells (Table~\ref{tab:rescue}, Appendix~\ref{app:rescue_details}). The best rescue (z-loss $c_z{=}0.01$) reduces MSE by only $10.9\%$, still $2.7{\times}$ worse than RR-MoA. Excessive balancing ($\alpha{=}10.0$) actively hurts MSE ($+67.7\%$). This confirms Observation~\ref{thm:mi_decomp}(ii): when routing information is structurally absent from the hidden states, none of the standard rescue mechanisms we tested can compensate.
 
 \textbf{The principle is architecture-agnostic.} The diagnosis predicts the same fix should work for any router that reads raw input. We validate this with three router-level controls. \textbf{SR-MoA}~\citep{lv2025aoe,cheng2025ermoe,liu2026routingfree} (Self-Routed MoA, Figure~\ref{fig:srmoa_arch}) drops the external router entirely: each expert has its own sigmoid gate $\sigma_k(\mathbf{X}_\mathrm{raw})$. SR-MoA \emph{outperforms} RR-MoA by $13$--$42\%$ across all 6 datasets ($252$ runs, six backbones) and replicates the Frozen Paradox (frozen best on 4/6; Table~\ref{tab:self_routed}). Gating the same SR-MoA architecture on hidden states degrades by $+87$--$768\%$ on all 6 datasets ($p{=}0.016$); on Timer-XL (no RevIN) the same raw-vs-hidden comparison yields only $+4$--$9\%$ ($15$--$100{\times}$ smaller), confirming the effect is normalization-induced. \textbf{AdaMix-Raw} (Appendix~\ref{app:adamix_details}) swaps AdaMix's hidden-state router for a raw-input router and recovers entropy to $1.41$--$1.57$ and MSE by $41$--$88\%$ on all 12 cells. \textbf{Residual-IA\textsuperscript{+}} (Appendix~\ref{app:gate_pathology}, Figure~\ref{fig:residual_ia_arch}) extends the principle to the expert level via a shared NLinear raw branch + gated backbone residual, closing the DLinear gap. Table~\ref{tab:causal_controls} summarizes all eight controls.
 
@@ -979,7 +979,7 @@ Nils Reimers and Iryna Gurevych.
 \item \textbf{TRACE}~\citep{li2025trace}: importance-based LoRA selection with default settings.
 \item \textbf{Independent ensemble}: 5 experts with the canonical pool topologies, trained independently with no router and averaged at inference.
 \item \textbf{AdaMix}~\citep{wang2022adamix}: $K{=}5$ canonical heads with hidden-state softmax router; load-balance coefficient $0.01$. Full implementation details in Appendix~\ref{app:adamix_details}.
-\item \textbf{Full fine-tuning}: all encoder blocks unfrozen; best of $5$ head topologies $\times$ $2$ learning rates ($10^{-4}$, $10^{-5}$). Extended sweeps in Appendix~\ref{app:extended_ft}.
+\item \textbf{Full fine-tuning}: all encoder blocks unfrozen; best of $5$ head topologies $\times$ $2$ learning rates ($10^{-3}$, $10^{-4}$). Extended sweeps in Appendix~\ref{app:extended_ft} cover $50$-epoch cosine schedules at $10^{-5}$.
 \item \textbf{DLinear}~\citep{zeng2023dlinear}: from-scratch supervised; we use the simplified single-Linear variant ($\text{Linear}(L{=}512 \to H{=}96)$, $49$K params), without the trend-seasonal decomposition, as the calibration anchor. Calibration values $0.416 / 0.322 / 0.208$ on ETTh1/ETTm1/Weather (gap to RR-MoA visible in Tables~\ref{tab:rrmoa},~\ref{tab:baselines}).
 \end{itemize}
 
@@ -988,8 +988,8 @@ Nils Reimers and Iryna Gurevych.
 \caption{RR-MoA: Raw-Routed Mixture of Adapters with Top-$k$ sparse routing}
 \label{alg:rrmoa}
 \begin{algorithmic}[1]
-\REQUIRE Strictly frozen TSFM $f_{\theta_\text{frozen}}$, raw input $\mathbf{X}_\text{raw}\in\mathbb{R}^{B\times L}$, $K$ expert adapters, sparsity $k\leq K$
-\STATE $\mathbf{H}\leftarrow f_{\theta_\text{frozen}}(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Deep embeddings; \textbf{no gradients} through $\theta$}
+\REQUIRE TSFM $f_\theta$ (default: strictly frozen; optional: last-$\ell$ blocks unfrozen), raw input $\mathbf{X}_\text{raw}\in\mathbb{R}^{B\times L}$, $K$ expert adapters, sparsity $k\leq K$
+\STATE $\mathbf{H}\leftarrow f_\theta(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Frozen default: no gradients through $\theta$; for last-$\ell$/all unfreezing (Table~\ref{tab:rrmoa}), the unfrozen blocks receive gradients normally}
 \STATE $\mathbf{g}\leftarrow G_\psi(\mathbf{X}_\text{raw})$ \hfill \COMMENT{Raw-signal gate logits, $\mathbf{g}\in\mathbb{R}^{B\times K}$}
 \STATE $\mathcal{T}\leftarrow \mathrm{TopK}(\mathbf{g},\,k)$ \hfill \COMMENT{Per-sample indices of the $k$ selected experts}
 \STATE $\widetilde{\mathbf{w}}\leftarrow \mathrm{softmax}_{\mathcal{T}}(\mathbf{g})$ \hfill \COMMENT{Renormalized over selected experts only}
@@ -1035,7 +1035,7 @@ Single adapter (Conv1dPool)                  & $53.57 \pm 0.37$ & $+1.3\%$      
 \end{tabular}
 \end{table}
 
-The RR-MoA routing overhead ($+3.1$\,ms) is dominated by the sparse expert selection loop; the router itself (Conv1d + linear, ${\sim}1.1$K params) adds $<0.1$\,ms. SR-MoA dense and Residual-IA\textsuperscript{+} both run \emph{faster} than RR-MoA Top-2 on GPU because their dense per-expert execution parallelizes over the $K{=}5$ expert dimension without per-sample sparse-routing kernel launches. Notably, Residual-IA\textsuperscript{+} has \emph{fewer} adapter parameters than RR-MoA ($354$K vs $426$K) thanks to the shared NLinear raw branch.
+The RR-MoA routing overhead ($+3.1$\,ms) is dominated by the sparse expert selection loop; the router itself (Conv1d + linear, $853$ params) adds $<0.1$\,ms. SR-MoA dense and Residual-IA\textsuperscript{+} both run \emph{faster} than RR-MoA Top-2 on GPU because their dense per-expert execution parallelizes over the $K{=}5$ expert dimension without per-sample sparse-routing kernel launches. Notably, Residual-IA\textsuperscript{+} has \emph{fewer} adapter parameters than RR-MoA ($354$K vs $426$K) thanks to the shared NLinear raw branch.
 
 \textbf{What DLinear wins.} Per call, DLinear is ${\sim}1400\times$ faster ($0.04$ vs $56$\,ms) and uses ${\sim}2\times$ less peak GPU memory; for $N$ independent tasks served in isolation, $N$ DLinears are also smaller in aggregate than one TSFM plus $N$ adapters. We do not claim otherwise.
 
@@ -1125,6 +1125,10 @@ Consider a linear-readout router on the interpolated input $\mathbf{x}_\alpha = 
     \item[\textup{(b)}] \textbf{Softmax discontinuity at $\alpha{=}1$.} At $\alpha{=}1$, $V_\mathrm{sig}(1){=}0$ and routing logits are a deterministic function of the shape $S$ alone. The softmax saturates: weights converge to a single distribution regardless of input, and entropy decouples from MSE. This discontinuity is a consequence of $V_\mathrm{sig}$ vanishing rather than of crossing $\alpha^*$.
 \end{enumerate}
 \end{proposition}
+
+\begin{proof}[Heuristic derivation]
+Under $M\perp\!\!\!\perp\Sigma\perp\!\!\!\perp S$ jointly Gaussian, $\mathbf{x}_\alpha = (1{-}\alpha)(M + \Sigma S) + \alpha S$. The location-scale component $(1{-}\alpha)(M+\Sigma S)$ contributes routing-discriminative variance $V_\mathrm{sig}(\alpha) = (1{-}\alpha)\,[\mathrm{Var}(M){+}\mathrm{Var}(\Sigma)]$ (the $(1{-}\alpha)$ rather than $(1{-}\alpha)^2$ scaling reflects each component's marginal contribution to a linear-readout router's input variance, see Remark below); the shape component contributes routing-irrelevant variance $V_\mathrm{noise}(\alpha) = \alpha\,\overline{\mathrm{Var}(S)} + V_0$. \textbf{Part (a):} Setting $V_\mathrm{sig}(\alpha^*) = V_\mathrm{noise}(\alpha^*)$ in the limit $V_0\to 0$ gives $(1{-}\alpha^*)[\mathrm{Var}(M){+}\mathrm{Var}(\Sigma)] = \alpha^* \overline{\mathrm{Var}(S)}$. Dividing both sides by $\overline{\mathrm{Var}(S)}$ and substituting $R(\mathcal{D}) = [\mathrm{Var}(M){+}\mathrm{Var}(\Sigma)]/\overline{\mathrm{Var}(S)}$ yields $(1{-}\alpha^*)R = \alpha^*$, so $\alpha^* = R/(R+1)$. Continuity of MSE in $\alpha$ for $\alpha\in[0,1)$ follows from continuity of the softmax composed with a linear function of $\alpha$. \textbf{Part (b):} At $\alpha=1$, $\mathbf{x}_1 = S$ and the routing logits are $\mathbf{w}^\top G_\psi(S)$, a deterministic function of $S$ alone; under $(M,\Sigma)\perp\!\!\!\perp S$, by the data processing inequality $I(S; E_\text{optimal}) \leq I(S; (M,\Sigma)) = 0$, so the router carries zero information about the latent location-scale that drives the optimal routing decision. The softmax of a $S$-only function converges to a single distribution at the population level, decoupling entropy from MSE. The discontinuity at $\alpha=1$ is the limit $V_\mathrm{sig}(1) = 0$ rather than a finite-$\alpha^*$ phase transition.
+\end{proof}
 
 \emph{Remark on the variance comparison.} Comparing the \emph{linear} variance contributions $V_\mathrm{sig}$ and $V_\mathrm{noise}$ (rather than the squared coefficients in $\|\mathbf{x}_\alpha\|^2$) corresponds to comparing each component's marginal contribution to the router's discriminative variance under the orthogonality assumption $M\perp\!\!\!\perp\Sigma\perp\!\!\!\perp S$. Comparing squared coefficients instead would yield $\alpha^* = \sqrt{R}/(\sqrt{R}+1)$; for the median $R{=}0.67$, the two formulas predict $\alpha^* \approx 0.40$ vs $0.45$, and the dose-response grid (5 points) is too coarse to discriminate. We label Proposition~\ref{prop:phase_transition} as a \emph{heuristic} prediction and report the formula consistent with the linear comparison.
 
@@ -1513,7 +1517,7 @@ Weather & Frozen  & Timer-XL  & $\mathbf{0.197 \pm 0.010}$ & $1.54$ \\
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.95\columnwidth]{figures/routing_viz.pdf}
-\caption{\textbf{Per-sample expert assignment vs.\ input statistics} (ETTh1, seed 42, $N{=}5{,}000$ test windows). Left: amplitude vs.\ volatility; right: mean level vs.\ amplitude. Colors indicate dominant expert (top-1 routing weight). Expert selection clusters by amplitude and volatility (the very statistics RevIN strips), empirically validating the conditional independence assumption $(M,\Sigma) \perp\!\!\!\perp S$ from Observation~\ref{thm:mi_decomp}(iii). Note: conv1d (purple) is in the legend but rarely the top-1 expert on ETTh1, so it is not visually present.}
+\caption{\textbf{Per-sample expert assignment vs.\ input statistics} (ETTh1, seed 42, $N{=}5{,}000$ test windows). Left: amplitude vs.\ volatility; right: mean level vs.\ amplitude. Colors indicate dominant expert (top-1 routing weight). Expert selection clusters by amplitude and volatility (the very statistics RevIN strips), empirically validating the conditional independence assumption $E \perp\!\!\!\perp S \mid (M,\Sigma)$ from Observation~\ref{thm:mi_decomp}(iii) (Part~iii condition (a)): expert assignment is determined by location-scale, with negligible residual dependence on shape. Note: conv1d (purple) is in the legend but rarely the top-1 expert on ETTh1, so it is not visually present.}
 \label{fig:routing_viz}
 \end{figure}
 
@@ -1621,7 +1625,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \subsection{Rescue-Baseline Sweep Details}
 \label{app:rescue_details}
 
-Table~\ref{tab:rescue} reports the full rescue-baseline sweep: 5 standard MoE rescue families across 12 configurations evaluated on MOMENT-small $+$ RevIN (AdaMix, 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $=$ 60 cells per row, 720 runs total).
+Table~\ref{tab:rescue} reports the full rescue-baseline sweep: 5 standard MoE rescue families across 12 configurations evaluated on MOMENT-small $+$ RevIN (AdaMix, 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $=$ 60 cells per row, 720 cells total). Eleven configurations are launched as new runs by \texttt{run\_rescue\_baseline\_race.sh}; the twelfth, the Switch load-balance baseline at $\alpha{=}0.01$, reuses the existing AdaMix results from Table~\ref{tab:adamix} (where load-balance $\alpha{=}0.01$ is the default).
 
 \begin{table}[h]
 \centering
