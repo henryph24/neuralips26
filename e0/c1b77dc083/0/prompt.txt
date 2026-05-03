@@ -1,0 +1,33 @@
+rewrite to tldr.txt
+
+---
+
+mixture of exepert adapter or mixture of adapters, review the paper itself and then this tldr
+
+---
+
+so all are correct, the paper, abstract and the tldr
+
+---
+
+for the tldr I think: "yields 54/54 wins over the best fixed adapter under a strictly frozen backbone." is not correct given the current form. That win is only specific to RR-MoA right ?
+
+---
+
+I think the best part is the causal control, then presctiption of a minial causal intervention
+
+---
+
+But we still need a high level flex about results
+
+---
+
+how about the statistics that help predict
+
+---
+
+Error: TLDR value must NOT have more than 250 characters (2026-05-03-4499281)
+
+---
+
+retain causal control
