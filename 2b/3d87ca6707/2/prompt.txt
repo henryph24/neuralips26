@@ -1,0 +1,130 @@
+based on the current abstract create me a version to be pasted at the submission portal
+"""Abstract of paper. Add TeX formulas using the following formats: $In-line Formula$ or $$Block Formula$$.
+
+"""
+
+[Image #1]
+
+---
+
+Reviewer Nomination*
+[Note: cannot be changed after May 4th AOE] Nominate at least one author who is a qualified reviewer - i.e., at least 2 first-author OR at least 5 co-authored publications that are at peer-reviewed archival related venues (e.g., NeurIPS, ICLR, ICML, CVPR, ICCV/ECCV, ACL, EMNLP, WACV, COLM, CoLLAs, RLC, AISTATS, KDD, IJCAI, AAAI, UAI, COLT, CHIL, MLHC, TMLR, JMLR, FAccT, CHI, Nature Machine Intelligence - not an exhaustive list and workshop papers do not count). Being named as such a reviewer in the submission constitutes an acceptance and a commitment to carry out the regular reviewing load (approx. 4 papers) responsibly if asked by the PC chairs or the E&D track chairs. Only if no qualified reviewer exists in the author list, nominate the best-qualified author for consideration by the PC chairs or the E&D track chairs. In addition, note that any author listed on 4 or more papers will be automatically signed up as a reviewer unless they are already serving as a reviewer, AC, SAC, or other roles in the Organization Committee. Failure to assign a qualified reviewer when one is available in the author list may result in desk rejection. Please enter an OpenReview ID (e.g., ~First_Last1) that exactly matches one of the authors (separate by comma for more than one nominations).
+
+how do I knew which
+
+---
+
+help me find some, use claude in chrome
+
+---
+
+I am Hung Phan, fresh record
+
+---
+
+yes please
+
+---
+
+jus enabled now
+
+---
+
+s3818070@rmit.edu.vn
+
+---
+
+logged in
+
+---
+
+I have[Image #2] [Image #3]
+
+---
+
+[Image #4] [Image #5]
+
+---
+
+[Image #6] [Image #7] [Image #8]
+
+---
+
+so what to fill in primary and secondary now
+
+---
+
+[Image #9]
+
+---
+
+[Image #10]
+
+---
+
+TL;DR
+"Too Long; Didn't Read": a short sentence describing your paper
+
+---
+
+flex 3 architectural tweaks, deployment utility
+
+---
+
+should base more on the abstract
+
+---
+
+three architectual tweaks listed is not correct, I mean RR-MoA, SR-MOA and IA- etc
+
+---
+
+since this is tldr, even tsfm must specify time series foundation model. Make it more compact
+
+---
+
+plain text please (.txt file)
+
+---
+
+create me a .txt file
+
+---
+
+shorter, do not list all LoRA, etc
+
+---
+
+but we had a diagnosis-oriented paper right
+
+---
+
+some results please
+
+---
+
+in the main abstract, avoid saying that the fix is one line, that sounds under-selling. Also, the part on: "once any backbone layer is unfrozen" sounds confusing to first time reader of the topic, even though they could be professor/very technical. Fix the abstract
+
+---
+
+"The common" is a bad start, normalised TSFMs form a major class of TSFM as well, and they pioneer. Write something like "Major, Early" ...
+
+---
+
+I still do not like Major, early ? Can we use pioneering ? (let conduct a brief exa mcp academic search on the topic)
+
+---
+
+I would need such as (and name normalised ones)
+
+---
+
+does timefm use a static head ?
+
+---
+
+any TSFMs that meet both
+
+---
+
+TTM is not a well known one, maybe revert to earlier writing
