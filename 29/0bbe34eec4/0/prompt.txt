@@ -1,0 +1,65 @@
+let's now double check: "Experiments compute resources
+
+Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce
+
+the experiments?
+
+Answer: [Yes]
+
+Justification: All experiments were conducted on a single NVIDIA A10G GPU (23 GB
+
+VRAM, CUDA 12.4). A single RR-MoA run takes ∼1–3 minutes per dataset on
+
+MOMENT-small, ∼1.5 minutes on MOMENT-large, and similar on Moirai/MoiraiMoE/Chronos/Timer-XL. The full experimental suite (∼5,000 result files across the main
+
+tables, baselines, rescue sweep, cross-backbone, multi-horizon, imputation, and ablations)
+
+accumulated approximately 100–200 GPU-hours of compute end-to-end. Inference latency
+
+benchmarks (Table B.1) report wall-clock measurements for each architectural variant."
+
+---
+
+does it sound more impressive now
+
+---
+
+yeah make it explicit that it is measured
+
+---
+
+let's now verify these: "11. Safeguards
+
+Question: Does the paper describe safeguards that have been put in place for responsible
+
+release of data or models that have a high risk for misuse (e.g., pre-trained language models,
+
+image generators, or scraped datasets)?
+
+Answer: [N/A]
+
+Justification: The paper releases adapter routing code and lightweight adapter heads (≤500K
+parameters) for time series forecasting. These pose no risk for misuse—they are small
+task-specific modules, not generative models.
+
+12. Licenses for existing assets
+
+Question: Are the creators or original owners of assets (e.g., code, data, models), used in
+
+the paper, properly credited and are the license and terms of use explicitly mentioned and
+
+properly respected?
+
+Answer: [Yes]
+
+Justification: All pretrained models (MOMENT, Moirai, Moirai-MoE, Chronos, TimerXL) and datasets (ETT, Weather, Electricity, Traffic, Solar, Exchange) are cited with their
+
+original papers. MOMENT is released under MIT license; Moirai/Moirai-MoE under
+
+Apache 2.0; Chronos under Apache 2.0; Timer-XL under its publicly released terms.
+
+ETT/Weather/Electricity/Traffic/Solar/Exchange datasets are standard public LTSF benchmarks from Zhou et al. [40], Godahewa et al. [41]."
+
+---
+
+wev search one more round for ground truth
