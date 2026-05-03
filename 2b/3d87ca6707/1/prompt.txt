@@ -1,0 +1,9 @@
+After rendering, we had exceeded 9 pages of limit (main paper pages submitted to NeurIPS). Identify parts where we are unnecessarily verbose
+
+---
+
+try to avoid loss of information. Entre deletion of a section sounds not good. We must reuse elements in part where relevant. Remove the footnote though. Verify if we are at page 9 after rendering for the main content now, figure 4 can be reduce a bit in terms of height ?
+
+---
+
+recompile
