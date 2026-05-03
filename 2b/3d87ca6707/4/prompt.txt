@@ -1,0 +1,8 @@
+12/ "﻿Figure F.1: Normalization-induced routing collapse mechanism. (a) Raw input windows with
+distinct characteristics (amplitude, trend, volatility) route to different experts (K=5, color carries the
+window-to-expert identity). (b) After instance normalization strips µ and σ, all windows become
+indistinguishable, and the router collapses to a single expert (entropy → 0.000)." Should we keep this figure F.1 in the appendix because I believe we have visualized the problem overview in the main text already?
+
+---
+
+scan the paper closely again for: "No undefined references"
