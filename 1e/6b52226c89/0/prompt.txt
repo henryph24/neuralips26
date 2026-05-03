@@ -1,0 +1,24 @@
+please prepare me a separate file of the abstract with this format: "Abstract of paper. Add TeX formulas using the following formats: $In-line Formula$ or $$Block Formula$$.
+
+"[Image #12]
+
+---
+
+"We identify a failure mode we call normalization-induced routing collapse: instance-normalization layers (e.g., RevIN) strip the per-window mean and variance the router needs, so any joint training of adapter and backbone, even when only one of the backbone's transformer blocks is made trainable, collapses routing entropy to 
+, sending every input to a single expert and never activating the rest. "
+
+now this reads quite clunky. Budget for this is 2 sentence. Try again
+
+---
+
+"we identify a failture mode we call..." Try again.
+
+Also "routing entroy falls ..." then, I want to add immediately "meaning that"
+
+---
+
+Now it is too abrupt starting the sentence with "Instance-normalisation"
+
+---
+
+Starting a sentence with But is not good too
