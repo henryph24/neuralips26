@@ -1,0 +1,297 @@
+Check for in-text citations relevancy with regards to the sentences it supposed to support and the its full-paper content (if the paper of the in-text citations contains such supportive evidence to the sentences)
+
+---
+
+<task-notification>
+<task-id>a7a6727293541ad9f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/4b503937-8b45-4015-82f4-2af0ae3fdd55/tasks/a7a6727293541ad9f.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit MoE rescue + router-free cites" completed</summary>
+<result>All citations are verified. Now I'll compile the audit table.
+
+# Citation Relevancy Audit
+
+| # | CiteKey | Verdict | Snippet from paper | Sentence-level guidance |
+|---|---|---|---|---|
+| 1 | wang2022adamix | **PARTIAL** | "AdaMix stochastically routes instances ... via randomly selected adaptation modules ... stochastic routing policies like the random routing." | AdaMix's published recipe is **stochastic/random routing with adapter averaging at inference**, NOT a learned softmax router on hidden states. The paper still uses "K=5 adapter heads," but calling it the "standard MoE adapter recipe ... routing on hidden states" misrepresents the original mechanism. Either reword to "AdaMix-style adapter pool combined with a learned hidden-state softmax router" or cite a true learned-router paper (e.g., MoLE, MoLA). |
+| 2 | fedus2022switch | **SUPPORTED** | "auxiliary loss that encourages load balancing during training" | Switch Transformer's auxiliary load-balancing loss is the canonical reference for this. No change. |
+| 3a | fedus2022switch (collapse rescue) | **SUPPORTED** | Same load-balancing loss; widely framed as a collapse/imbalance mitigation. | Fine. |
+| 3b | zoph2022stmoe | **SUPPORTED** | "Router z-loss ... penalizing large router logits ... stabilizes the model"; addresses "training instabilities and uncertain quality during fine-tuning". | ST-MoE's z-loss is correctly characterized as an optimization-side rescue mechanism. |
+| 3c | wang2025remoe | **SUPPORTED** | "drop-in replacement for the conventional TopK+Softmax routing, utilizing ReLU as the router instead"; targets "discontinuous, non-differentiable" optimization. | ReLU routing as a fix is well supported. |
+| 3d | zhou2022expertchoice | **SUPPORTED** | "Instead of letting tokens select the top-k experts, we have experts selecting the top-k tokens"; motivated by "load imbalance ... under-trained" experts. | Inverted token-expert paradigm framed exactly as load-imbalance / collapse mitigation. |
+| 4 | fedus2022switch (in §2 MoE in FMs) | **SUPPORTED** | Switch Transformer is canonical for sparsely-routed FFN MoE in FMs. | Fine. |
+| 5 | chi2022representation | **SUPPORTED** | "encourages token clustering around expert centroids, implying a trend toward representation collapse"; proposes routing scores "on a low-dimensional hypersphere". | Both sub-claims (token clustering during routing learning + hyperspherical scores) are directly supported. |
+| 6 | zhou2022expertchoice | **SUPPORTED** | "experts selecting the top-k tokens" rather than tokens selecting experts. | Direct match. |
+| 7 | wang2025remoe | **SUPPORTED** | "drop-in replacement for the conventional TopK+Softmax routing, utilizing ReLU as the router". | Direct match. |
+| 8 | hua2025inputaware | **SUPPORTED** | "our routing mechanism is trained independently of task-specific objectives, allowing for stable optimization"; uses "probabilistic mixture model to better partition the input space". | Decoupling from task objective and reflecting input structure both supported. |
+| 9a | lv2025aoe | **SUPPORTED** | "Autonomy-of-Experts ... routers are removed; instead, experts pre-compute internal activations ... and are ranked based on their activation norms." | Router-free design directly supported. |
+| 9b | cheng2025ermoe | **PARTIAL** | "reparameterizing each expert in a learned orthonormal eigenbasis ... cosine similarity between input features and an expert's basis ... eliminating the need for explicit load-balancing losses." | ERMoE keeps a routing mechanism (Eigenbasis-Score routing) and merely **removes the learned-gating logits + load-balance loss**. It is not literally "router-free" the way AoE / Routing-Free MoE are. Either soften the framing ("router-free or routing-loss-free designs") or move ERMoE to a sister category (e.g., "geometry-grounded routing"). |
+| 9c | liu2026routingfree | **SUPPORTED** | "eliminates any hard-coded centralized designs including external routers, Softmax, Top-K and load balancing ... each expert ... determine its activation entirely on its own." | Direct match. |
+| 10 | wang2026myth | **SUPPORTED** | "specialization is therefore an emergent property of the representation space, not of the routing architecture itself." | Direct match. |
+| 11 | lv2025aoe + cheng2025ermoe + liu2026routingfree (SR-MoA motivation) | **PARTIAL** | AoE and Routing-Free MoE clearly motivate a router-free per-expert-gate design; ERMoE is a content-aware routing variant (not literally router-free). | AoE and Routing-Free MoE are spot-on intellectual predecessors for SR-MoA's per-expert sigmoid. ERMoE is the weakest of the three — its "Eigenbasis-Score" is a routing replacement, not a per-expert self-gate. Consider either keeping the citation but adding a one-line distinction in §2, or substituting a closer analog. |
+| 12 | wang2022adamix + fedus2022switch (§4 "widely used recipe") | **PARTIAL** | AdaMix uses stochastic routing (with averaging); Switch routes via softmax-on-hidden, but it routes FFN tokens, not adapter heads. | The sentence asserts that the **learned hidden-state softmax router on adapter heads** is "widely used in MoE adapters" and cites AdaMix + Switch. Neither paper actually uses that exact recipe (AdaMix = random routing on adapters; Switch = softmax routing on FFN experts inside the backbone). Recommend citing one or two papers that DO use a learned softmax router over adapter heads (e.g., MoLE, MoLA, MoCLE, AdaMoE) instead of, or in addition to, AdaMix+Switch. |
+
+---
+
+## Recommendations
+
+1. **§1 sentence "the standard MoE adapter recipe~\citep{wang2022adamix} ... routing on hidden states":** AdaMix is mixture-of-adapters but uses stochastic routing with inference-time averaging, not a learned softmax router on hidden states. Either:
+   - Reword to "the AdaMix-style adapter pool combined with a learned hidden-state softmax router (the de-facto recipe in subsequent MoE-adapter work; ...)";
+   - Or add a citation to a learned-router-on-adapters paper (MoLE [Wu et al. 2024], MoLA [Gao et al. 2024], or MoCLE) alongside AdaMix.
+
+2. **§4 "a recipe widely used in MoE adapters (e.g., \citealp{wang2022adamix,fedus2022switch})":** Same issue. Switch is FFN-internal MoE, not adapter-pool MoE. Replace or augment with adapter-MoE works that genuinely use a learned hidden-state softmax router (MoLE, MoLA, MoCLE, AdaMoE) to make the "widely used in MoE adapters" claim land.
+
+3. **§2 "router-free MoEs (AoE, ERMoE, Routing-Free MoE)":** ERMoE is content-aware routing (Eigenbasis Score), not literally router-free. Consider either:
+   - Reword to "router-free or routing-loss-free MoEs (AoE [router-free], Routing-Free MoE [router-free], ERMoE [routing-loss-free, content-aware])"; or
+   - Drop ERMoE from this list and cite it elsewhere (e.g., §2 routing-collapse rescue thread, where it fits better).
+
+4. **§4 SR-MoA motivation block (\citep{lv2025aoe,cheng2025ermoe,liu2026routingfree}):** Same ERMoE concern. AoE (per-expert activation-norm self-selection) and Routing-Free MoE (per-expert continuous gating) are tighter analogs to SR-MoA's per-expert sigmoid gate. ERMoE motivates content-aware routing more than self-routing.
+
+5. **All other 9 citation-claim pairs (#2, 3a-d, 4, 5, 6, 7, 8, 9a, 9c, 10) are SUPPORTED.** No edits needed.
+
+6. **No WRONG_PAPER cases detected.** All cited papers exist and are at least topically adjacent; the issues are scope/precision, not mis-citations.</result>
+<usage><total_tokens>57501</total_tokens><tool_uses>21</tool_uses><duration_ms>119974</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ab3861c88066383da</task-id>
+<tool-use-id>toolu_017sniji8FMEBjwa8aoxHiko</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/4b503937-8b45-4015-82f4-2af0ae3fdd55/tasks/ab3861c88066383da.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit normalization + TSFM probing cites" completed</summary>
+<result>Good — bib entries are correct (pandey2025 points to NeurIPS 2025 workshop = arXiv 2511.15324). The provided URL in the audit task was wrong but the actual bibliography entry is correct. All 8 citations are verified. Final report.
+
+---
+
+# Citation Relevancy Audit
+
+| # | CiteKey | Verdict | Snippet from paper | Sentence-level guidance |
+|---|---|---|---|---|
+| 1a | kim2021revin (§1 L68 strip mean/var) | SUPPORTED | "symmetrically structured to remove and restore the statistical information of a time-series instance" | OK. Paper confirms reversible per-window normalization that removes/restores statistics. The "subtracts mean and divides by std" specifics are in the body of the ICLR paper (standard knowledge); abstract supports the symmetric remove/restore framing. |
+| 1b | kim2021revin (§2 L236 distribution shift) | SUPPORTED | "Statistical properties such as mean and variance often change over time...solves the time-series forecasting task against the distribution shift problem" | OK as written. |
+| 1c | kim2021revin (§4 setup, internal RevIN) | SUPPORTED | (same paper) | OK. MOMENT does internally apply RevIN (verified separately via goswami2024moment elsewhere); citation here just identifies the normalization scheme. |
+| 2 | fan2023dishts | PARTIAL | "propose the coefficient net (CONET)...to map input sequences into learnable distribution coefficients" + "Dual-CONET framework...separately learn distribution of input- and output-space" | The §2 claim ("partially recover stripped statistics") is defensible at a high level. The §F claim is sharper: it calls Dish-TS "a routing mechanism that conditions on the exact statistics distribution-shift methods re-inject." The abstract supports "conditions on coefficients" but the paper does not explicitly recover μ,σ themselves. Suggest softening §F to "Dish-TS-style learnable distribution coefficients (Fan et al., 2023)" rather than asserting it re-injects μ,σ exactly. |
+| 3 | liu2022nonstationary | SUPPORTED | "Series Stationarization unifies the statistics of each input and converts the output with restored statistics" + "De-stationary Attention...recover the intrinsic non-stationary information into temporal dependencies" | OK; paper explicitly recovers stripped statistics via de-stationary attention. |
+| 4 | berthelier2026revin | SUPPORTED | "several of its components are redundant or even detrimental" | Direct quote match; verdict is exact. |
+| 5 | zou2025ibnorm | SUPPORTED | "two representations may share identical mean and variance, but can encode drastically different amounts of task-relevant information" + "BatchNorm, LayerNorm, and RMSNorm are variance-centric...without offering any guidance on (intermediate) representation learning" | Both halves of the §2 sentence are directly quotable from the paper, almost verbatim. Excellent citation. |
+| 6 | wilinski2025tsfm_representations | PARTIAL | "explore the concepts learned by these models, such as periodicity and trends" + "block-like redundancy in the representations" | Paper covers MOMENT and explicitly probes **periodicity and trends**, but does NOT name "level shifts" or "change points" — those come from pandey2025. The §1 sentence enumerates four concepts (periodicity, trends, level shifts, change points) and cites both papers as a pair. With the pair, coverage is complete; alone, wilinski2025 only supports the first two. Acceptable as cite-pair. |
+| 7 | pandey2025tsfm_semantics | SUPPORTED (after URL correction) | "early layers mainly capture local, time-domain patterns (e.g., AR(1), level shifts, trends), while deeper layers encode dispersion and change-time signals" | The URL **provided in the audit task** (arXiv:2502.12434) was wrong (a Helfrich/membrane geometry paper). The actual bibliography entry in main.tex points to the NeurIPS 2025 Workshop paper at **arXiv:2511.15324**, which directly enumerates "level shifts, trends...change-time signals" — precisely matching the §1 list. The bib entry itself is correct; only the audit-task URL was misindexed. |
+
+---
+
+## Recommendations
+
+1. **Pandey URL in audit-task spec was stale.** The actual `\bibitem` in `/Users/hungpq2412/neuralips26/main.tex:971-974` correctly points to the NeurIPS 2025 Workshop, which is arXiv:2511.15324 (not 2502.12434, a differential-geometry paper on Helfrich membrane equilibria). No change needed in main.tex; if `bib_verification.xlsx` lists 2502.12434 as the URL, fix it to 2511.15324.
+
+2. **fan2023dishts (§F L1552)** is the only meaningful relevancy issue. The current sentence asserts Dish-TS "conditions on the exact statistics distribution-shift methods re-inject," but Dish-TS conditions on a learned coefficient vector via CONET, not literal (μ, σ). Two options:
+   - Soften: "functionally equivalent to a Dish-TS-style mechanism that conditions on summary statistics of the input window."
+   - Or split the citation: keep fan2023dishts for "distribution-shift methods that condition on input statistics" and add a separate cite to liu2022nonstationary for the stricter "re-inject μ,σ via de-stationary attention" framing — that paper actually does inject the statistics directly.
+
+3. **wilinski2025 + pandey2025 cite-pair (§1 L66)** is fine as a pair. If you ever need to cite only one, use pandey2025 — it covers all four enumerated concepts (periodicity, trends, level shifts, change points) explicitly. wilinski2025 alone only covers periodicity and trends.
+
+4. **Files relevant to this audit:**
+   - `/Users/hungpq2412/neuralips26/main.tex` lines 66, 236, 392, 931–975 (citations + bibitems)
+   - `/Users/hungpq2412/neuralips26/main.tex` line 1552 (the §F Dish-TS claim that warrants softening)
+   - `bib_verification.xlsx` — confirm the Pandey URL points to arXiv 2511.15324, not 2502.12434
+
+Net: 6 of 8 citations clean SUPPORTED; one PARTIAL (fan2023dishts §F) with a one-word edit fix; one PARTIAL (wilinski2025) defensible as a cite-pair; one citation (pandey2025) verified against the correct URL despite a stale URL in the audit prompt.
+
+Sources:
+- [RevIN — kim2021revin](https://openreview.net/forum?id=cGDAkQo1C0p)
+- [Dish-TS — fan2023dishts](https://arxiv.org/abs/2302.14829)
+- [Non-stationary Transformers — liu2022nonstationary](https://arxiv.org/abs/2205.14415)
+- [Reversible Instance Normalization re-examined — berthelier2026revin](https://arxiv.org/abs/2603.11869)
+- [IBNorm — zou2025ibnorm](https://arxiv.org/abs/2510.25262)
+- [Wilinski et al. — Representations and Interventions in TSFMs (ICML 2025)](https://arxiv.org/abs/2409.12915)
+- [Wilinski et al. — PMLR proceedings page](https://proceedings.mlr.press/v267/wilinski25a.html)
+- [Pandey et al. — On the Internal Semantics of TSFMs (NeurIPS 2025 Workshop)](https://arxiv.org/abs/2511.15324)</result>
+<usage><total_tokens>56593</total_tokens><tool_uses>18</tool_uses><duration_ms>106369</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a7e6ae52d419c7699</task-id>
+<tool-use-id>toolu_01BPBbaebq7Adj4BEdc7gz6c</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/4b503937-8b45-4015-82f4-2af0ae3fdd55/tasks/a7e6ae52d419c7699.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit adapter/PEFT cites" completed</summary>
+<result>Now I have sufficient evidence. Let me compile the verification table.
+
+| # | CiteKey | Verdict | Snippet | Sentence-level guidance |
+|---|---|---|---|---|
+| 1 | hu2022lora | SUPPORTED | "LoRA, which freezes the pre-trained model weights and injects trainable rank decomposition matrices into each layer of the Transformer architecture" | Keep as is. Canonical LoRA citation. |
+| 2 | houlsby2019adapters | SUPPORTED | "we propose transfer with adapter modules. Adapter modules yield a compact and extensible model; they add only a few trainable parameters per task" | Keep as is. Canonical bottleneck-adapter citation. |
+| 3 | qiao2025msft | SUPPORTED | "we propose Multiscale finetuning (MSFT), a simple yet general framework that explicitly integrates multi-scale modeling into the finetuning process" for encoder-based TSFMs (NeurIPS 2025, Qiao et al.) | Keep as is. Direct match. |
+| 4 | li2025trace | SUPPORTED | "Gated DSIC (Gated Dynamic Simulation Importance Calculation), an unbiased LoRA module importance selection mechanism that ensures conditional parameter consistency before and after masking" | Keep as is. "Importance-based LoRA selection" matches Gated DSIC. |
+| 5 | benechehab2025adapts | PARTIAL | "Train multiple adapter variants...select the best performer based on validation metrics (MSE/MAE)...report results for the top-performing adapter per dataset-horizon combination"; abstract: adapters as "feature-space transformations" | The "input-representation adaptation" claim is supported (feature-space transformations on inputs). The "selects one per dataset rather than per input window" claim is consistent with how the paper reports results (per-dataset/horizon best). However, this load-bearing distinction is inferred from result-reporting structure, not from an explicit methodology statement. **Soften to "reports per-dataset best of several variants" or add a footnote acknowledging this is inferred from their hyperparameter-optimization protocol.** Safer phrasing: "selects an adapter variant per dataset/horizon rather than routing per input window." |
+| 6 | zhao2025prune | SUPPORTED | "we propose a structured pruning method to regularize the subsequent fine-tuning process by focusing it on a more relevant and compact parameter space" on TSFMs | Keep as is. Direct match. |
+| 7 | faw2025icf | SUPPORTED | "we present a methodology for in-context fine-tuning of a time-series foundation model" (Das, **Faw**, Sen, Zhou) | Keep as is. Faw is co-author; "in-context tuning" matches. |
+| 8 | gupta2024beyondlora | SUPPORTED | "We explore the use of Parameter-Efficient Fine-Tuning (PEFT) techniques...four PEFT methods on Chronos: BitFit and LayerNorm Tuning...VeRA and FourierFT" | Keep as is. Explicitly tests PEFT alternatives (beyond LoRA) on Chronos. |
+| 9 | zhang2025template | SUPPORTED | TEMPLATE provides three transferability metrics; "our method demonstrates superior capability in identifying optimal pre-trained models from heterogeneous model pools for transfer learning" (Zhang et al., NeurIPS 2025 / OpenReview atY7t0Krp6) | Keep as is. Direct match. |
+| 10 | woo2024gifteval | SUPPORTED | "GIFT-Eval, a pioneering benchmark aimed at promoting evaluation across diverse datasets" (23 datasets, 144k+ time series, 7 domains, 17 baselines) | Keep as is. Unified evaluation suite for forecasting models. |
+| 11 | ennadir2025pooling | PARTIAL → WRONG_URL | Correct paper is at **arXiv 2510.03339**, NOT 2502.00834. Abstract: "deriving closed-form bounds on their representational capacity"; "spanning three major modalities: computer vision, natural language processing, and time-series analysis" | The cited URL in this audit (2502.00834) is a DIFFERENT paper on adversarial robustness with EDLNets. The intended paper is "Pool Me Wisely" (arXiv 2510.03339, NeurIPS 2025, Ennadir et al.). **Verify the bib entry uses the correct identifier (2510.03339).** Once corrected, the sentence-level claim is SUPPORTED: the paper does compare pooling across NLP, vision, and time series with theoretical expressivity bounds. The specific list "mean-pool, last-token, max-pool, attention-pool, Conv1d-pool" is not explicitly confirmed from the abstract; if your sentence enumerates exactly these 5, double-check the paper's body or hedge to "common pooling families." |
+| 12 | nie2023patchtst | PARTIAL | Abstract confirms "channel-independence where each channel contains a single univariate time series." Channel-independence is the per-channel processing convention; the body of the paper applies RevIN/instance-norm per channel. | The "channel-wise normalization" phrasing is colloquially attributed to PatchTST's channel-independence + per-channel RevIN application, but the abstract does not explicitly say "channel-wise normalization." Consider rephrasing to "channel-independent processing with per-channel instance normalization (RevIN)~\citep{nie2023patchtst,kim2022revin}" if a RevIN cite is available, OR keep with the understanding that this is community-standard shorthand. Low risk; community convention is well-established. |
+| 13 | wang2022adamix | PARTIAL | "We propose AdaMix as a general PEFT method that tunes a mixture of adaptation modules...AdaMix can leverage a mixture of adapters like Houlsby or a mixture of low rank decomposition matrices like LoRA" | The "mixture of adapters in the LLM setting" claim is SUPPORTED. However, the **"heterogeneous"** qualifier is mildly overstated: AdaMix uses a homogeneous mixture (e.g., all-Houlsby OR all-LoRA), not a heterogeneous mix of different adapter types in one module. **Recommend softening: "the closest precedent in spirit is mixture-of-adapters in the LLM setting (e.g., AdaMix~\citep{wang2022adamix})"** — drop "heterogeneous" since AdaMix mixes copies of the same adapter type, not architecturally distinct experts. Your RR-MoA's true heterogeneity (5 topologically distinct pooling experts) is what differentiates it from AdaMix; preserving "heterogeneous" as a contrast attribute of RR-MoA, not AdaMix, is more accurate. |
+
+---
+
+## Recommendations
+
+**High-priority fixes (load-bearing):**
+
+1. **Citation 11 (ennadir2025pooling) — verify arXiv ID in bibliography.** The audit URL 2502.00834 points to an unrelated adversarial-robustness paper. The correct paper is "Pool Me Wisely: On the Effect of Pooling in Transformer-Based Models" at arXiv:2510.03339 (NeurIPS 2025). Open `main.tex` bib section, find `\bibitem{ennadir2025pooling}`, and confirm the arXiv preprint number / year is 2510.03339 / 2025 (not 2502.00834). Also update `bib_verification.xlsx` accordingly. Additionally, the sentence currently enumerates 5 specific pooling families ("mean-pool, last-token, max-pool, attention-pool, Conv1d-pool"). The paper's abstract does not enumerate exactly these names; if you cannot confirm from the body, hedge to "common pooling families (mean, max, attention, etc.)" or just cite without enumeration.
+
+2. **Citation 13 (wang2022adamix) — drop "heterogeneous" qualifier.** AdaMix is a homogeneous mixture (multiple copies of the same adapter type per layer). Suggested edit:
+   &gt; the closest precedent in spirit is mixture-of-adapters in the LLM setting (e.g., AdaMix~\citep{wang2022adamix}); RR-MoA differs in [...] using K topologically distinct expert architectures rather than copies of the same adapter.
+
+   This both fixes the inaccuracy and strengthens RR-MoA's positioning by reserving "heterogeneous" as the differentiating axis.
+
+**Medium-priority (precision tightening):**
+
+3. **Citation 5 (benechehab2025adapts) — flag the per-dataset claim as inferred.** The "selects one per dataset rather than per input window" distinction is load-bearing for your RR-MoA narrative, but the AdaPTS paper does not explicitly state this; it's inferred from their hyperparameter-optimization-per-task protocol. Two options:
+   - (a) Consult the AdaPTS GitHub (https://github.com/abenechehab/AdaPTS) or appendix to confirm explicitly, then strengthen the cite with a section reference (e.g., "AdaPTS~\citep[App.~C.2]{benechehab2025adapts}").
+   - (b) Soften to: "AdaPTS~\citep{benechehab2025adapts} proposes several adapter variants and reports the best per-dataset, where adapter choice is treated as a per-task hyperparameter; in contrast, RR-MoA routes per input window at inference."
+
+   Option (b) is safer. The current phrasing risks a reviewer pulling up AdaPTS and disputing the exact wording.
+
+4. **Citation 12 (nie2023patchtst) — minor.** PatchTST's abstract says "channel-independence" not "channel-wise normalization." If you can find the authoritative RevIN citation (Kim et al., 2022, ICLR), pair it: `~\citep{kim2022revin,nie2023patchtst}`. Otherwise leave; community shorthand is well established and a reviewer is unlikely to challenge.
+
+**No action needed:**
+
+Citations 1, 2, 3, 4, 6, 7, 8, 9, 10 are all clean SUPPORTED matches; the cited paper directly backs the sentence-level claim.
+
+**Process note:** Citation 11's arXiv-ID drift is exactly the kind of error `bib_verification.xlsx` exists to catch. Recommend running `scripts/build_bib_verification.py` after fixing the bib entry to refresh the spreadsheet, and consider adding an automated arXiv-ID validity check (HEAD request to https://arxiv.org/abs/&lt;id&gt;) to that script if not already present.
+
+Sources:
+- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
+- [Parameter-Efficient Transfer Learning for NLP (Houlsby adapters)](https://arxiv.org/abs/1902.00751)
+- [Multi-Scale Finetuning for Encoder-based Time Series Foundation Models (Qiao 2025, NeurIPS)](https://arxiv.org/abs/2506.14087)
+- [TRACE: Time series PEFT](https://arxiv.org/abs/2503.16991)
+- [AdaPTS (Benechehab 2025)](https://arxiv.org/abs/2502.10235)
+- [Structured pruning for TSFMs (Zhao 2025)](https://arxiv.org/abs/2505.23195)
+- [In-context fine-tuning of TSFMs (Das, Faw et al. 2024)](https://arxiv.org/abs/2410.24087)
+- [Beyond LoRA: PEFT for Chronos (Gupta 2024)](https://arxiv.org/abs/2409.11302)
+- [TEMPLATE: Unified Transferability Metrics for TSFMs (Zhang 2025)](https://openreview.net/forum?id=atY7t0Krp6)
+- [GIFT-Eval (Woo et al. 2024)](https://arxiv.org/abs/2410.10393)
+- [Pool Me Wisely (Ennadir 2025) — correct arXiv ID](https://arxiv.org/abs/2510.03339)
+- [PatchTST (Nie et al. 2023)](https://arxiv.org/abs/2211.14730)
+- [AdaMix (Wang et al. 2022, EMNLP)](https://aclanthology.org/2022.emnlp-main.388/)</result>
+<usage><total_tokens>60419</total_tokens><tool_uses>23</tool_uses><duration_ms>140897</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a20d909879cabd992</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/4b503937-8b45-4015-82f4-2af0ae3fdd55/tasks/a20d909879cabd992.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit TSFM backbones + datasets + IT cites" completed</summary>
+<result>I have enough verification. The LTSF Weather/Electricity datasets are NOT from Monash; they trace to Wetterstation Jena and UCI Electricity. Now let me synthesize the final report.
+
+---
+
+# Citation Relevancy Audit
+
+| # | CiteKey | Verdict | Snippet | Sentence-level guidance |
+|---|---|---|---|---|
+| 1a | goswami2024moment (§1 L64: "MOMENT") | SUPPORTED | "MOMENT [is] a family of open-source foundation models for general-purpose time series analysis" | Keep — naming MOMENT as a TSFM. |
+| 1b | goswami2024moment (§1 L66: "Standard TSFM adapters... pooling-then-projection") | PARTIAL | "We replace the reconstruction head with a forecasting head, which first flattens all the N D-dimensional patch embeddings... and then projects it into a H-dimensional time series via a linear projection layer." | The MOMENT recipe is **flatten-then-project**, NOT "pooling-then-projection". Rephrase to "flatten-then-project" or "concatenate-then-project" to be faithful. |
+| 1c | goswami2024moment (§4 L392: "internal RevIN") | SUPPORTED | "Reversible instance normalization (Kim et al., 2022) is applied to the observed time series before breaking it into N disjoint patches" | Keep — direct match. |
+| 1d | goswami2024moment (§2 L230: "linear probe") | SUPPORTED | "MOMENT can either be fine-tuned end-to-end, or linear probed (MOMENT_LP) by freezing all parameters except for those in the reconstruction or forecasting head" | Keep. |
+| 1e | goswami2024moment (§B.1 L1791: "8 layers, d=512, L=512") | SUPPORTED | "Small model uses a 6 layer Transformer with hidden dimensions of size D=512, 8 attention heads... Input length T=512, decomposed into N=64 patches of P=8 timesteps" | **Mismatch: paper says MOMENT-Small has 6 layers, NOT 8.** d=512 and L=512 are correct. **FIX REQUIRED.** |
+| 2a | das2024timesfm (§1 L64) | SUPPORTED | "a time-series foundation model for forecasting [with] zero-shot performance on a variety of public datasets" | Keep. |
+| 2b | das2024timesfm (§1 L66: "pooling-then-projection adapter") | UNSUPPORTED | "We use another Residual Block to map the output tokens to the predictions" | TimesFM uses an **autoregressive Residual-Block head**, not pooling-then-projection. Either drop TimesFM from the "pooling-then-projection" group or rephrase the umbrella claim (e.g., "linear/MLP heads on encoder outputs"). |
+| 3 | ansari2024chronos (no instance norm; LayerNorm only) | PARTIAL | "Chronos models based on the T5 family"; "tokenizes time series values using scaling and quantization" | T5 family does use LayerNorm (RMSNorm in T5v1.1). The "no instance normalization" framing is consistent with Chronos's tokenize-via-scaling design (a global scale, not per-window RevIN). Defensible, but consider citing T5/Raffel for the LayerNorm specifics if challenged. |
+| 4a | liu2025timerxl (decoder-only) | SUPPORTED | "We opt for decoder-only Transformers that capture causal dependencies from varying-length contexts for unified forecasting" | Keep. |
+| 4b | liu2025timerxl (84M params) | SUPPORTED | "Our model checkpoint is available at huggingface.co/thuml/timer-base-84m" | Keep. |
+| 4c | liu2025timerxl (LayerNorm only, no RevIN) | SUPPORTED | "normalization simplifies learning by aligning series with different means and variances to the same distribution, [but] limits the model capacity"; Table 16 shows Timer-XL works **without** instance normalization | Strong match — the paper explicitly argues against per-instance normalization. |
+| 5 | woo2024moirai (LayerNorm only) | WRONG_PAPER / UNSUPPORTED | "replace all LayerNorms with RMSNorm"; **also**: "(non-learnable) instance normalization is applied to inputs/outputs, aligning with the current standard practice" | **Two issues**: (1) Moirai uses **RMSNorm**, not LayerNorm; (2) Moirai DOES apply per-instance scaling at I/O. The "LayerNorm-only, no RevIN" framing is **factually incorrect** for Moirai. Recommend rewording to "uses RMSNorm internally" and acknowledging that Moirai applies (non-learnable) instance normalization, distinct from MOMENT's learnable-affine RevIN. This is a non-trivial empirical question that must be reconciled with the collapse-mechanism story. |
+| 6a | liu2025moiraimoe (§2: "routes frequency bands") | UNSUPPORTED / WRONG_PAPER | "delegating the modeling... enabling automatic token-level specialization"; the paper criticizes "frequency-level specialization as too coarse-grained" | **Critical error**: Moirai-MoE explicitly **rejects** frequency-band routing and uses **token-level** routing. The paper makes the opposite claim. **Must fix** — change to "token-level expert routing" or "automatic token-level specialization across diverse time series patterns". |
+| 6b | liu2025moiraimoe (FFN-level sparse experts) | SUPPORTED | "replacing each FFN with a MoE layer... composed of M expert networks... only a subset of experts is activated for each token" | Keep — matches §4 cross_backbone wording. |
+| 6c | liu2025moiraimoe (LayerNorm, no RevIN) | PARTIAL | Transformer block: "x̃ = CSA(LN(x)) + x", "x_l = FFN(LN(x̃)) + x̃" | **Internal LN** is correct, but Moirai-MoE inherits Moirai's per-instance normalization at I/O (the paper does discuss patch-level "distribution shift" handling). The "no RevIN" caveat is technically true (no learnable affine) but a reviewer could call this a fine distinction. Soften to "LayerNorm internally; non-learnable instance scaling at I/O, distinct from learnable RevIN". |
+| 7 | shi2024timemoe (sparse MoE → billions params) | SUPPORTED | "a sparse mixture-of-experts (MoE) design... activating only a subset of networks"; "scaled... up to 2.4 billion parameters" | Keep — direct match. |
+| 8 | liu2026timers1 (billion-scale TSFM) | SUPPORTED | "8.3B total parameters, 0.75B activated parameters... context length 11.5K" with TimeMoE blocks | Keep. (Note: 2603.04791 is a 2026 arXiv ID, consistent with paper's submission date.) |
+| 9a | zhou2021informer (introduces ETT) | SUPPORTED | ETDataset GitHub: "presented as Informer at AAAI 2021"; ETTh1/h2/m1/m2 variants from ETT-small | Keep. |
+| 9b | zhou2021informer (channel-wise StandardScaler) | SUPPORTED | "Each set is normalized with the train data mean and standard deviation" — the canonical LTSF preprocessing | Keep. The convention is widely traced to the Informer codebase even if not stated as a contribution in the AAAI text. |
+| 10 | godahewa2021monash (Weather + Electricity) | UNSUPPORTED / WRONG_PAPER | Monash Electricity has 321 series of 26,304 obs; Monash "Weather" has 3010 daily series from Sparks 2020 — **different from LTSF Weather (21 features, 10-min, Jena)** | **Citation slip**. The LTSF "Weather" dataset is the 21-feature 10-minute Max-Planck-Jena station, **introduced via the Autoformer codebase / Wetterstation source**, NOT in Monash. Monash Electricity matches in number of series (321) but is **daily/weekly aggregated**, not the 1-hour LTSF version. Recommend re-attributing Weather to Wu et al. 2021 (Autoformer) or the Wetterstation source, and Electricity to UCI / Informer convention. |
+| 11 | liu2024itransformer (baseline) | SUPPORTED | "iTransformer: Inverted Transformers Are Effective for Time Series Forecasting" | Keep — naming-only citation in baselines table. |
+| 12 | kraskov2004ksg | SUPPORTED | "Kraskov, Stögbauer, Grassberger 2004... presents... estimators... based on entropy estimates from k-nearest neighbor distances"; the canonical KSG estimator | Keep. |
+| 13 | cover2006elements (rate-distortion) | SUPPORTED | Cover &amp; Thomas, Ch. 10 covers: "Quantization, Definitions, Calculation of the Rate Distortion Function..." | Keep — chapter alignment is correct. |
+| 14 | tishby2000ib | SUPPORTED | Tishby/Pereira/Bialek 2000 "The information bottleneck method": "finding a short code for X that preserves the maximum information about Y" | Keep. |
+| 15a | lee2024units (TSFM variant) | SUPPORTED | "unified multi-task time series model... pretrained foundation model... heterogeneous, multi-domain pre-training" | Keep. |
+| 15b | rasul2024lagllama (TSFM variant) | SUPPORTED | "Lag-Llama is pretrained on a large corpus of diverse time series data... strong zero-shot generalization" | Keep. |
+| 15c | ekambaram2024ttm (TSFM variant) | SUPPORTED | "Tiny Time Mixers (TTMs): Fast Pre-trained Models... a compact model (starting from 1M parameters) with effective transfer learning" | Keep. |
+
+---
+
+## Recommendations
+
+**Mandatory fixes (factual errors):**
+
+1. **§B.1 L1791 — MOMENT-small layer count.** The paper says MOMENT-small has **6 encoder layers**, not 8. Cross-reference with `feasibility/model.py` and the project CLAUDE.md note that "MOMENT-small hidden states are `(B, 64, 512)`" (dim 512 is correct; layer count 8 is wrong per the official MOMENT paper's Table 4 / Section 3.3). Correct to "6 layers, d=512, L=512". This is a single-character fix but matters for reproducibility.
+
+2. **§2 L232 — Moirai-MoE "routes frequency bands".** This is the **opposite** of what the paper claims. Moirai-MoE explicitly rejects frequency-level routing as "too coarse-grained" and uses **token-level** routing where experts emerge from data. Rephrase to: "Moirai-MoE routes individual tokens to data-driven experts that automatically specialize across time series patterns".
+
+3. **§1 L64 / §4 L392 — Moirai "LayerNorm only".** Moirai uses **RMSNorm** internally and **does** apply (non-learnable) instance normalization at input/output. The "LayerNorm-only, no RevIN" framing is wrong on both halves. A safer reframing: "Moirai uses RMSNorm internally and applies non-learnable per-instance scaling at I/O, distinct from MOMENT's learnable-affine RevIN within the encoder pipeline". This actually **strengthens** the paper's mechanism story (the failure mode requires per-instance μ,σ stripping inside the pre-encoder pipeline that the router sees, which RevIN does and Moirai's I/O scaling may not, depending on hook placement). Recommend a careful sentence-level rewrite plus a footnote in §4 setup explaining the distinction. **This is the most consequential citation issue** because the cross-backbone story (Moirai = "no collapse" because "no RevIN") rests on this. The paper's empirical Moirai results stand, but the **mechanistic attribution** ("absence of RevIN-style instance norm") needs nuance.
+
+4. **§4 L390 — godahewa2021monash for Weather/Electricity.** Citation slip. The LTSF Weather (21-feature, 10-min Jena) and LTSF Electricity (321-channel hourly) are not from Monash. Re-attribute Weather to Wu et al. 2021 (Autoformer; introduced the 10-min Jena variant in their public codebase) or to the Wetterstation source. Re-attribute Electricity to UCI ML repository (e.g., wu2021autoformer or trindade2015electricity for the UCI source). Monash hosts daily/weekly aggregations that do not match the LTSF benchmark configuration the paper actually uses.
+
+5. **§1 L66 — TimesFM as "pooling-then-projection".** TimesFM uses an autoregressive Residual-Block head, not pooling-then-projection. Either drop TimesFM from this enumeration, or broaden the umbrella to "lightweight regression heads (linear projection, MLP, or autoregressive)".
+
+**Soft fixes:**
+
+6. **§1 L66 — MOMENT "pooling-then-projection".** MOMENT's actual head is "flatten-then-project" over all N patches. Either rephrase the umbrella, or mention "concatenate-then-project" specifically when introducing MOMENT.
+
+**No action needed:** Citations 1a, 1c, 1d, 2a, 3, 4a–c, 6b, 7, 8, 9a, 9b, 11, 12, 13, 14, 15a–c verified as supported.
+
+**Note on bib_verification.xlsx:** The CLAUDE.md mentions `scripts/build_bib_verification.py` builds a citation cross-check spreadsheet. This audit surfaces 5 substantive content-vs-claim mismatches that the bibliographic-only check would not catch — recommend extending the verification spreadsheet with a "claim-content match" column for the top mechanistic claims.
+
+Sources:
+- [MOMENT (Goswami et al. 2024)](https://arxiv.org/html/2402.03885v3)
+- [Timer-XL (Liu et al. 2024/2025)](https://arxiv.org/html/2410.04803)
+- [Moirai (Woo et al. 2024)](https://arxiv.org/html/2402.02592)
+- [Moirai-MoE (Liu et al. 2024)](https://arxiv.org/html/2410.10469)
+- [TimesFM (Das et al. 2024)](https://arxiv.org/abs/2310.10688)
+- [Chronos (Ansari et al. 2024)](https://arxiv.org/abs/2403.07815)
+- [Time-MoE (Shi et al. 2024)](https://arxiv.org/abs/2409.16040)
+- [Timer-S1 (Liu et al. 2026)](https://arxiv.org/abs/2603.04791)
+- [Informer / ETDataset (Zhou et al. 2021)](https://github.com/zhouhaoyi/ETDataset)
+- [Monash Archive (Godahewa et al. 2021)](https://forecastingdata.org/)
+- [Kraskov et al. 2004 (KSG)](https://link.aps.org/pdf/10.1103/PhysRevE.69.066138)
+- [Cover &amp; Thomas, Elements of Information Theory, Ch. 10](https://static.ias.edu/pitp/archive/2012files/Cover_and_Thomas_Chptr13.pdf)
+- [Tishby, Pereira, Bialek 2000](https://arxiv.org/abs/physics/0004057)
+- [iTransformer (Liu et al. 2024)](https://arxiv.org/abs/2310.06625)
+- [UniTS (Lee et al. 2024)](https://arxiv.org/abs/2403.00131)
+- [Lag-Llama (Rasul et al. 2024)](https://arxiv.org/abs/2310.08278)
+- [TTM (Ekambaram et al. 2024)](https://arxiv.org/abs/2401.03955)</result>
+<usage><total_tokens>68216</total_tokens><tool_uses>42</tool_uses><duration_ms>199708</duration_ms></usage>
+</task-notification>
+
+---
+
+let begin fixing one by one
+
+---
+
+let's do it
+
+---
+
+Let's do it
+
+---
+
+Yes please
+
+---
+
+let's go
+
+---
+
+continue polising until done
