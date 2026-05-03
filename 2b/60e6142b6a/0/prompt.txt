@@ -1,0 +1,19 @@
+review our checklist items, one by one. Pay attention to: "3. Theory assumptions and proofs"
+
+how good are we to go now
+
+---
+
+let rigorously do it
+
+---
+
+are we being too specific again, also too narrowly scoped when we mention the 1.7 MB per-tenant adapters
+
+---
+
+review the paper for potential inaccuracies in mentioning/describing the configs
+
+---
+
+continue where we left off
