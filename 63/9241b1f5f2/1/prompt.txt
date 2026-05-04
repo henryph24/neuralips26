@@ -1,0 +1,13 @@
+Do you think that our current visualization really matches the standard and the requirement, I mean the quality of a NeurIPS paper? @main.tex
+
+---
+
+let's fix them sequentially
+
+---
+
+did we change the data with the above changes ?
+
+---
+
+remove orphaned .pdf please

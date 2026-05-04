@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "639241b1f5f2",
+  "session_id": "a025aa09-96a9-4282-ac0c-35d73e5c21ad",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-04T14:14:43.758448Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "figures/causal_contrast.pdf",
+    "figures/cross_backbone_bars.pdf",
+    "figures/gap_closing_bars.pdf",
+    "figures/routing_viz.pdf",
+    "main.tex",
+    "scripts/plot_adamix_trajectory.py",
+    "scripts/plot_causal_contrast.py",
+    "scripts/plot_routing_viz.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ba850a9ed95b",
+  "token_usage": {
+    "input_tokens": 107,
+    "cache_creation_tokens": 122367,
+    "cache_read_tokens": 6017478,
+    "output_tokens": 28110,
+    "api_call_count": 53
+  },
+  "session_metrics": {
+    "turn_count": 4
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-04T14:14:43.126016Z",
+    "agent_lines": 186,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 186,
+    "agent_percentage": 100
+  }
+}

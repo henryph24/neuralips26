@@ -3,9 +3,16 @@
   "checkpoint_id": "639241b1f5f2",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 5,
   "files_touched": [
-    "main.tex"
+    "figures/causal_contrast.pdf",
+    "figures/cross_backbone_bars.pdf",
+    "figures/gap_closing_bars.pdf",
+    "figures/routing_viz.pdf",
+    "main.tex",
+    "scripts/plot_adamix_trajectory.py",
+    "scripts/plot_causal_contrast.py",
+    "scripts/plot_routing_viz.py"
   ],
   "sessions": [
     {
@@ -13,13 +20,19 @@
       "transcript": "/63/9241b1f5f2/0/full.jsonl",
       "content_hash": "/63/9241b1f5f2/0/content_hash.txt",
       "prompt": "/63/9241b1f5f2/0/prompt.txt"
+    },
+    {
+      "metadata": "/63/9241b1f5f2/1/metadata.json",
+      "transcript": "/63/9241b1f5f2/1/full.jsonl",
+      "content_hash": "/63/9241b1f5f2/1/content_hash.txt",
+      "prompt": "/63/9241b1f5f2/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 19,
-    "cache_creation_tokens": 66947,
-    "cache_read_tokens": 229014,
-    "output_tokens": 4556,
-    "api_call_count": 4
+    "input_tokens": 126,
+    "cache_creation_tokens": 189314,
+    "cache_read_tokens": 6246492,
+    "output_tokens": 32666,
+    "api_call_count": 57
   }
 }
