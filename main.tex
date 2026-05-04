@@ -463,18 +463,9 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.92\columnwidth]{figures/adamix_trajectory.pdf}
-\vspace{-4pt}
-\caption{\textbf{Per-step routing / gradient trajectory} (AdaMix, ETTh1). (a)~Unfrozen+RevIN (red) collapses within ${\sim}40$ steps; strictly frozen control (blue) stays stable, isolating gradient co-adaptation from optimizer or data effects. (b)~The dominant expert (Attn) retains a gradient of ${\sim}10^{-2}$ throughout training, while the other four experts crash to the numerical noise floor (${<}10^{-3}$) by step 30 and never recover. Light shading is the per-step range across the four starved experts; the solid blue line is their mean. Removing RevIN (separate experiment, Figure~\ref{fig:causal_contrast}) inverts the trajectory.}
-\label{fig:trajectory}
-\end{figure}
-\vspace{-4pt}
-
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.62\columnwidth]{figures/causal_contrast.pdf}
+\includegraphics[width=0.60\columnwidth]{figures/causal_contrast.pdf}
 \vspace{-6pt}
-\caption{\textbf{Causal contrast: MOMENT vs Timer-XL} (ETTh1, last-4 unfreezing). Solid: unfrozen; MOMENT entropy collapses $0.51{\to}0.000$ in ${\sim}40$ steps; Timer-XL holds ${\approx}1.60$ for $400$ steps. Dashed: frozen controls. Dotted: $\log K{=}1.609$ ceiling. Same code, same data, only normalization differs.}
+\caption{\textbf{Causal contrast: MOMENT vs Timer-XL} (ETTh1, last-4 unfreezing). Solid: unfrozen; MOMENT entropy collapses $0.51{\to}0.000$ in ${\sim}40$ steps; Timer-XL holds ${\approx}1.60$ for $400$ steps. Dashed: frozen controls. Dotted: $\log K{=}1.609$ ceiling. Same code, same data, only normalization differs. Per-step entropy and per-expert gradient-norm trajectories are in Figure~\ref{fig:trajectory} (Appendix~\ref{app:adamix_details}).}
 \label{fig:causal_contrast}
 \end{figure}
 
@@ -565,11 +556,13 @@ When routing signal lives entirely in the stripped statistics ($(M,\Sigma)\perp\
 
 {\looseness=-1 \textbf{Cross-backbone, task, horizon.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins on every cell for instance-normalized backbones (MOMENT-small/large $26$--$79\%/32$--$75\%$, Moirai $12$--$29\%$, Moirai-MoE~\citep{liu2025moiraimoe} $37$--$90\%$); LayerNorm-only controls (Chronos, Timer-XL~\citep{liu2025timerxl}) show no collapse. Top-$2$, imputation $7/8$, $24/24$ horizons, and Residual-IA\textsuperscript{+} ($6{\times}5{\times}4$) confirm robustness (Tables~\ref{tab:cross_backbone}--\ref{tab:horizon}; Appendices~\ref{app:topk},~\ref{app:imputation},~\ref{app:gate_pathology}).}
 
-\vspace{-0.6em}
+\vspace{-0.5em}
 \section{Conclusion and Limitations}
-\vspace{-0.6em}
+\vspace{-0.4em}
 
-MoE adapters on instance-normalized TSFMs fail because the normalization handling distribution shift also strips per-window statistics the router needs; raw pre-normalization routing fixes it, motivates Residual-IA\textsuperscript{+}, and $R(\mathcal{D})$ flags applicable settings (vision replication, Appendix~\ref{app:vision_moe}). \textbf{Limitations:} instance-level only; monotone $R(\mathcal{D})$; forecasting + imputation.\label{page:end_main}
+\textbf{Diagnosis and fix.} We identified \emph{normalization-induced routing collapse}: MoE adapters on instance-normalized TSFMs collapse to a single expert because the same per-window normalization handling distribution shift also strips the $(\mu,\sigma)$ statistics the router needs. Observation~\ref{thm:mi_decomp} formalizes the loss as a mutual-information gap, the signal-ratio proxy $R(\mathcal{D})$ predicts it at $\rho{=}{-}0.88$ ($p{<}0.002$), and eight causal controls (Table~\ref{tab:causal_controls}) jointly rule out optimization, geometry, and routing-paradigm explanations. Three architecturally distinct interventions confirm the diagnosis by giving the router or the experts raw pre-normalization access: RR-MoA wins $54/54$ cells ($26$--$79\%$); SR-MoA drops the external router entirely and beats RR-MoA by $13$--$42\%$; Residual-IA\textsuperscript{+} extends the fix to the expert level and closes the DLinear gap on $107/123$ cross-backbone cells. The mechanism replicates on ResNet/ViT MoE with InstanceNorm (Appendix~\ref{app:vision_moe}) and is absent from LayerNorm-only Timer-XL ($4$--$9\%$, $15$--$100{\times}$ smaller), so normalization \emph{type}, not modality or backbone, is the relevant axis.
+
+\textbf{Limitations and outlook.} The diagnosis is specific to per-window normalizers that strip $(\mu,\sigma)$ (RevIN, BatchNorm1d, GroupNorm, InstanceNorm); LayerNorm- and RMSNorm-only backbones need no fix. $R(\mathcal{D})$ is a monotone proxy, not a sharp threshold: it flags Traffic ($R{=}0.14$) correctly, but which intermediate $R$ benefits at which freeze level is open. Evaluation covers forecasting and imputation; classification and anomaly detection remain. The fix needs raw input at routing time, available in adapter-style finetuning but not in purely API-served models; our pool is also fixed at five hand-coded experts (learned pools are open). $R(\mathcal{D})$ itself is portable: any MoE-adapter on a normalized backbone can compute it pre-training, and surfacing this \emph{upstream architectural} cause widens a design space that downstream rescues have so far blocked.\label{page:end_main}
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
 
@@ -1609,6 +1602,14 @@ Expert-choice ($c{=}2$)                      & $1.590$ ($-3.9\%$) & $0.17$ & \te
 \label{app:adamix_details}
 
 Our AdaMix baseline follows \citet{wang2022adamix} with $K{=}5$ expert adapter heads identical to RR-MoA's canonical pool (mean, last, max, attention, conv1d). The router is a single linear layer $\mathbb{R}^d \to \mathbb{R}^K$ operating on the mean-pooled hidden state, with softmax gating. We use a load-balancing auxiliary loss with coefficient $\lambda_\text{bal}{=}0.01$, matching AdaMix's original formulation. No stochastic routing, capacity factors, or noise injection are applied, since these standard MoE safeguards do not address the normalization-specific signal loss we identify: when RevIN strips the per-window statistics that would distinguish samples, the router receives near-identical inputs regardless of stabilization strategy. This is confirmed empirically: load-balancing loss does not prevent collapse under unfreezing (Table~\ref{tab:adamix}, entropy $= 0.000$ with $\lambda_\text{bal}{=}0.01$), while disabling RevIN recovers entropy to $0.66$--$1.32$ without any routing regularization.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\columnwidth]{figures/adamix_trajectory.pdf}
+\vspace{-4pt}
+\caption{\textbf{Per-step routing / gradient trajectory} (AdaMix, ETTh1). (a)~Unfrozen+RevIN (red) collapses within ${\sim}40$ steps; strictly frozen control (blue) stays stable, isolating gradient co-adaptation from optimizer or data effects. (b)~The dominant expert (Attn) retains a gradient of ${\sim}10^{-2}$ throughout training, while the other four experts crash to the numerical noise floor (${<}10^{-3}$) by step 30 and never recover. Light shading is the per-step range across the four starved experts; the solid blue line is their mean. Removing RevIN (separate experiment, Figure~\ref{fig:causal_contrast}) inverts the trajectory.}
+\label{fig:trajectory}
+\end{figure}
 
 \textbf{Architecture-agnostic validation (AdaMix-Raw).} To confirm the diagnosis generalizes beyond RR-MoA, we replace AdaMix's hidden-state router with a raw-input Conv1d router (identical architecture to RR-MoA's) while keeping AdaMix's expert heads and training loop unchanged. Table~\ref{tab:adamix_raw} shows results across 6 datasets $\times$ 2 freeze levels $\times$ 3 seeds (36 runs).
 
