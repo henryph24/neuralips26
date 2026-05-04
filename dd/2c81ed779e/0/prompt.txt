@@ -1,0 +1,1 @@
+[Image #1] [Image #2] When rendered I noticed a few empty spaces between the tables in the appendix section.
