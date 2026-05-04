@@ -1,0 +1,104 @@
+supervisor told me: "* "The Abstract should only state the (overall) problem, your approach, and the main results — no need for detailed technical descriptions, and no abbreviations (unless obvious).""
+
+audit this, how do we minimally improve
+
+---
+
+let's do it
+
+---
+
+the supervisosr insinsted on following this structure: "Abstract:
+Although pre-trained transformers and reprogrammed text-based LLMs have shown strong performance on time series tasks, the best-performing architectures vary widely across tasks, with most models narrowly focused on specific areas, such as time series forecasting. Unifying predictive and generative time series tasks within a single model remains challenging. We introduce UniTS, a unified multi-task time series model that utilizes task tokenization to integrate predictive and generative tasks into a single framework. UniTS employs a modified transformer block to capture universal time series representations, enabling transferability from a heterogeneous, multi-domain pre-training dataset—characterized by diverse dynamic patterns, sampling rates, and temporal scales—to a wide range of downstream datasets with varied task specifications and data domains. Tested on 38 datasets across human activity sensors, healthcare, engineering, and finance, UniTS achieves superior performance compared to 12 forecasting models, 20 classification models, 18 anomaly detection models, and 16 imputation models, including adapted text-based LLMs. UniTS also demonstrates strong few-shot and prompt capabilities when applied to new domains and tasks. In single-task settings, UniTS outperforms competitive task-specialized time series models. Code and datasets are available at https://github.com/mims-harvard/UniTS." let's analyse this structure
+
+---
+
+help me create 2 version in a new .txt file, I will send it back to supervisor
+
+---
+
+so both version now features no specific results
+
+---
+
+From your perspective what should we respond to the supervisor now? I think first we should discuss with her the discrepancy and the differences.
+
+---
+
+now think more deeply ourselves, what abstract would maximise our acceptance rate
+
+---
+
+give me a vietnamese response
+
+---
+
+write the above into @abstract_versions.txt
+
+---
+
+did you write version c into @abstract_versions.txt  ?
+
+---
+
+let's go
+
+---
+
+Before we come back to this abstract revision, let's now work on another task before the supervisor gets back to me. Let's now review the paper thoroughly for any desk rejection risk from NeurIPS. What are those risks first
+
+---
+
+let's run comprehensively
+
+---
+
+let's go one by one
+
+---
+
+let's go
+
+---
+
+investigate this: "  One small follow-up before moving to item 3: the §5 keyword changed from "Limits" → "Scope" — your reproducibility checklist (line 33-area) currently points reviewers to §5 for limitations. Want me to keep
+  "Limits" wording and verify checklist alignment, or leave as "Scope"?
+"
+
+i thought neurips wants a limit discussion
+
+---
+
+still waiting for supervisor input
+
+---
+
+let's verify and keep  auditing, desk rejection is really bad for such a good paper
+
+---
+
+but we only upload the paper itself on the deadline right ? or are we supposed to upload all
+
+---
+
+we will just upload minimal pass, but let work on it in the meantime
+
+---
+
+move them to other folder, never delete
+
+---
+
+do that now
+
+---
+
+incorporate some elements from her feedback, but keep our abstract prior to the feedback as baseline
+
+---
+
+I mean the version still with the pioneering
+
+---
+
+/commit-push
