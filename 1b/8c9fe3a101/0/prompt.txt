@@ -1,0 +1,14 @@
+How many NeurIPS paper we are citing out of total citations used for this paper ? Do you think we should cite more from NeurIPS to reduce desk rejection ?
+
+---
+
+let's do it: " audit for missing relevant NeurIPS papers
+   in your specific subareas (MoE collapse, TSFM adaptation, MI bounds)?"
+
+---
+
+let's use exa mcp web search academic paper for better search quality
+
+---
+
+let's do it carefully
