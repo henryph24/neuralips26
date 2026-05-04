@@ -894,9 +894,6 @@ Atharva Pandey, Abhilash Neog, and Gautam Jajoo.
 \end{thebibliography}
 
 \newpage
-\input{checklist}
-
-\newpage
 \appendix
 \renewcommand{\thetable}{\Alph{section}.\arabic{table}}
 \renewcommand{\thefigure}{\Alph{section}.\arabic{figure}}
@@ -2644,5 +2641,8 @@ Weather     & $0.209 \pm 0.007$ & $\mathit{0.198}$ & $\mathit{0.208}$ & $+5.5\%$
 \textbf{What this does and does not say about the paper's core claims.} This finding does \emph{not} undermine the central diagnosis of the paper: normalization-induced routing collapse on hidden-state routers (AdaMix) is a real, mechanistically-explained phenomenon, predicted by Observation~\ref{thm:mi_decomp} for any TSFM with internal RevIN and verified empirically on MOMENT-small/large; pre-normalization routing (RR-MoA) is the causal fix at the router input. That diagnosis is independent of whether the MOMENT backbone is the most efficient architecture for forecasting on every dataset: the mechanism predicts the same failure mode for any backbone with internal instance normalization that satisfies the bound's premise. What this finding \emph{does} say is that the dual-stream gap-closing story should be reframed: rather than ``the TSFM has complementary nonlinear features that dual-stream extracts,'' the more accurate reading is ``the TSFM contributes complementary signal on datasets with nonlinear dynamics (where it wins by $1$--$6\%$), and contributes essentially nothing on datasets where DLinear is already near-optimal (where pure raw-MLP MoE matches or beats it).''
 
 \textbf{Bottom line.} Resolving the confound stated at the start of this section: the TSFM is dead weight on ETTh2, ETTm2, and Electricity, where the backbone-free Raw-MLP MoE wins by $0.7$--$17.9\%$ over Dual-Stream, and contributes $3$--$6\%$ MSE on ETTh1, ETTm1, and Weather, where Dual-Stream retains the advantage. The dataset-conditional contribution of the TSFM is itself an empirical pattern worth flagging to the TSFM-design community: \emph{frozen TSFMs are useful where forecasting requires nonlinear temporal modeling beyond what a 5-MLP ensemble can express, and unnecessary where it does not}. The single most important consequence for our paper is that the routing-collapse diagnosis (the core scientific contribution) is robust to whether the TSFM is the best backbone: it explains the AdaMix-collapse phenomenon and predicts the cross-backbone behavior regardless.
+
+\clearpage
+\input{checklist}
 
 \end{document}
