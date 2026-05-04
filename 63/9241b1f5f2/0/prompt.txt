@@ -1,0 +1,1 @@
+Do you think that our current visualization really matches the standard and the requirement, I mean the quality of a NeurIPS paper?
