@@ -210,8 +210,8 @@ def main():
     checks = 0
 
     # --- Table 3: RR-MoA freeze ablation + baselines ---
-    # Frozen-row baselines were re-run on Modal on 2026-05-01 (the original
-    # RACE snapshot was from a different RNG state). Where a sidecar JSON in
+    # Frozen-row baselines were re-run on 2026-05-01 (the original snapshot
+    # was from a different RNG state). Where a sidecar JSON in
     # results/baselines_only/ exists for the same (cell, seed), prefer it
     # over the baselines field embedded in evidence_vm/rr_moa/.
     BASE_OVERLAY = os.path.join(os.path.dirname(EVID), "results", "baselines_only")

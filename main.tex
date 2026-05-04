@@ -1,7 +1,7 @@
 \documentclass{article}
 % Use \usepackage[final]{neurips_2026} for camera-ready
 \PassOptionsToPackage{numbers,compress,sort}{natbib}
-\usepackage[preprint]{neurips_2026}
+\usepackage{neurips_2026}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{hyperref}
@@ -55,7 +55,7 @@
 \maketitle
 
 \begin{abstract}
-Pioneering time series foundation models (TSFMs) such as MOMENT, TimesFM, and TTM pair a frozen backbone with a task-specific head. Because downstream series mix heterogeneous regimes, the natural upgrade is a mixture-of-experts (MoE) head: a router over architecturally distinct experts, one per window. However, this upgrade fails on instance-normalized backbones: Reversible Instance Normalization (RevIN) and similar layers strip the per-window mean and variance the router needs, a failure we call \emph{normalization-induced routing collapse}. Whenever joint training makes even one backbone transformer block trainable, routing entropy falls to $0.000$, meaning that every input is sent to a single expert and the rest are never activated. A $720$-run sweep across standard MoE rescue mechanisms (load balancing, z-loss, entropy regularization, ReLU routing, expert-choice) recovers at most $10.9\%$ MSE ($2.7\times$ worse than our causal intervention), because the failure is in the router's input, not its optimization. We formalize this via a mutual-information decomposition; the resulting signal-ratio statistic, computable before training, predicts dataset vulnerability (Spearman $\rho{=}{-}0.88$, $p{<}0.002$) and flags boundary cases. The diagnosis prescribes a minimal causal intervention: \emph{Raw-Routed Mixture of Adapters} (RR-MoA) routes on the raw, pre-normalization input. RR-MoA sets a new SOTA for adapter-based TSFM transfer under a strictly frozen backbone: $54/54$ wins on the primary backbone ($26$--$79\%$ MSE improvement over the best fixed adapter), strictly beats LoRA, TRACE, AdaMix, and full fine-tuning at $p{<}0.001$, and generalizes across four further backbones and an imputation task. Eight causal controls including a vision-modality replication isolate the cause to instance normalization, and predict a \emph{Frozen Paradox}: frozen RR-MoA beats full fine-tuning by $12$--$79\%$, dominated by the MoE pool's architectural advantage with a smaller within-architecture freeze effect ($\leq 13\%$) attributable to gradient co-adaptation (Proposition~\ref{prop:frozen}). Applying the same raw-signal principle at the expert level (Residual-IA\textsuperscript{+}) closes the gap with DLinear on $107/123$ cells across six backbones $\times$ four horizons.
+Pioneering time series foundation models (TSFMs) such as MOMENT, TimesFM, and TTM pair a frozen backbone with a task-specific head. Because downstream series mix heterogeneous regimes, the natural upgrade is a mixture-of-experts (MoE) head: a router over architecturally distinct experts, one per window. However, this upgrade fails on instance-normalized backbones: Reversible Instance Normalization (RevIN) and similar layers strip the per-window mean and variance the router needs, a failure we call \emph{normalization-induced routing collapse}. Whenever joint training makes even one backbone transformer block trainable, routing entropy falls to $0.000$, meaning that every input is sent to a single expert and the rest are never activated. A $720$-run sweep across standard MoE rescue mechanisms recovers at most $10.9\%$ MSE ($2.7\times$ worse than our causal intervention), because the failure is in the router's input, not its optimization. We formalize this via a mutual-information decomposition; the resulting signal-ratio statistic, computable before training, predicts dataset vulnerability (Spearman $\rho{=}{-}0.88$, $p{<}0.002$) and flags boundary cases. The diagnosis prescribes a minimal causal intervention: \emph{Raw-Routed Mixture of Adapters} (RR-MoA) routes on the raw, pre-normalization input. RR-MoA sets a new state of the art for adapter-based TSFM transfer under a strictly frozen backbone: $54/54$ wins on the primary backbone ($26$--$79\%$ MSE improvement over the best fixed adapter), strictly beats LoRA, TRACE, AdaMix, and full fine-tuning at $p{<}0.001$, and generalizes across four further backbones and an imputation task. Eight causal controls including a vision-modality replication isolate the cause to instance normalization, and reveal a \emph{Frozen Paradox}: frozen RR-MoA beats full fine-tuning by $12$--$79\%$. Applying the same raw-signal principle at the expert level (Residual-IA\textsuperscript{+}) closes the gap with DLinear on $107/123$ cells across six backbones $\times$ four horizons.
 \end{abstract}
 
 \section{Introduction}
@@ -393,7 +393,7 @@ where $G_\psi: \mathbb{R}^{T} \to \mathbb{R}^K$ is a small Conv1d\,+\,pooling\,+
 
 \textbf{Baselines.} Seven baselines: three fixed adapters, LoRA~\citep{hu2022lora} (108-run sweep; Appendix~\ref{app:lora_sweep}), TRACE~\citep{li2025trace}, an independent ensemble of 5 experts, an AdaMix-style hidden-state-routed MoE~\citep{wang2022adamix} (learned softmax router; configuration in Appendix~\ref{app:adamix_details}), full fine-tuning (all blocks unfrozen, best of 5 heads $\times$ 2 LRs), and a from-scratch DLinear~\citep{zeng2023dlinear} calibration anchor.
 
-\textbf{Training and reproducibility.} Adam, MSE loss, 15 epochs; 5 seeds for the core grid, 3 for ablations. Backbone dimensions, full hyperparameters, and per-baseline configurations: Appendix~\ref{app:setup}. All code, raw JSON results, routing-weight logs, and a self-verification script (\texttt{verify.py}) that re-derives every numerical claim from raw data accompany the submission.
+\textbf{Training and reproducibility.} Adam, MSE loss, 15 epochs; 5 seeds for the core grid, 3 for ablations. Backbone dimensions, full hyperparameters, and per-baseline configurations: Appendix~\ref{app:setup}. All code, raw JSON results, routing-weight logs, and a self-verification script (\texttt{verify.py}) that re-derives every numerical claim from raw data will be released on acceptance.
 
 \subsection{Main Results}
 \label{sec:main_results}
@@ -549,117 +549,27 @@ Full fine-tuning (all unfrozen) & $1.060 \pm 0.059$ & $0.871 \pm 0.029$ & $0.468
 
 RR-MoA outperforms every baseline ($p{<}0.001$). The independent ensemble (same experts, no router) is $37$--$46\%$ worse, confirming learned routing adds value beyond diversity.
 
-\textbf{Closing the DLinear gap.} DLinear (49K params, from scratch) outperforms frozen adapters in absolute MSE (Table~\ref{tab:baselines}, grey rows): k-NN/Ridge diagnostics on backbone vs.\ raw features are consistent with the gap reflecting information destruction by the normalization-encoding pipeline rather than insufficient adapter capacity (Appendix~\ref{app:diagnostic}). Restoring raw-signal access \emph{at the expert level} closes it: \textbf{Residual-IA\textsuperscript{+}} (shared NLinear raw branch $+$ per-expert gated backbone residual; Appendix~\ref{app:gate_pathology}) matches or beats DLinear on $6/6$ datasets at $H{=}96$ (up to $-7.5\%$) and $107/123$ cells across six backbones; a self-routed SR-RIA\textsuperscript{+} (Appendix~\ref{app:sr_ria}) hits the same $6/6$ with $3$ outright wins, and a TSFM-free Pure Raw-MLP MoE control (Appendix~\ref{app:raw_mlp_moe}) localizes the TSFM's contribution.
+\textbf{Closing the DLinear gap.} DLinear (49K params, from scratch) outperforms frozen adapters in absolute MSE (Table~\ref{tab:baselines}, grey rows): k-NN/Ridge diagnostics indicate this reflects information loss in the normalization--encoding pipeline (Appendix~\ref{app:diagnostic}). Restoring raw access \emph{at the expert level} closes it: \textbf{Residual-IA\textsuperscript{+}} matches or beats DLinear on $6/6$ datasets at $H{=}96$ and $107/123$ cells across six backbones (Appendix~\ref{app:gate_pathology}); a self-routed SR-RIA\textsuperscript{+} hits $6/6$ (Appendix~\ref{app:sr_ria}) and a TSFM-free Pure Raw-MLP MoE control localizes the TSFM's contribution (Appendix~\ref{app:raw_mlp_moe}).
 
-{\looseness=-1 \textbf{Rawness vs.\ bypass and dose-response.} Replacing the router's raw input with RevIN-normalized input degrades MSE by $60$--$88\%$ while entropy stays high (Table~\ref{tab:router_input}): the router relies on the \emph{content} of the stripped statistics, not the bypass path. A dose-response interpolation $\mathbf{x}_\alpha = (1{-}\alpha)\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ reveals a phase transition (Figure~\ref{fig:dose_response}; $150$ runs): MSE degrades by $+5.4\%$ for $\alpha{\leq}0.75$ but jumps to $+283\%$ at $\alpha{=}1$, with entropy held in $[1.43, 1.57]$ throughout. The heuristic SNR-onset threshold is at $\alpha^* = R(\mathcal{D})/(R(\mathcal{D})+1) \approx 0.40$ for the median benchmark (Appendix~\ref{app:prop2_depth} labels Proposition~\ref{prop:phase_transition} as a heuristic prediction); a temporal-shuffle ablation indicates routing depends on $(M,\Sigma)$ rather than temporal ordering (Appendix~\ref{app:routing_ablations}).}
+{\looseness=-1 \textbf{Rawness vs.\ bypass and dose-response.} Replacing the router's raw input with RevIN-normalized input degrades MSE by $60$--$88\%$ while entropy stays high (Table~\ref{tab:router_input}): the router relies on the \emph{content} of the stripped statistics, not the bypass path. A dose-response interpolation $\mathbf{x}_\alpha = (1{-}\alpha)\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ shows a phase transition at $\alpha{\to}1$ (Figure~\ref{fig:dose_response}; $150$ runs; heuristic SNR-onset $\alpha^*{\approx}0.40$, Appendix~\ref{app:prop2_depth}); a temporal-shuffle ablation confirms routing depends on $(M,\Sigma)$, not temporal ordering (Appendix~\ref{app:routing_ablations}).}
 
 
-\textbf{Why RevIN destroys routing: formal analysis.} Each window $\mathbf{x}_i$ decomposes into mean $M_i = \mu(\mathbf{x}_i)$, scale $\Sigma_i = \sigma(\mathbf{x}_i)$, and shape $\mathbf{S}_i = (\mathbf{x}_i - M_i)/\Sigma_i$; RevIN maps $\mathbf{x}_i \mapsto \mathbf{S}_i$ and discards $(M_i, \Sigma_i)$. The mutual-information chain rule quantifies how much routing information lives in the discarded part.
+\textbf{Why RevIN destroys routing.} Each window decomposes into mean $M_i$, scale $\Sigma_i$, shape $\mathbf{S}_i = (\mathbf{x}_i - M_i)/\Sigma_i$; RevIN keeps $\mathbf{S}_i$ and discards $(M_i,\Sigma_i)$. The chain rule quantifies how much routing signal lives in the discarded part.
 
 \begin{observation}[Routing Information Loss Under Instance Normalization]
 \label{thm:mi_decomp}
-Let $X$ be a random input window, $E \in \{1,\ldots,K\}$ the expert assignment produced by any deterministic router, and $S = (X - M)/\Sigma$ the RevIN-normalized shape.
-\begin{enumerate}
-    \item[\textup{(i)}] \textbf{Exact decomposition.} $I(X; E) - I(S; E) = I(M, \Sigma; E \mid S) \geq 0$.
-    \item[\textup{(ii)}] \textbf{Quantitative bound.} Without any independence assumption,
-    \[
-        I(X; E) - I(S; E) \;\geq\; I(M, \Sigma;\, E) \;-\; I(M, \Sigma;\, S),
-    \]
-    where $\varepsilon := I(M, \Sigma;\, S) \geq 0$ captures any residual ``leakage'' of the stripped statistics through the shape. Equality holds iff $(M,\Sigma) \perp\!\!\!\perp S \mid E$.
-\end{enumerate}
+Let $X$ be a random input window, $E \in \{1,\ldots,K\}$ the expert assignment produced by any deterministic router, $S = (X - M)/\Sigma$ the RevIN-normalized shape. \emph{(i) Exact decomposition:} $I(X;E) - I(S;E) = I(M,\Sigma;E\mid S) \geq 0$. \emph{(ii) Quantitative bound (no independence assumption):} $I(X;E) - I(S;E) \geq I(M,\Sigma;E) - I(M,\Sigma;S)$, with $\varepsilon := I(M,\Sigma;S) \geq 0$ capturing residual leakage of stripped statistics through the shape; equality iff $(M,\Sigma) \perp\!\!\!\perp S \mid E$.
 \end{observation}
 
-In the corner case where routing signal lives entirely in the stripped statistics ($E$ deterministic in $(M,\Sigma)$, $(M,\Sigma)\perp\!\!\!\perp S$; Part~(iii), Appendix~\ref{app:proofs}), $I(X;E){-}I(S;E)=H(E)$: RevIN destroys the entire routing distribution. We use the \emph{signal ratio} $R(\mathcal{D}) = [\mathrm{Var}(M)+\mathrm{Var}(\Sigma)]/\overline{\mathrm{Var}(S)}$ as a tractable monotone proxy. The bound is empirically tight (CCA $\varepsilon\in[0.09,1.26]$ nats, KSG-validated~\citep{kraskov2004ksg}; gap $0.075$ nats, Appendix~\ref{app:mi_tightness}); learnable $\alpha$ converges to $\alpha{<}0.5$ on $30/30$ runs (Appendix~\ref{app:learnable_alpha}). $R(\mathcal{D})$ predicts raw-routing benefit at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$ across the 6 LTSF benchmarks plus Exchange, Traffic, Solar; Figure~\ref{fig:signal_ratio}), whereas $H(E\mid S)$ alone does not ($\rho{=}{-}0.12$). Traffic ($R{=}0.14$, $\Delta{=}{+}2.9\%$) is correctly flagged a boundary case; Solar ($R{=}0.06$) is the one outlier (SSR $+43\%$; Appendix~\ref{app:routing_ablations}).
+When routing signal lives entirely in the stripped statistics ($(M,\Sigma)\perp\!\!\!\perp S$; Appendix~\ref{app:proofs}), $I(X;E){-}I(S;E){=}H(E)$: RevIN destroys the entire routing distribution. The signal ratio $R(\mathcal{D}) = [\mathrm{Var}(M)+\mathrm{Var}(\Sigma)]/\overline{\mathrm{Var}(S)}$ is a tractable monotone proxy; the bound is empirically tight (Appendix~\ref{app:mi_tightness}) and learnable $\alpha{<}0.5$ on $30/30$ runs (Appendix~\ref{app:learnable_alpha}). $R(\mathcal{D})$ predicts raw-routing benefit at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$; Figure~\ref{fig:signal_ratio}), whereas $H(E\mid S)$ alone does not ($\rho{=}{-}0.12$); Traffic ($R{=}0.14$) is flagged a boundary, Solar ($R{=}0.06$) the one outlier (Appendix~\ref{app:routing_ablations}).
 
-\begin{figure}[!htbp]
-\centering
-\vspace{-12pt}
-\begin{minipage}[t]{0.58\columnwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    width=\textwidth,
-    height=2.4cm,
-    bar width=5pt,
-    ylabel={Test MSE (H=96)},
-    ylabel style={font=\footnotesize},
-    symbolic x coords={ETTh1, ETTm1, Weath, ETTh2, ETTm2, Elec},
-    xtick=data,
-    x tick label style={font=\footnotesize},
-    y tick label style={font=\footnotesize},
-    legend style={at={(0.5,1.06)}, anchor=south, font=\scriptsize, draw=none, fill=white, fill opacity=0.92, legend columns=2, column sep=0.8em},
-    ymin=0, ymax=3.35,
-    enlarge x limits=0.12,
-    error bars/y dir=both,
-    error bars/y explicit,
-    error bars/error bar style={line width=0.4pt, black!60},
-]
-\addplot[fill=red!45] coordinates {(ETTh1,1.060) +- (0,0.059) (ETTm1,0.871) +- (0,0.029) (Weath,0.468) +- (0,0.009) (ETTh2,2.645) +- (0,0.049) (ETTm2,2.559) +- (0,0.146) (Elec,0.457) +- (0,0.006) };
-\addplot[fill=blue!55] coordinates {(ETTh1,0.680) +- (0,0.027) (ETTm1,0.564) +- (0,0.059) (Weath,0.276) +- (0,0.017) (ETTh2,0.778) +- (0,0.095) (ETTm2,0.538) +- (0,0.069) (Elec,0.402) +- (0,0.062) };
-\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTh1,1.25) {$-36\%$};
-\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTm1,1.05) {$-35\%$};
-\node[font=\scriptsize, text=red!70!black] at (axis cs:Weath,0.62) {$-41\%$};
-\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTh2,2.85) {$-71\%$};
-\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTm2,2.78) {$-79\%$};
-\node[font=\scriptsize, text=red!70!black] at (axis cs:Elec,0.61) {$-12\%$};
-\legend{Full FT (unfrozen), Frozen RR-MoA}
-\end{axis}
-\end{tikzpicture}
-\end{minipage}%
-\hfill
-\begin{minipage}[t]{0.40\columnwidth}
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=\textwidth, height=2.7cm,
-    xlabel={Signal ratio $R(\mathcal{D})$},
-    ylabel={$\Delta\%$},
-    xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
-    x tick label style={font=\footnotesize}, y tick label style={font=\footnotesize},
-    xmin=0, xmax=2.5, ymin=-85, ymax=10,
-    grid=major, grid style={gray!20},
-    clip=false,
-]
-% Main 7 datasets (interior of the regime where raw routing helps)
-\addplot[only marks, mark=*, mark size=2.5pt, blue!80] coordinates {
-    (0.242, -26.8) (0.566, -43.2) (0.671, -51.1) (0.703, -44.6) (1.163, -71.0) (1.241, -77.2) (2.174, -66.5)
-};
-% Boundary cases: Traffic (low R, no benefit predicted) and Solar (outlier).
-% Use orange diamonds, NOT red — the left-panel bars use red for "Full FT", and
-% reusing red here would create a same-figure color-semantic collision.
-\addplot[only marks, mark=diamond*, mark size=3.2pt, orange!85!black] coordinates {
-    (0.135, +2.9) (0.061, -32.9)
-};
-\node[font=\scriptsize, anchor=west] at (axis cs:0.08, -32.9) {Sol};
-\node[font=\scriptsize, anchor=west] at (axis cs:0.17, +2.9) {Traf};
-\node[font=\scriptsize, anchor=west] at (axis cs:0.27, -26.8) {Elec};
-\node[font=\scriptsize, anchor=south] at (axis cs:0.566, -39.5) {h1};
-\node[font=\scriptsize, anchor=west] at (axis cs:0.74, -51.1) {m1};
-\node[font=\scriptsize, anchor=east] at (axis cs:0.66, -44.6) {W};
-\node[font=\scriptsize, anchor=west] at (axis cs:1.19, -71.0) {h2};
-\node[font=\scriptsize, anchor=west] at (axis cs:1.27, -77.2) {m2};
-\node[font=\scriptsize, anchor=west] at (axis cs:2.20, -66.5) {Exch};
-\addplot[black, thin, dotted] coordinates {(0,0) (2.5,0)};
-\addplot[red, thick, dashed, domain=0.05:2.4] {-30.5*x - 7.5};
-\node[font=\scriptsize, text=red!70, anchor=north east] at (axis cs:2.45, -10) {$\rho{=}{-}0.88$};
-\end{axis}
-\end{tikzpicture}
-\end{minipage}
-\vspace{-8pt}
-\caption{\textbf{Left: Frozen Paradox}, frozen RR-MoA beats full FT by $12$--$79\%$. \textbf{Right: Observation~\ref{thm:mi_decomp} validated} ($\rho{=}{-}0.88$, $p{<}0.002$). Traffic and Solar are boundary cases.}
-\label{fig:frozen_paradox}
-\label{fig:signal_ratio}
-\vspace{-10pt}
-\end{figure}
-
-{\looseness=-1 \textbf{Cross-backbone, task, horizon.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins on every cross-backbone cell tested for instance-normalized backbones: MOMENT-small/large ($26$--$79\%$ and $32$--$75\%$ respectively, Tables~\ref{tab:rrmoa},~\ref{tab:rrmoa_extended},~\ref{tab:cross_backbone}), Moirai ($12$--$29\%$, Table~\ref{tab:cross_backbone}), and Moirai-MoE~\citep{liu2025moiraimoe} ($37$--$90\%$ on all 6 datasets, Table~\ref{tab:moirai_moe}), suggesting adapter- and backbone-internal routing are complementary. Predicted negative controls (Chronos, Timer-XL~\citep{liu2025timerxl}, no instance norm) show no entropy collapse and only small gains over fixed adapters (Appendix~\ref{app:cross_backbone}, Table~\ref{tab:timer_xl}). Top-2 routing retains most of the dense gain (Appendix~\ref{app:topk}); imputation $7/8$ (Appendix~\ref{app:imputation}) and horizons $H{\in}\{96,192,336,720\}$ $24/24$ (Table~\ref{tab:horizon}) confirm robustness; Residual-IA\textsuperscript{+} extends to 6 datasets $\times$ 5 backbones $\times$ 4 horizons (Appendix~\ref{app:gate_pathology}).}
+{\looseness=-1 \textbf{Cross-backbone, task, horizon.}\label{sec:cross_backbone}\label{sec:topk} RR-MoA wins on every cell for instance-normalized backbones (MOMENT-small/large $26$--$79\%/32$--$75\%$, Moirai $12$--$29\%$, Moirai-MoE~\citep{liu2025moiraimoe} $37$--$90\%$); LayerNorm-only controls (Chronos, Timer-XL~\citep{liu2025timerxl}) show no collapse. Top-$2$, imputation $7/8$, $24/24$ horizons, and Residual-IA\textsuperscript{+} ($6{\times}5{\times}4$) confirm robustness (Tables~\ref{tab:cross_backbone}--\ref{tab:horizon}; Appendices~\ref{app:topk},~\ref{app:imputation},~\ref{app:gate_pathology}).}
 
 \vspace{-0.6em}
 \section{Conclusion and Limitations}
 \vspace{-0.6em}
 
-MoE adapters on instance-normalized TSFMs fail because the normalization needed for distribution shift also strips the per-window statistics the router needs; raw pre-normalization routing fixes it, motivates Residual-IA\textsuperscript{+}, and $R(\mathcal{D})$ identifies where it applies. The broader pattern, supported by our time-series settings and a vision control (Appendix~\ref{app:vision_moe}): when a foundation model's input pipeline destroys signal a downstream router needs, restoring the input recovers routing more reliably than retuning the optimizer in the cases we tested. \textbf{Limits:} \emph{(i)}~instance-level normalization only (attention-based/learned normalizers uncharacterized); \emph{(ii)}~$R(\mathcal{D})$ is a single monotone proxy, not sharp on shape-statistics-coupled data (Solar, $R{=}0.06$); \emph{(iii)}~forecasting and imputation only.\label{page:end_main}
+MoE adapters on instance-normalized TSFMs fail because the normalization handling distribution shift also strips per-window statistics the router needs; raw pre-normalization routing fixes it, motivates Residual-IA\textsuperscript{+}, and $R(\mathcal{D})$ flags applicable settings (vision replication, Appendix~\ref{app:vision_moe}). \textbf{Limitations:} instance-level only; monotone $R(\mathcal{D})$; forecasting + imputation.\label{page:end_main}
 \bibliographystyle{plainnat}
 \begin{thebibliography}{20}
 
@@ -1568,9 +1478,9 @@ Weather & Frozen  & Timer-XL  & $\mathbf{0.197 \pm 0.010}$ & $1.54$ \\
 
 \textbf{Temporal-shuffle ablation.} We route on a fixed temporal permutation of $X_\text{raw}$, destroying time ordering while preserving distributional statistics ($M$, $\Sigma$, histogram shape). Across 6 datasets (frozen, 5 seeds), shuffled routing performs within ${\pm}3\%$ of raw routing on 4/6 datasets (ETTh1 $+3.2\%$, ETTh2 $+1.2\%$, ETTm1 $-1.2\%$, Electricity $+0.7\%$), with Weather improving $-8.5\%$ and ETTm2 improving $-16.0\%$. Entropy remains high ($1.43$--$1.58$). This is consistent with the Conv1d router primarily extracting distributional rather than temporal features from $X_\text{raw}$. Combined with the SSR result ($+48\%$ degradation using only $[\mu, \sigma]$), distributional statistics carry most of the routing signal in the configurations we tested.
 
-\textbf{Router-Detached Gradient Flow (RDGF).} A variant that unfreezes the backbone but replaces routing-weighted gradients with uniform-average gradients ($\nabla_H \mathcal{L}_\text{backbone} = \frac{1}{K}\sum_k \nabla_H \mathcal{L}_k$) degrades MSE by $+35\%$ to $+100\%$ across the three datasets we tested (ETTh1, ETTm1, Weather; frozen MOMENT-small last-2, 3 seeds; per-run JSONs in \texttt{evidence\_vm/rdgf/}). This is consistent with the Frozen Paradox being structural rather than an artifact of full-gradient unfreezing.
+\textbf{Router-Detached Gradient Flow (RDGF).} A variant that unfreezes the backbone but replaces routing-weighted gradients with uniform-average gradients ($\nabla_H \mathcal{L}_\text{backbone} = \frac{1}{K}\sum_k \nabla_H \mathcal{L}_k$) degrades MSE by $+35\%$ to $+100\%$ across the three datasets we tested (ETTh1, ETTm1, Weather; frozen MOMENT-small last-2, 3 seeds; per-run JSONs released on acceptance). This is consistent with the Frozen Paradox being structural rather than an artifact of full-gradient unfreezing.
 
-\textbf{Spectral-temporal router (FFT-Router).} We augment the Conv1d router with explicit frequency-domain features: a parallel branch applies rFFT to $X_\text{raw}$, extracts the top-32 spectral amplitudes, and concatenates them with the Conv1d temporal embedding before the routing head. On the two datasets with matched dense-frozen baselines (Weather, ETTm1; frozen MOMENT-small, 3 seeds; per-run JSONs in \texttt{evidence\_vm/fft\_router/}), FFT-Router \emph{degrades} MSE by $+6\%$ (Weather) and $+22\%$ (ETTm1). The Conv1d router appears to already capture frequency-relevant patterns implicitly; adding explicit spectral features overparameterizes the router without improving routing quality on these two datasets.
+\textbf{Spectral-temporal router (FFT-Router).} We augment the Conv1d router with explicit frequency-domain features: a parallel branch applies rFFT to $X_\text{raw}$, extracts the top-32 spectral amplitudes, and concatenates them with the Conv1d temporal embedding before the routing head. On the two datasets with matched dense-frozen baselines (Weather, ETTm1; frozen MOMENT-small, 3 seeds; per-run JSONs released on acceptance), FFT-Router \emph{degrades} MSE by $+6\%$ (Weather) and $+22\%$ (ETTm1). The Conv1d router appears to already capture frequency-relevant patterns implicitly; adding explicit spectral features overparameterizes the router without improving routing quality on these two datasets.
 
 \textbf{Statistic-aware information bottleneck (SAIB).} An auxiliary loss forces the router's penultimate representation to predict the window-level $[\mu, \sigma]$, directly operationalizing Observation~\ref{thm:mi_decomp}. With SAIB coefficients $\lambda \in \{0.1, 1.0\}$ (ETTm1, Weather; frozen MOMENT-small, 3 seeds; per-run JSONs in \texttt{evidence\_vm/saib/}), MSE is unchanged on ETTm1 ($0.395$ vs $0.397$ baseline) and slightly degraded on Weather ($0.250$ vs $0.236$). Routing entropy increases to $1.55$ (near-maximum $\log 5 = 1.61$), indicating the auxiliary loss disperses routing weights without improving forecast accuracy. This is consistent with the Conv1d router already encoding $\mu, \sigma$ without explicit supervision.
 
@@ -1666,7 +1576,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \subsection{Rescue-Baseline Sweep Details}
 \label{app:rescue_details}
 
-Table~\ref{tab:rescue} reports the full rescue-baseline sweep: 5 standard MoE rescue families across 12 configurations evaluated on MOMENT-small $+$ RevIN (AdaMix, 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $=$ 60 cells per row, 720 cells total). Eleven configurations are launched as new runs by \texttt{run\_rescue\_baseline\_race.sh}; the twelfth, the Switch load-balance baseline at $\alpha{=}0.01$, reuses the existing AdaMix results from Table~\ref{tab:adamix} (where load-balance $\alpha{=}0.01$ is the default).
+Table~\ref{tab:rescue} reports the full rescue-baseline sweep: 5 standard MoE rescue families across 12 configurations evaluated on MOMENT-small $+$ RevIN (AdaMix, 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $=$ 60 cells per row, 720 cells total). Eleven configurations are launched as new runs (rescue-baseline orchestrator script in supplementary material); the twelfth, the Switch load-balance baseline at $\alpha{=}0.01$, reuses the existing AdaMix results from Table~\ref{tab:adamix} (where load-balance $\alpha{=}0.01$ is the default).
 
 \begin{table}[h]
 \centering
@@ -1943,6 +1853,81 @@ Solar       & 0.97 & 0.57 & 40.9 & 0.08 & 0.20 & $-32.9$ \\
 
 To quantify the information bottleneck created by RevIN and the encoder, we compare the forecasting value of backbone features against raw input using non-parametric methods. All experiments run on CPU with zero GPU cost.
 
+\begin{figure}[!htbp]
+\centering
+\begin{minipage}[t]{0.58\columnwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=\textwidth,
+    height=3.6cm,
+    bar width=5pt,
+    ylabel={Test MSE (H=96)},
+    ylabel style={font=\footnotesize},
+    symbolic x coords={ETTh1, ETTm1, Weath, ETTh2, ETTm2, Elec},
+    xtick=data,
+    x tick label style={font=\footnotesize},
+    y tick label style={font=\footnotesize},
+    legend style={at={(0.5,1.06)}, anchor=south, font=\scriptsize, draw=none, fill=white, fill opacity=0.92, legend columns=2, column sep=0.8em},
+    ymin=0, ymax=3.35,
+    enlarge x limits=0.12,
+    error bars/y dir=both,
+    error bars/y explicit,
+    error bars/error bar style={line width=0.4pt, black!60},
+]
+\addplot[fill=red!45] coordinates {(ETTh1,1.060) +- (0,0.059) (ETTm1,0.871) +- (0,0.029) (Weath,0.468) +- (0,0.009) (ETTh2,2.645) +- (0,0.049) (ETTm2,2.559) +- (0,0.146) (Elec,0.457) +- (0,0.006) };
+\addplot[fill=blue!55] coordinates {(ETTh1,0.680) +- (0,0.027) (ETTm1,0.564) +- (0,0.059) (Weath,0.276) +- (0,0.017) (ETTh2,0.778) +- (0,0.095) (ETTm2,0.538) +- (0,0.069) (Elec,0.402) +- (0,0.062) };
+\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTh1,1.25) {$-36\%$};
+\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTm1,1.05) {$-35\%$};
+\node[font=\scriptsize, text=red!70!black] at (axis cs:Weath,0.62) {$-41\%$};
+\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTh2,2.85) {$-71\%$};
+\node[font=\scriptsize, text=red!70!black] at (axis cs:ETTm2,2.78) {$-79\%$};
+\node[font=\scriptsize, text=red!70!black] at (axis cs:Elec,0.61) {$-12\%$};
+\legend{Full FT (unfrozen), Frozen RR-MoA}
+\end{axis}
+\end{tikzpicture}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.40\columnwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth, height=3.8cm,
+    xlabel={Signal ratio $R(\mathcal{D})$},
+    ylabel={$\Delta\%$},
+    xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
+    x tick label style={font=\footnotesize}, y tick label style={font=\footnotesize},
+    xmin=0, xmax=2.5, ymin=-85, ymax=10,
+    grid=major, grid style={gray!20},
+    clip=false,
+]
+\addplot[only marks, mark=*, mark size=2.5pt, blue!80] coordinates {
+    (0.242, -26.8) (0.566, -43.2) (0.671, -51.1) (0.703, -44.6) (1.163, -71.0) (1.241, -77.2) (2.174, -66.5)
+};
+\addplot[only marks, mark=diamond*, mark size=3.2pt, orange!85!black] coordinates {
+    (0.135, +2.9) (0.061, -32.9)
+};
+\node[font=\scriptsize, anchor=west] at (axis cs:0.08, -32.9) {Sol};
+\node[font=\scriptsize, anchor=west] at (axis cs:0.17, +2.9) {Traf};
+\node[font=\scriptsize, anchor=west] at (axis cs:0.27, -26.8) {Elec};
+\node[font=\scriptsize, anchor=south] at (axis cs:0.566, -39.5) {h1};
+\node[font=\scriptsize, anchor=west] at (axis cs:0.74, -51.1) {m1};
+\node[font=\scriptsize, anchor=east] at (axis cs:0.66, -44.6) {W};
+\node[font=\scriptsize, anchor=west] at (axis cs:1.19, -71.0) {h2};
+\node[font=\scriptsize, anchor=west] at (axis cs:1.27, -77.2) {m2};
+\node[font=\scriptsize, anchor=west] at (axis cs:2.20, -66.5) {Exch};
+\addplot[black, thin, dotted] coordinates {(0,0) (2.5,0)};
+\addplot[red, thick, dashed, domain=0.05:2.4] {-30.5*x - 7.5};
+\node[font=\scriptsize, text=red!70, anchor=north east] at (axis cs:2.45, -10) {$\rho{=}{-}0.88$};
+\end{axis}
+\end{tikzpicture}
+\end{minipage}
+\caption{\textbf{Left: Frozen Paradox}, frozen RR-MoA beats full FT by $12$--$79\%$ across the six LTSF datasets at $H{=}96$. \textbf{Right: Observation~\ref{thm:mi_decomp} validated}: $R(\mathcal{D})$ predicts raw-routing benefit at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$). Traffic and Solar are boundary cases.}
+\label{fig:frozen_paradox}
+\label{fig:signal_ratio}
+\end{figure}
+
 \begin{table}[h]
 \centering
 \caption{\textbf{Backbone features vs.\ raw input} (H=96, 80/20 train/test split). k-NN: k-nearest neighbor regression ($k{=}20$, distance-weighted) on mean-pooled backbone features vs.\ raw 512-dim input. Ridge: regularized linear regression (cross-validated $\alpha$). Backbone features are $16$--$33\%$ worse than raw input even with a universal approximator (k-NN), confirming genuine information destruction.}
@@ -2049,7 +2034,7 @@ Dataset & Freeze & AdaMix MSE & AdaMix Ent & RR-MoA MSE & Winner \\
 \end{tabular}
 \end{table}
 
-\textbf{Independent ensemble on Timer-XL.} On MOMENT-small, the independent ensemble (5 experts trained separately, averaged at inference) is $37$--$46\%$ worse than RR-MoA, indicating that learned routing adds value beyond diversity. On Timer-XL the pattern \emph{reverses} on the three forecasting datasets we extended (ETTh1, ETTm1, ETTm2; per-run JSONs in \texttt{evidence\_vm/timer\_xl\_ensemble/}): the independent ensemble has lower MSE than both AdaMix and RR-MoA (ETTh1 $0.462$, ETTm1 $0.384$, ETTm2 $0.296$ vs AdaMix $0.477$, $0.399$, $0.326$). When hidden-state routing is healthy (no RevIN), simple averaging is a strong baseline that learned routing does not consistently beat. This is consistent with RR-MoA's advantage being specifically about rescuing collapsed routing under RevIN.
+\textbf{Independent ensemble on Timer-XL.} On MOMENT-small, the independent ensemble (5 experts trained separately, averaged at inference) is $37$--$46\%$ worse than RR-MoA, indicating that learned routing adds value beyond diversity. On Timer-XL the pattern \emph{reverses} on the three forecasting datasets we extended (ETTh1, ETTm1, ETTm2; per-run JSONs released on acceptance): the independent ensemble has lower MSE than both AdaMix and RR-MoA (ETTh1 $0.462$, ETTm1 $0.384$, ETTm2 $0.296$ vs AdaMix $0.477$, $0.399$, $0.326$). When hidden-state routing is healthy (no RevIN), simple averaging is a strong baseline that learned routing does not consistently beat. This is consistent with RR-MoA's advantage being specifically about rescuing collapsed routing under RevIN.
 
 \begin{table}[h]
 \centering
@@ -2351,7 +2336,7 @@ The dual-stream and multi-resolution variants narrow the average DLinear gap fro
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Gate-pathology diagnostic.} Mean per-sample gate activation $g_k(\mathbf{X})$ averaged across experts, seeds (3), and test windows for each architecture--training-recipe combination. Across the three rows, all six datasets converge to $g \approx 0.5$, indicating the gate provides no per-window discriminative signal at 15 epochs (per-run JSONs in \texttt{evidence\_vm/gate\_diagnostic/}).}
+\caption{\textbf{Gate-pathology diagnostic.} Mean per-sample gate activation $g_k(\mathbf{X})$ averaged across experts, seeds (3), and test windows for each architecture--training-recipe combination. Across the three rows, all six datasets converge to $g \approx 0.5$, indicating the gate provides no per-window discriminative signal at 15 epochs (per-run JSONs released on acceptance).}
 \label{tab:gate_pathology}
 \small
 \begin{tabular}{@{}lcccccc@{}}
@@ -2437,7 +2422,7 @@ Phase~1 resolves the architectural pathology but leaves ETTh1/ETTh2 still margin
 
 \textbf{Phase~2: orthogonal refinements.}
 \emph{Non-stationarity (Batch~4).} Hourly ETT data exhibits pronounced per-window level drift: the train/test windows have different means. Standard LTSF practice addresses this with NLinear: $\mathbf{y} = \text{Linear}(\mathbf{x} - x_T) + x_T$, where $x_T$ is a gradient-free anchor (the last input value). The linear layer is thereby constrained to model \emph{relative motion}, not absolute level. Testing \texttt{--raw-arch nlinear} as a drop-in replacement reduces ETTh1 from $+5.1\%$ to $+3.3\%$ and ETTh2 from $+10.6\%$ to $+6.9\%$ at $n{=}3$ seeds, while \emph{improving} (not regressing) ETTm2 ($-1.6\% \to -4.1\%$) and Weather ($-6.6\% \to -8.7\%$). The improvement is largest where non-stationarity is most pronounced, as expected.
-\emph{Per-dataset epoch mismatch (Batch~2).} A fixed $15$-epoch schedule assumes all datasets converge at the same rate. We test this by running validation-based early stopping with patience $5$ and logging the best epoch per seed (per-run logs in \texttt{evidence\_vm/early\_stopping/}). The result is striking: ETTh1 converges at epoch $7.2{\pm}1.2$, ETTh2 at $8.6{\pm}2.8$, ETTm1 at $14.8{\pm}3.7$, Weather at $8.6{\pm}1.2$, Electricity at $20.2{\pm}4.0$. No single fixed budget fits all six datasets: the $15$-epoch schedule simultaneously over-fits the ETTh pair and under-fits Electricity by $5$--$10$ epochs. Val-based early stopping (with gradient clipping at $\lVert g \rVert_2 \leq 1.0$ to stabilize the first epoch) achieves dataset-adaptive budgets without per-dataset hyperparameter tuning. In isolation this drops Electricity from $+0.6\%$ to $0.0\%$ (perfect parity, $p{=}0.991$) and Weather from $-6.6\%$ to $-4.6\%$ (nearing significance).
+\emph{Per-dataset epoch mismatch (Batch~2).} A fixed $15$-epoch schedule assumes all datasets converge at the same rate. We test this by running validation-based early stopping with patience $5$ and logging the best epoch per seed (per-run logs released on acceptance). The result is striking: ETTh1 converges at epoch $7.2{\pm}1.2$, ETTh2 at $8.6{\pm}2.8$, ETTm1 at $14.8{\pm}3.7$, Weather at $8.6{\pm}1.2$, Electricity at $20.2{\pm}4.0$. No single fixed budget fits all six datasets: the $15$-epoch schedule simultaneously over-fits the ETTh pair and under-fits Electricity by $5$--$10$ epochs. Val-based early stopping (with gradient clipping at $\lVert g \rVert_2 \leq 1.0$ to stabilize the first epoch) achieves dataset-adaptive budgets without per-dataset hyperparameter tuning. In isolation this drops Electricity from $+0.6\%$ to $0.0\%$ (perfect parity, $p{=}0.991$) and Weather from $-6.6\%$ to $-4.6\%$ (nearing significance).
 
 \textbf{Phase~3: stacking validation.}
 Each Phase~1 and Phase~2 lever alone achieves only $3/6$--$4/6$ match-or-beat: shared raw closes ETTh1/h2 but trades small regressions on ETTm2; NLinear improves the ETTh pair but regresses ETTm1; val-early-stop perfects Electricity but hurts the ETTh pair by stopping too early. Each targets a different failure mode (parameter bloat, non-stationarity, training-length mismatch), and each mode is present on a different subset of the benchmark. \textbf{Residual-IA\textsuperscript{+}} stacks all three:

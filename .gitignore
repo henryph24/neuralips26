@@ -59,3 +59,6 @@ scripts/run_gpu_saturation_race.sh
 
 # --- Other local-only docs ---
 slides_content.txt
+
+# --- Private quarantine: identifying material moved out of evidence_vm/ for anonymity ---
+evidence_vm_private/

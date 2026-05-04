@@ -1,4 +1,4 @@
-Multi-seed ablation started: Sun Apr  5 04:51:54 AEST 2026
+Multi-seed ablation started: Sun Apr  5 04:51:54 2026
 ### RR-MoA FREEZE ABLATION (27 runs) ###
 [04:51:54] RR-MoA ETTh1 frozen seed=42
 Unfreeze=frozen, backbone trainable params=0
@@ -1229,4 +1229,4 @@ AdaMix (K=5):  MSE=0.6054  params=441830  time=45s
 Best baseline: MSE=0.4962  (conv)
 Delta: +22.0% -> Winner: BASELINE
 Saved to results/adamix/Weather_H96_K5_last4_44.json
-Multi-seed ablation completed: Sun Apr  5 07:13:18 AEST 2026
+Multi-seed ablation completed: Sun Apr  5 07:13:18 2026
