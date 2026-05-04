@@ -33,68 +33,108 @@ n_experts = len(expert_names)
 # ── Style ──────────────────────────────────────────────────────────────
 plt.rcParams.update({
     "font.family": "serif",
-    "font.size": 8,
-    "axes.linewidth": 0.6,
-    "xtick.major.width": 0.5,
-    "ytick.major.width": 0.5,
-    "xtick.major.size": 3,
-    "ytick.major.size": 3,
+    "font.serif": ["DejaVu Serif", "Times New Roman", "Times"],
+    "mathtext.fontset": "cm",
+    "font.size": 9,
+    "axes.labelsize": 10,
+    "axes.linewidth": 0.8,
+    "xtick.major.width": 0.6,
+    "ytick.major.width": 0.6,
+    "xtick.major.size": 3.5,
+    "ytick.major.size": 3.5,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
 })
 
-# Colorblind-friendly palette (tab10 first 5)
-cmap = plt.cm.tab10
-colors = [cmap(i) for i in range(n_experts)]
+# Distinct colorblind-safe palette (Wong palette: orange/sky-blue/bluish-green/vermillion/yellow).
+# Order matches expert index; only experts present in data are drawn.
+WONG = {
+    0: "#E69F00",   # mean: orange
+    1: "#56B4E9",   # last: sky blue
+    2: "#009E73",   # max: bluish green
+    3: "#0072B2",   # attention: dark blue (distinct from mean's orange)
+    4: "#CC79A7",   # conv1d: reddish purple
+}
+
+# Honest legend: count usage per expert and only display experts with >=1%.
+counts = Counter(top1)
+N = len(top1)
+PRESENT_THRESH = 0.01  # 1% of routing decisions
+present_ids = [eid for eid in range(n_experts) if counts[eid] / N >= PRESENT_THRESH]
+absent_ids = [eid for eid in range(n_experts) if counts[eid] / N < PRESENT_THRESH]
 
 # ── Figure ─────────────────────────────────────────────────────────────
-fig, axes = plt.subplots(1, 2, figsize=(6, 2.7))
+fig, axes = plt.subplots(1, 2, figsize=(7.0, 3.0))
 
 panels = [
     (amplitude, volatility, "Amplitude", "Volatility", axes[0]),
     (mean_level, amplitude, "Mean level", "Amplitude", axes[1]),
 ]
 
+# Plot in count order (largest cluster first, drawn underneath; smaller on top so they remain visible).
+plot_order = sorted(present_ids, key=lambda eid: -counts[eid])
+
 for x_data, y_data, xlabel, ylabel, ax in panels:
-    for eid in range(n_experts):
+    for eid in plot_order:
         mask = top1 == eid
         ax.scatter(
             x_data[mask], y_data[mask],
-            c=[colors[eid]], s=3.5, alpha=0.25,
-            label=expert_names[eid], rasterized=True,
-            edgecolors="none",
+            c=WONG[eid], s=8, alpha=0.45,
+            label=f"{expert_names[eid]} ({100*counts[eid]/N:.0f}%)",
+            rasterized=True, edgecolors="none",
         )
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.tick_params(direction="in")
+    ax.grid(alpha=0.18, linestyle="--", linewidth=0.4)
+    ax.set_axisbelow(True)
 
-# Single shared legend, BELOW the panels (avoids float-detachment in LaTeX)
-handles, labels = axes[1].get_legend_handles_labels()
+# Build a single shared legend below the panels (only experts present in data).
+handles, labels = axes[0].get_legend_handles_labels()
+absent_note = ""
+if absent_ids:
+    absent_note = "  (" + ", ".join(expert_names[i] for i in absent_ids) + r"$\,{<}1\%$)"
 fig.legend(
     handles, labels,
-    loc="lower center", ncol=n_experts,
-    fontsize=7, frameon=False,
-    bbox_to_anchor=(0.5, -0.02),
-    markerscale=2.5,
-    handletextpad=0.4, columnspacing=1.2,
+    loc="lower center", ncol=len(present_ids),
+    fontsize=8, frameon=True, framealpha=0.92, edgecolor="gray",
+    bbox_to_anchor=(0.5, -0.04),
+    markerscale=2.0,
+    handletextpad=0.5, columnspacing=1.4,
+    title=f"Top-1 expert (N={N:,} test windows){absent_note}",
+    title_fontsize=8,
 )
 
-# ── Cluster annotation (if one expert dominates a region) ──────────────
-# Check left panel: attention expert tends to cluster at high amplitude
-counts = Counter(top1)
-dominant_id = counts.most_common(1)[0][0]
-dom_mask = top1 == dominant_id
-dom_amp = amplitude[dom_mask]
-dom_vol = volatility[dom_mask]
-# Annotate centroid of the dominant cluster in left panel
-cx, cy = np.median(dom_amp), np.median(dom_vol)
-axes[0].annotate(
-    f"{expert_names[dominant_id]} cluster",
-    xy=(cx, cy), fontsize=6, fontstyle="italic",
-    color=colors[dominant_id],
-    ha="center", va="bottom",
-    bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7),
-)
+# Annotate the semantic story: attention takes the high-amp/high-vol windows.
+attn_id = expert_names.index("attention") if "attention" in expert_names else None
+mean_id = expert_names.index("mean") if "mean" in expert_names else None
+max_id = expert_names.index("max") if "max" in expert_names else None
 
-plt.tight_layout(rect=[0, 0.08, 1, 1.0])
+if attn_id is not None and counts.get(attn_id, 0) > 100:
+    attn_mask = top1 == attn_id
+    cx, cy = np.percentile(amplitude[attn_mask], 80), np.percentile(volatility[attn_mask], 80)
+    axes[0].annotate(
+        "attention $\\to$\nhigh amp+vol",
+        xy=(cx, cy), xytext=(cx - 1.8, cy + 0.08),
+        fontsize=7.5, color=WONG[attn_id],
+        arrowprops=dict(arrowstyle="->", color=WONG[attn_id], lw=0.7, alpha=0.7),
+        ha="center", va="bottom",
+    )
+
+if max_id is not None and counts.get(max_id, 0) > 100:
+    max_mask = top1 == max_id
+    cx, cy = np.median(amplitude[max_mask]), np.median(volatility[max_mask])
+    axes[0].annotate(
+        "max $\\to$ low",
+        xy=(cx, cy), xytext=(cx + 1.4, cy - 0.04),
+        fontsize=7.5, color=WONG[max_id],
+        arrowprops=dict(arrowstyle="->", color=WONG[max_id], lw=0.7, alpha=0.7),
+        ha="center", va="top",
+    )
+
+plt.tight_layout(rect=[0, 0.10, 1, 1.0])
 fig.savefig(OUT_PATH, dpi=300, bbox_inches="tight")
 plt.close(fig)
 print(f"Saved: {OUT_PATH}")
+print(f"Present experts (>=1%): {[expert_names[i] for i in present_ids]}")
+print(f"Absent experts (<1%): {[expert_names[i] for i in absent_ids]}")

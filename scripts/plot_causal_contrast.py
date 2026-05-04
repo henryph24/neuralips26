@@ -40,6 +40,19 @@ def main():
 
     log_max = math.log(args.K)
 
+    # Match LaTeX paper text: serif family, NeurIPS-style sizing.
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.serif": ["DejaVu Serif", "Times New Roman", "Times"],
+        "mathtext.fontset": "cm",
+        "axes.labelsize": 10,
+        "axes.titlesize": 10,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "legend.fontsize": 8.5,
+        "axes.linewidth": 0.8,
+    })
+
     # Cool teal for Timer-XL so red and orange are not both warm hues.
     trajectories = {
         "MOMENT frozen": (args.moment_frozen, "#1f77b4", "--", 1.5),       # blue
@@ -61,8 +74,8 @@ def main():
     ax.text(395, log_max + 0.02, r"$\log K = 1.609$ (max entropy)",
             ha="right", va="bottom", fontsize=7.5, color="gray", style="italic")
 
-    ax.set_xlabel("Optimizer step", fontsize=11)
-    ax.set_ylabel("Router entropy (nats)", fontsize=11)
+    ax.set_xlabel("Optimizer step")
+    ax.set_ylabel("Router entropy (nats)")
     ax.set_ylim(-0.05, log_max + 0.22)
     ax.set_xlim(0, 400)
     ax.grid(alpha=0.30, which="major")

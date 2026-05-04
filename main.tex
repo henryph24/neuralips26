@@ -251,7 +251,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
     hiddenbox/.style={box, draw=blue!50, fill=blue!3, minimum width=1.4cm},
     topkbox/.style={box, draw=orange!60, fill=orange!3, minimum width=1.3cm},
     expertactive/.style={box, draw=orange!75!black, fill=orange!18, line width=1.0pt, minimum width=2.0cm, minimum height=0.65cm, font=\small\bfseries, text=black},
-    expertinactive/.style={box, draw=gray!45, fill=gray!8, minimum width=2.0cm, minimum height=0.65cm, font=\small, text=black!55},
+    expertinactive/.style={box, draw=gray!45, fill=gray!8, minimum width=2.0cm, minimum height=0.65cm, font=\small, text=black},
     sumnode/.style={circle, draw=black!70, fill=white, minimum size=0.65cm, font=\normalsize, line width=0.7pt},
     outputbox/.style={box, draw=teal!60, fill=teal!4, minimum width=1.2cm},
     % -- Arrow styles --
@@ -317,7 +317,7 @@ Because the diagnosis pinpoints normalization as the cause, the fix principle is
 
 % ====== WEIGHTED SUM + OUTPUT ======
 \node[sumnode] (sum) at (12.5, 0.8) {$\Sigma$};
-\node[font=\tiny, text=black] at (12.5, 0.2) {weighted};
+\node[font=\tiny, text=black, fill=white, inner sep=1pt] at (12.5, 0.2) {weighted};
 \node[outputbox] (output) at (14.3, 0.8) {
     $\hat{\mathbf{y}}$\\[-2pt]
     {\scriptsize forecast}
@@ -465,7 +465,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \centering
 \includegraphics[width=0.92\columnwidth]{figures/adamix_trajectory.pdf}
 \vspace{-4pt}
-\caption{\textbf{Per-step routing / gradient trajectory} (AdaMix, ETTh1). (a)~Unfrozen+RevIN (red) collapses within ${\sim}50$ steps; strictly frozen control (blue) stays stable, isolating gradient co-adaptation from optimizer or data effects. (b)~Dominant expert's gradient grows while others starve (co-adaptation loop, \S\ref{sec:rrmoa}). Removing RevIN (separate experiment, Figure~\ref{fig:causal_contrast}) shows the trajectory inverts.}
+\caption{\textbf{Per-step routing / gradient trajectory} (AdaMix, ETTh1). (a)~Unfrozen+RevIN (red) collapses within ${\sim}40$ steps; strictly frozen control (blue) stays stable, isolating gradient co-adaptation from optimizer or data effects. (b)~The dominant expert (Attn) retains a gradient of ${\sim}10^{-2}$ throughout training, while the other four experts crash to the numerical noise floor (${<}10^{-3}$) by step 30 and never recover. Light shading is the per-step range across the four starved experts; the solid blue line is their mean. Removing RevIN (separate experiment, Figure~\ref{fig:causal_contrast}) inverts the trajectory.}
 \label{fig:trajectory}
 \end{figure}
 \vspace{-4pt}
@@ -1468,7 +1468,7 @@ Weather & Frozen  & Timer-XL  & $\mathbf{0.197 \pm 0.010}$ & $1.54$ \\
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.95\columnwidth]{figures/routing_viz.pdf}
-\caption{\textbf{Per-sample expert assignment vs.\ input statistics} (ETTh1, seed 42, $N{=}5{,}000$ test windows). Left: amplitude vs.\ volatility; right: mean level vs.\ amplitude. Colors indicate dominant expert (top-1 routing weight). Expert selection clusters by amplitude and volatility (the very statistics RevIN strips), empirically validating the conditional independence assumption $E \perp\!\!\!\perp S \mid (M,\Sigma)$ from Observation~\ref{thm:mi_decomp}(iii) (Part~iii condition (a)): expert assignment is determined by location-scale, with negligible residual dependence on shape. Note: conv1d (purple) is in the legend but rarely the top-1 expert on ETTh1, so it is not visually present.}
+\caption{\textbf{Per-sample expert assignment vs.\ input statistics} (ETTh1, seed 42, $N{=}5{,}000$ test windows). Left: amplitude vs.\ volatility; right: mean level vs.\ amplitude. Colors indicate the top-1 expert per window. Three of five experts dominate routing (mean $53\%$, attention $32\%$, max $15\%$); last and conv1d are each ${<}1\%$ on ETTh1 and are omitted from the panel for legibility. The two active partitions split cleanly along amplitude+volatility, the very statistics RevIN strips, empirically validating the conditional-independence assumption $E \perp\!\!\!\perp S \mid (M,\Sigma)$ from Observation~\ref{thm:mi_decomp}(iii) (Part~iii condition (a)): expert assignment is determined by location-scale, with negligible residual dependence on shape.}
 \label{fig:routing_viz}
 \end{figure}
 
