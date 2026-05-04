@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "5c95ef98a3a0",
+  "session_id": "b0d0dfd0-af27-43de-8d7f-49d317024443",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-04T10:30:03.389886Z",
+  "branch": "main",
+  "checkpoints_count": 23,
+  "files_touched": [
+    ".gitignore",
+    "checklist.tex",
+    "evidence_vm/.DS_Store",
+    "evidence_vm/multiseed_run.log",
+    "evidence_vm/system_metadata.txt",
+    "evidence_vm/verify.py",
+    "evidence_vm/vm_file_listing.txt",
+    "main.tex"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "cac5b205301c",
+  "token_usage": {
+    "input_tokens": 251,
+    "cache_creation_tokens": 292041,
+    "cache_read_tokens": 25339464,
+    "output_tokens": 160277,
+    "api_call_count": 127
+  },
+  "session_metrics": {
+    "turn_count": 24
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-04T10:30:03.1825Z",
+    "agent_lines": 100,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 100,
+    "agent_percentage": 100
+  }
+}
