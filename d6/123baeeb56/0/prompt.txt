@@ -1,0 +1,9 @@
+/commit-push
+
+---
+
+sync with main and commit
+
+---
+
+sync with main the abstravt portal, abstrat_versions should be git ignore
