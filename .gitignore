@@ -47,6 +47,9 @@ main.pdf
 
 # --- Slide-generation outputs (not part of paper) ---
 slide_images/
+
+# --- Working scratch files ---
+abstract_versions.txt
 slide_generation_instruction.json
 scripts/gen_slide_images.py
 scripts/gen_visuals.py
