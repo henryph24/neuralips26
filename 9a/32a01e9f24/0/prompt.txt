@@ -1,0 +1,17 @@
+Reverify and Reconcile our mathematical formulation to see they remain accurate  and relevant to our narrative
+
+---
+
+so narrative is kept, unhurted ?
+
+---
+
+Reviry: “720 run-cells “ where is this one computed from
+
+---
+
+should we be brief explciit on the arithemtic
+
+---
+
+[Image #4] bring the weighted sum text to front, put them in a label.[Image #5] text color of "mean pool", "max pool", "con1vd",... solid black
