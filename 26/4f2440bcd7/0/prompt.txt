@@ -1,0 +1,33 @@
+review our paper, any orphaned references, and those cited in main text but not found anywhere as support ?
+
+---
+
+after deletion, how many items in bib now ? Do you think it is too few for such paper. Check the published time series paper to NeurIPS 2025 to see how many items each have on average with exa mcp
+
+---
+
+for those 12 orphans, can we potentially reuse them in-text of the main body ? evaluate
+
+---
+
+wire 4 please
+
+---
+
+exa mcp to research more, specically papers from neurips to drive up citations
+
+---
+
+push toward 70 but make it useful
+
+---
+
+bring it to 90 please. Make sure we search for papers that are relevant, has partially similar framings as well
+
+---
+
+all relevant to our discussion ?
+
+---
+
+I think it is all about the writing, if it pertains, then no things are filler
