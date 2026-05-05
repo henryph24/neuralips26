@@ -1,0 +1,21 @@
+this section: "2. C Multi-Horizon Evaluation disappear " is lost in the appendix when rendered[Image #3]
+
+---
+
+review closely for such an omissions
+
+---
+
+avoid directly mentioning stuffs like: "1. per-run JSONs i 1101 evidence_vm/dualstream_50ep/". Being too defensive with "evidence_vm" is funny, and make we look less confident than we should
+
+---
+
+review for similar class of mistake (pre-emptive defense), propose first to me before we make changes
+
+---
+
+review for similar class of error (a major section being too thin because of the 9 page restriction)
+
+---
+
+ok let's add but not too much, use appendix where relevant, make sure we meet 9 pages constraint
