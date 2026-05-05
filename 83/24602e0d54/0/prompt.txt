@@ -1,0 +1,53 @@
+we recently reorganise 4.2. 
+
+Should we call subsection 4.2.1, 4.2.2 etc ?
+
+---
+
+we recently reorganise 4.2. 
+
+Should we call subsection 4.2.1, 4.2.2 etc ? what is neurips recommended or required
+
+---
+
+We exceeded strictly 9 pages Intro is quite long, even spill over results
+
+---
+
+cuts should not reduce our intext citations
+
+---
+
+let's quantitatively measure the word count and analyse the distribution of content in our paper, is it balanced and good
+
+---
+
+plan improvements toward more balanced without dropping in-text citations or messing with them
+
+---
+
+let's do it the safe way
+
+---
+
+another round of review please to check the quantitative measures again
+
+---
+
+where is the problem formulation
+
+---
+
+Let's do it. I find the writing style of Intro is not good. It jumped to the contributions
+
+---
+
+is a problem formulation accidentally get its way to the appendix ?
+
+---
+
+what other major section we likely missed for a very rigorous venue like NeurIPS 2026
+
+---
+
+let's go
