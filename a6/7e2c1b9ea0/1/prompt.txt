@@ -1,0 +1,14 @@
+review the abstract a little, I find it too detailed now. Propose minimal fixes to cut down length
+
+---
+
+beware of over-generalaisation: " Time series foundation models (TSFMs) pair a frozen backbone with a task-specific
+   head."
+
+---
+
+none of the proposal I want to proceed, analyse again
+
+---
+
+go with A. For E, remove the cell counts
