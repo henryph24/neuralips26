@@ -508,7 +508,7 @@ When routing signal lives entirely in the stripped statistics ($(M,\Sigma)\perp\
 \label{tab:causal_controls}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}cl >{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{6.0cm}@{}}
+\begin{tabular}{@{}cl >{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{5.95cm}@{}}
 \toprule
 \# & \textbf{Control} & \textbf{Hypothesis (rejected)} & \textbf{Observed result} $\Rightarrow$ \textbf{verdict} \\
 \midrule
@@ -1462,8 +1462,6 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 % below Sigma converge into a short vertical mini-bus that taps Sigma's
 % north/south; expert 3 (in-line with Sigma) feeds Sigma.west directly.
 \node[sumnode] (sum) at (13.50, 0.1) {$\Sigma$};
-\node[font=\tiny, text=black!65, anchor=north]
-    at ([yshift=-0.05cm]sum.south) {weighted sum};
 \node[outputbox] (output) at (15.00, 0.1) {%
     $\hat{\mathbf{y}}$\\[-1pt]{\scriptsize\mdseries forecast}};
 
@@ -1471,7 +1469,7 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 % touch the figure bounding box at \resizebox{0.95\columnwidth})
 \node[font=\footnotesize\bfseries, text=srback] at (8.0, 3.30)
     {\textsc{Stream A: Hidden States}};
-\node[font=\footnotesize\bfseries, text=srgate] at (8.0, -3.05)
+\node[font=\footnotesize\bfseries, text=srgate, fill=white, inner sep=2pt] at (8.0, -3.20)
     {\textsc{Self-routing: per-expert} $\sigma_k(\mathbf{X}_\mathrm{raw})$};
 
 % ====== Arrows on background layer (so they render BEHIND boxes/text) ======
@@ -1529,6 +1527,11 @@ Weather & $\mathbf{0.289 \pm 0.008}$ & $0.542 \pm 0.026$ & $\mathbf{+87.5\%}$ \\
 % Sigma -> output (teal)
 \draw[outarr] (sum.east) -- (output.west);
 \end{pgfonlayer}
+
+% "weighted sum" label drawn AFTER background arrows so it sits on top of
+% the diagonal expert->Sigma arrows that converge near sum.south
+\node[font=\tiny, text=black, fill=white, draw=black!55, rounded corners=1.5pt, inner sep=1.5pt, anchor=north]
+    at ([yshift=-0.08cm]sum.south) {weighted sum};
 
 % Bottom annotation (parbox to prevent overflow at column width)
 \node[anchor=center] at (7.3, -4.0) {%
