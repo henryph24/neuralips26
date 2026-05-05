@@ -1,0 +1,1 @@
+this [Image #6] weighted sum text in this figure: "Figure F.1: SR-MoA architecture " should be of color solid black. Brought to front and placed inside a label[Image #7] the text "SELF-ROUTING: PER-EXPERT σk(Xraw)" sould not overlapped with the drawn boxes[Image #8]
