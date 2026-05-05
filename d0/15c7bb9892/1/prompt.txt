@@ -1,0 +1,87 @@
+audit this style guideline, apply what made senses, minimal changes are recommended but I want the sharp logical writing without abrupt transioning: "# Style Reproduction Prompt
+
+Below is a prompt designed to reproduce this paper's writing style. The original is dense, mechanism-first academic prose with a distinctive rhythm built on contrast, formal definitions, and quantitative anchoring.
+
+---
+
+## Prompt: Write in the "Mechanism-First Diagnostic" Academic Style
+
+You are writing in a compact, technically dense academic style typical of top-tier ML venues (NeurIPS/ICLR). The tone is confident but never breathless, formal but never stuffy. Every paragraph earns its place. Adhere to the following:
+
+### Voice and Register
+- Use **first-person plural** throughout ("We define", "We identify", "We address this gap by..."). Never use "I"; never use "the authors".
+- Use **British spellings** consistently: *localise, characterise, behaviour, generalise, analyse, modelling*.
+- **No contractions.** No hedging filler ("it is worth noting that", "interestingly"). No throat-clearing.
+- Confidence is calibrated through verb choice: *suggests, indicates, validates, mediates, underlies, captures*. Reserve *shows* and *proves* for results that genuinely warrant them.
+
+### Sentence Architecture
+- Favour **medium-length sentences (15–30 words)** built around a single load-bearing clause, often elaborated by a colon, semicolon, or em-dash.
+  - Pattern: `[Claim]: [evidence/elaboration].`
+  - Pattern: `[Setup], [contrast]; [consequence].`
+- Use **em-dashes** for parenthetical insertions that carry real content, not asides.
+- Use **semicolons** to fuse two ideas that share an argumentative spine — they should feel inevitable, not stylistic.
+- Build **parallel structures** at sentence and paragraph level: "answering when they can, and abstaining when they should"; "X-components do A; Y-components do B."
+- Do not begin sentences with "However" mid-paragraph — use "yet", "but", or restructure.
+
+### Paragraph Architecture
+- Open paragraphs with a **topic sentence that states the move being made**, not the topic being discussed. ("We analyse X at Y, where Z." not "In this section we discuss X.")
+- Close paragraphs with a **load-bearing summary clause** that ties the paragraph's content back to the paper's spine.
+- Bridge paragraphs with structural connectives: *To this end*, *Building on this finding*, *In contrast*, *We address this gap by...*
+
+### Argumentative Rhetoric
+- Use the **gap-identification frame** repeatedly:
+  - *"Existing work [does X], but [leaves Y unexplained]. We address this by..."*
+  - *"Prior work studies [representations]; we identify [components]."*
+- Frame contributions as **mechanisms or accounts**, not just methods: "we provide a component-level account of...", "framing this as a control failure rather than a knowledge failure."
+- When introducing a new construct, **italicise on first use**, then refer to it by capitalised name thereafter. Acronyms in parentheses on first full mention; acronym alone afterwards.
+
+### Formal Apparatus
+- Introduce key constructs as **Definition**, **Remark**, or numbered **Finding** blocks. Each Finding is a **bolded one-line claim**, followed by 2–4 sentences of evidence. Example:
+  > **Finding B: Every tested model contains a sparse CAC.** [Evidence with numbers, ranges, percentages.]
+- Use **mathematical notation** sparingly but precisely. Define every symbol where it first appears. Equations should compress prose, not replace it.
+- When stating a result, **name it** (Definition 1, Finding C) and refer back to that name later.
+
+### Quantitative Reporting
+- Anchor every empirical claim with a **specific number, range, or count**:
+  - "median 5.2% of components", "27% on average (range 11%–41%)", "across 30 model-dataset configurations", "+12.2 accuracy points", "2.5× lower".
+- Pair an aggregate with a worst/best case: *"mean 0.811, range 0.640 (Llama 3B) to 0.913 (Qwen 9B)"*.
+- Use **× for multiplicative comparisons** and explicit point counts for additive ones.
+
+### Contribution Framing
+- Contributions are bulleted under three labels with the pattern **[Category]. [Sentence].**
+  - Examples: *Problem Formulation*, *Mechanistic Finding*, *Policy Improvement*.
+- Each bullet states what was done, what was found, and what it enables — in that order, in one or two sentences.
+
+### Words and Phrases to Lean On
+- *mediates, underlies, encodes, accumulates, propagates, exhibits, recovers, operationalises, captures, validates, suggests*
+- *sparse subset, recurring pattern, component-level account, above-chance, behavioural level, intrinsically sufficient*
+- *To this end, Building on this, We address this gap by, In contrast, By [verb-ing], we [verb]*
+
+### Words and Patterns to Avoid
+- "delve", "showcase", "leverage" (as filler), "robust" (without quantification), "novel" (let the work be novel)
+- "It is interesting/important/worth noting that" — cut.
+- Sentences that begin "Recent work has shown..." with no specific claim attached.
+- Stacked adjectives ("comprehensive, thorough, detailed analysis").
+- Rhetorical questions in body text, except as explicit RQs introduced once.
+
+### Section-Level Choreography
+- Introductions move: **broad reliability claim → specific failure → existing approaches and their limit → our reframing → contributions list**.
+- Related Work is organised by **lines of work**, each named in italics or bold. End the section with one sentence positioning the present paper against those lines.
+- Method sections **define the construct, then derive it, then operationalise it**. Use Definitions/Remarks for the derivation.
+- Results sections lead with **bolded Finding statements**, then evidence, then a closing Remark that synthesises.
+- Conclusion is short (one paragraph), restates the framing, names the mechanism identified, and points to one or two concrete future directions.
+
+### Figure and Table References
+- Refer to figures by what they show, not their number alone: *"Figure 4 shows the identified CAC across all ten models"*, not *"See Figure 4."*
+- Captions are full sentences with embedded conclusions, not just labels.
+
+### The Underlying Stance
+The reader should feel that the paper has **diagnosed something specific**, not surveyed an area. Every section should reinforce a single thesis: *here is a phenomenon, here is the mechanism behind it, here is what that mechanism enables*. Style serves diagnosis — compression, parallelism, and quantitative anchoring all exist to make the mechanism legible.
+
+---
+
+When applying this to a new paper, preserve the **diagnostic arc** (phenomenon → gap → mechanism → policy/intervention → generalisation), even if the subject matter is entirely different."
+
+---
+
+Any parts of the paper that read abruptly and very quickly link to the subsequent part. Review really carefully.
