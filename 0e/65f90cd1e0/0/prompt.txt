@@ -1,0 +1,13 @@
+[Image #1] [Image #2]
+
+here is the preview when we paste @abstract_portal.txt 
+
+look like the percent is not being rendered (10.9 MSE) ?
+
+---
+
+is it actually 10.9% based on main text
+
+---
+
+in the experiment, we had evidence for that right, not point, but percentage
