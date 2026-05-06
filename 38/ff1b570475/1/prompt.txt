@@ -1,0 +1,5 @@
+review the paper for this risk: "Orphaned citations (have in bib but not used in-text and the other way round)", launch multiple subagents to verify fast
+
+---
+
+how many items we are having ?
