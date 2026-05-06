@@ -1,0 +1,37 @@
+cut related work by 20 lines
+
+---
+
+it currently from 86 to 148, recompile and check
+
+---
+
+let recompile, I'll check manually
+
+---
+
+we overdo it, it should be about 40 lines, check what commits did we accidentally removed too much
+
+---
+
+keep the promoted table, we still have half a page left, decided which from the deleted to bring back to related work
+
+---
+
+reduce the height of causal_controls a bit, bring 28 to 35
+
+---
+
+recompile
+
+---
+
+[Image #1] render error here
+
+---
+
+recompile
+
+---
+
+[Image #2] look like it persisted
