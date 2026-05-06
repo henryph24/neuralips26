@@ -1,0 +1,33 @@
+I think writing on the problem setup is not good. Is the problem our contribution as well because look like it is not seen in the literature ?
+
+---
+
+I want problem formulation to read very explicitly. Mention of any specific ram number is not good
+
+---
+
+is the flow smooth now, problem is very clearly defined and cited ?
+
+---
+
+how logically structured is our entire paper now
+
+---
+
+plan that out
+
+---
+
+let's go
+
+---
+
+recompile
+
+---
+
+reduce the height of figures in main a bit to reduce main text page to strictly 9
+
+---
+
+recompile
