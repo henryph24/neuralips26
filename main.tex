@@ -4,7 +4,7 @@
 \usepackage{neurips_2026}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[hidelinks]{hyperref}
+\usepackage{hyperref}
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{amsfonts}
@@ -61,7 +61,7 @@ Many time series foundation models (TSFMs) adapt to a target dataset by attachin
 \section{Introduction}
 \label{sec:intro}
 
-Time series foundation models (TSFMs)~\citep{goswami2024moment, das2024timesfm, ansari2024chronos, liu2025timerxl, liu2024timer, woo2024moirai, lee2024units, rasul2024lagllama, ekambaram2024ttm, cohen2025toto, liu2025sundial, jin2024timellm, zhou2023onefitsall, liu2024autotimes, pan2024s2ipllm, liu2024unitime, shi2024timemoe, liu2026timers1} are deployed with a frozen encoder and a small per-task adapter, letting one backbone serve many tenants through hot-swapped heads (App.~\ref{app:deployment}); this paper studies the adapter, holding the backbone fixed.
+Time series foundation models (TSFMs)~\citep{goswami2024moment, das2024timesfm, ansari2024chronos, liu2025timerxl, liu2024timer, woo2024moirai, lee2024units, rasul2024lagllama, ekambaram2024ttm, cohen2025toto, liu2025sundial, jin2024timellm, zhou2023onefitsall, liu2024autotimes, pan2024s2ipllm, liu2024unitime, shi2024timemoe, liu2026timers1} are pretrained on diverse public corpora so a single backbone transfers to unseen forecasting and imputation tasks with little or no target-specific training. The dominant adaptation recipe freezes the backbone and trains only a small per-task head, so the head sets transfer quality. This paper studies that head.
 
 Standard adapters apply a single pooling rule to every window (Figure~\ref{fig:problem_overview}a), yet the shape information distinguishing one window from the next lives in different hidden-state subspaces window-to-window~\citep{wilinski2025tsfm_representations, pandey2025tsfm_semantics}: no one rule reads them all. The obvious remedy is a per-window dispatcher over topologically distinct readers~\citep{wang2022adamix}, an AdaMix-style mixture-of-experts (MoE) head.
 
@@ -235,7 +235,7 @@ RR-MoA sits at the intersection of TSFM adaptation~\citep{wen2023tssurvey} and M
 \section{Raw-Routed Mixture of Adapters (RR-MoA)}
 \label{sec:method}
 
-We first state the task setup, then the problem we identify and its formal mechanism, then specify RR-MoA: a per-window mixture in which the router reads the raw, pre-normalization signal while the experts consume the frozen TSFM's hidden states. Cost, expert pool, and deployment implications close the section.
+RR-MoA is a per-window mixture in which the router reads the raw, pre-normalization input while the experts consume the frozen TSFM's hidden states. We derive it from a routing-information loss (Observation, below) that locates the bottleneck in the router's \emph{input}, not its optimizer; task setup, mechanism, and architecture follow in that order.
 
 \textbf{Task setup.} Given a window $\mathbf{x}\in\mathbb{R}^{T\times c}$ ($T{=}512$, $c$ channels), forecasting predicts $\mathbf{y}\in\mathbb{R}^{h\times c}$ at horizons $h\in\{96,192,336,720\}$ under MSE loss (imputation uses the same formalism with $\mathbf{y}$ as the reconstruction target). A pretrained TSFM acts as a feature extractor $f_\theta:\mathbb{R}^{T\times c}\to\mathbb{R}^{P\times d}$ ($P$ patches of dim $d$) with $\theta$ \emph{frozen} ($\nabla_\theta\!\equiv\!0$); we train only an adapter $g_\phi:\mathbb{R}^{P\times d}\to\mathbb{R}^{h\times c}$ with a small parameter budget ($|\phi|\leq 500$K), so that many task-specific adapters can be hot-swapped onto a single shared backbone (App.~\ref{app:deployment}). A \emph{per-window mixture of adapters} replaces $g_\phi$ with $K$ experts $\{\mathrm{Expert}_j\}_{j=1}^K$ plus a router $G_\psi$ that returns a sparse weight $\widetilde{w}\in\Delta^{K-1}$ supported on a Top-$k$ subset ($k\leq K$), giving $\hat{\mathbf{y}}=\sum_{j} \widetilde{w}_j\,\mathrm{Expert}_j(f_\theta(\mathbf{x}))$ trained by $\min_{\phi,\psi}\,\mathbb{E}\,\|\hat{\mathbf{y}}-\mathbf{y}\|_2^2$.
 
@@ -416,11 +416,11 @@ We now validate that this fix recovers routing diversity, beats the seven-method
 \subsection{Main Results}
 \label{sec:main_results}
 
-With this setup fixed, we now turn to the empirical verification of the mechanism formalized in \S\ref{sec:mechanism} (Observation, $R(\mathcal{D})$). The case rests on three claims that the mechanism predicts and that we test in turn: fixed-topology adapters are suboptimal, the natural MoE remedy collapses on instance-normalized backbones, and standard rescue mechanisms cannot recover it. We then compare against the seven-baseline suite (fixed adapters, LoRA, TRACE, independent ensembles, AdaMix, full fine-tuning, DLinear).
+Three predictions of the mechanism (\S\ref{sec:mechanism}) anchor the experiments: fixed adapters underperform a per-window mixture; the natural hidden-state MoE collapses on instance-normalized backbones; and optimization-side rescues cannot recover the gap. We test each in turn, then compare RR-MoA against the seven-baseline suite (fixed adapters, LoRA, TRACE, independent ensembles, AdaMix, full fine-tuning, DLinear).
 
 \subsubsection*{Fixed adapters underperform; standard MoE collapses}
 
-{\looseness=-1 \textbf{RR-MoA vs.\ fixed adapters.} Table~\ref{tab:rrmoa} compares Top-2 RR-MoA against the best fixed adapter, using the \emph{same five expert heads} in all rows. Across the primary 6-dataset LTSF grid $\times$ 3 freeze levels $\times$ 3 seeds $=$ \textbf{54 configurations}, RR-MoA wins all 54 with tight standard deviations.}
+{\looseness=-1 \textbf{RR-MoA vs.\ fixed adapters.} RR-MoA wins all \textbf{54/54} configurations (6 datasets $\times$ 3 freeze levels $\times$ 3 seeds) against the best fixed adapter from the same five-head pool, with tight standard deviations (Table~\ref{tab:rrmoa}).}
 
 \begin{table}[!htbp]
 \centering
@@ -449,7 +449,7 @@ Dataset & Freeze level & RR-MoA & Best single-head & MSE $\Delta\%$ vs.\ single-
 \end{tabular}
 \end{table}
 
-{\looseness=-1 \textbf{Why does standard MoE routing fail?} Before turning to the mechanism behind these gains, we examine the natural alternative: a standard hidden-state MoE over the same five experts. We instantiate it as AdaMix~\citep{wang2022adamix} with a learned softmax router on the mean-pooled hidden state, an established sparsely-gated MoE recipe~\citep{fedus2022switch} (Appendix~\ref{app:adamix_details}). Table~\ref{tab:adamix} shows AdaMix collapses to a single expert whenever backbone layers are unfrozen: entropy reaches $0.000\pm0.000$ in 7/12 unfrozen configurations; the remaining 5 stay below $0.55$ (max ${\approx}1.61$) with $\sigma$ up to $0.71$. The high seed-variance distinguishes \emph{stochastic} collapse (router commits to one expert per run, but to different experts across seeds) from \emph{stable} partial routing (which would yield low $\sigma$ at intermediate entropy); the rescue-baseline sweep below confirms no optimization-side intervention closes either failure mode. Disabling RevIN inside MOMENT recovers entropy to $0.66$--$1.32$ (BatchNorm1d/GroupNorm collapse identically, Appendix~\ref{app:norm_generalization}). The contrast is sharpest cross-backbone (Figure~\ref{fig:causal_contrast}): under identical last-4 unfreezing on identical data, MOMENT entropy crashes to $0.000$ in ${\sim}40$ steps while Timer-XL (no RevIN) stays at $1.60$ for $400$ steps.}
+{\looseness=-1 \textbf{Why does standard MoE routing fail?} The natural alternative -- AdaMix~\citep{wang2022adamix}, a hidden-state softmax router over the same five experts following the established sparsely-gated MoE recipe~\citep{fedus2022switch} -- collapses to a single expert whenever backbone layers are unfrozen (Table~\ref{tab:adamix}, Appendix~\ref{app:adamix_details}): entropy reaches $0.000\pm0.000$ in 7/12 unfrozen configurations; the remaining 5 stay below $0.55$ (max ${\approx}1.61$) with $\sigma$ up to $0.71$. The high seed-variance distinguishes \emph{stochastic} collapse (router commits to one expert per run, but to different experts across seeds) from \emph{stable} partial routing (which would yield low $\sigma$ at intermediate entropy); the rescue-baseline sweep below confirms no optimization-side intervention closes either failure mode. Disabling RevIN inside MOMENT recovers entropy to $0.66$--$1.32$ (BatchNorm1d/GroupNorm collapse identically, Appendix~\ref{app:norm_generalization}). The contrast is sharpest cross-backbone (Figure~\ref{fig:causal_contrast}): under identical last-4 unfreezing on identical data, MOMENT entropy crashes to $0.000$ in ${\sim}40$ steps while Timer-XL (no RevIN) stays at $1.60$ for $400$ steps.}
 
 \begin{table}[!htbp]
 \centering
@@ -616,7 +616,7 @@ C8 & $(\mu,\sigma)$ re-injection & Just appending stripped stats back fixes it &
 
 \subsubsection*{RR-MoA leads the seven-baseline suite}
 
-{\looseness=-1 With the mechanism established, we close the case for RR-MoA against the seven-baseline suite (Table~\ref{tab:baselines}). Two complementary gains feed the headline: residual shape heterogeneity rewards diverse experts on RevIN-normalized hidden states ($26$--$79\%$ over the best fixed adapter, Table~\ref{tab:rrmoa}), while the signal-ratio $\rho{=}{-}0.88$ localizes \emph{dispatch} information in the stripped statistics, explaining both raw-routing benefit and Traffic's null. The Pure Raw-MLP MoE ablation (App.~\ref{app:raw_mlp_moe}) separates ``MoE with raw router'' from ``ensemble with raw input''.}
+{\looseness=-1 RR-MoA beats every method in the seven-baseline suite at $p{<}0.001$ (Table~\ref{tab:baselines}), driven by two complementary gains: residual shape heterogeneity rewards diverse experts on RevIN-normalized hidden states ($26$--$79\%$ over the best fixed adapter, Table~\ref{tab:rrmoa}), while the signal-ratio $\rho{=}{-}0.88$ localizes \emph{dispatch} information in the stripped statistics, explaining both raw-routing benefit and Traffic's null. The Pure Raw-MLP MoE ablation (App.~\ref{app:raw_mlp_moe}) separates ``MoE with raw router'' from ``ensemble with raw input''.}
 
 \begin{table}[!htbp]
 \centering
@@ -673,7 +673,7 @@ Abhimanyu Das, Weihao Kong, Rajat Sen, and Yichen Zhou.
 \bibitem[Ansari et~al.(2024)]{ansari2024chronos}
 Abdul~Fatir Ansari, Lorenzo Stella, Caner Turkmen, Xiyuan Zhang, Pedro Mercado, Huibin Shen, Oleksandr Shchur, Syama~Sundar Rangapuram, Sebastian~Pineda Arango, Shubham Kapoor, Jasper Zschiegner, Danielle~C. Maddix, Michael~W. Mahoney, Kari Torkkola, Andrew~Gordon Wilson, Michael Bohlke-Schneider, and Yuyang Wang.
 \newblock Chronos: Learning the language of time series.
-\newblock \textit{arXiv preprint arXiv:2403.07815}, 2024.
+\newblock \textit{Transactions on Machine Learning Research (TMLR)}, 2024.
 
 \bibitem[Liu et~al.(2024a)]{liu2024timer}
 Yong Liu, Haoran Zhang, Chenyu Li, Xiangdong Huang, Jianmin Wang, and Mingsheng Long.
