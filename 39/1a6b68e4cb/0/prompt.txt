@@ -1,0 +1,25 @@
+Is our code for running experiments ready for submission as well, structure ? Information  leakage ?
+
+---
+
+let's fix, never delete anything, bring sensitive files to a separate folder
+
+---
+
+but all are ready right ? the code, our contribution, the experiments, etc ? Make sure in the code left no hints we use AI service like openai or anthropic or gemini because those are not parts of the work contributions
+
+---
+
+focus on the submission, it is a zip file right ? do not include such details like .env here
+
+---
+
+in the abstract mention that code is provided in supplementary material (short sentence)
+
+---
+
+cross check if code (in the zip) supports all content of main and appendix, check closely
+
+---
+
+yes let's rebuild
