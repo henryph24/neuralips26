@@ -61,13 +61,13 @@ Many time series foundation models (TSFMs) adapt to a target dataset by attachin
 \section{Introduction}
 \label{sec:intro}
 
-Time series foundation models (TSFMs)~\citep{goswami2024moment, das2024timesfm, ansari2024chronos, liu2025timerxl, liu2024timer, woo2024moirai, lee2024units, rasul2024lagllama, ekambaram2024ttm, cohen2025toto, liu2025sundial, jin2024timellm, zhou2023onefitsall, liu2024autotimes, pan2024s2ipllm, liu2024unitime, shi2024timemoe, liu2026timers1} are pretrained on diverse public corpora so a single backbone transfers to unseen forecasting and imputation tasks with little or no target-specific training. The dominant adaptation recipe freezes the backbone and trains only a small per-task head, so the head sets transfer quality. This paper studies that head.
+Time series foundation models (TSFMs)~\citep{goswami2024moment, das2024timesfm, ansari2024chronos, liu2025timerxl, liu2024timer, woo2024moirai, lee2024units, rasul2024lagllama, ekambaram2024ttm, cohen2025toto, liu2025sundial, jin2024timellm, zhou2023onefitsall, liu2024autotimes, pan2024s2ipllm, liu2024unitime, shi2024timemoe, liu2026timers1} are pretrained on diverse public corpora with the promise of a single backbone transferring to unseen forecasting and imputation tasks with little or no target-specific training. The dominant adaptation recipe freezes the backbone and trains only a small per-task head, so the head sets transfer quality. This paper studies that head.
 
 Standard adapters apply a single pooling rule to every window (Figure~\ref{fig:problem_overview}a), yet the shape information distinguishing one window from the next lives in different hidden-state subspaces window-to-window~\citep{wilinski2025tsfm_representations, pandey2025tsfm_semantics}: no one rule reads them all. The obvious remedy is a per-window dispatcher over topologically distinct readers~\citep{wang2022adamix}, an AdaMix-style mixture-of-experts (MoE) head.
 
 On every TSFM whose encoder begins with an instance normalizer, this head degenerates as soon as a single transformer block is unfrozen for joint training (Figure~\ref{fig:problem_overview}b): gating mass contracts to one-hot in tens of steps (Table~\ref{tab:adamix}), and the favored expert's gradients reshape the backbone to serve it alone (Figure~\ref{fig:trajectory}). We name the phenomenon \emph{normalization-induced routing collapse} and trace it upstream of the optimizer: RevIN~\citep{kim2021revin} subtracts each window's mean and variance before encoding, leaving the statistics that distinguish experts structurally absent from the router's input (Observation). Eleven optimization-side rescues (load balancing, Z-loss, ReMoE, expert choice, top-$k$ sharpening, and seven more; $720$ runs) close only $10.9\%$ of the gap that an input-side fix closes ($2.7\times$ shortfall, Table~\ref{tab:rescue}); Moirai, whose I/O scaling is not learnable-affine, does not collapse (\S\ref{sec:cross_backbone}), narrowing the cause to learnable-affine encoder normalization.
 
-The fix is a single wire: route on $\mathbf{X}_\text{raw}$, the input \emph{before} normalization, with experts, optimizer, and a strictly frozen backbone unchanged. We call the head \emph{Raw-Routed Mixture of Adapters} (RR-MoA). The same diagnosis predicts a \emph{Frozen Paradox}: backbone updates only serve the live expert, so unfreezing should hurt (Proposition~\ref{prop:frozen}); empirically frozen wins $4/6$ datasets and unfreezing never recovers more than $13\%$.
+We apply a minimal causal intervention: route on $\mathbf{X}_\text{raw}$, the input \emph{before} normalization, with experts, optimizer, and a strictly frozen backbone unchanged. We call the head \emph{Raw-Routed Mixture of Adapters} (RR-MoA). The same diagnosis predicts a \emph{Frozen Paradox}: backbone updates only serve the live expert, so unfreezing should hurt (Proposition~\ref{prop:frozen}); empirically frozen wins $4/6$ datasets and unfreezing never recovers more than $13\%$.
 
 The collapse $\to$ mechanism $\to$ minimal-fix arc structures our three contributions:
 \begin{itemize}[leftmargin=1.2em, itemsep=0.15em, topsep=0.2em]
@@ -399,7 +399,7 @@ where $G_\psi: \mathbb{R}^{T} \to \mathbb{R}^K$ is a small Conv1d\,+\,pooling\,+
 
 \textbf{Cost, expert pool, deployment.} The router is a Conv1d gate of $853$ parameters ($0.4\%$ of one expert head, ${<}10^{-3}$ of the frozen backbone); with $k{=}2$ of $K{=}5$ active per window, RR-MoA adds two adapter forward passes plus the gate to one frozen TSFM forward. The expert pool itself comprises $K{=}5$ topologically distinct adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), spanning pooling families with distinct expressivity regimes for transformer-based sequence models~\citep{ennadir2025pooling}; architectural diversity is critical, since five identical experts (same topology, different initialization) degrade MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}; pseudocode in Algorithm~\ref{alg:rrmoa}, Appendix~\ref{app:setup}). Because the backbone is strictly frozen, a single TSFM held in GPU memory can be shared across many tenants while per-task adapter pools (${\sim}500$K params each) hot-swap from host RAM, an arrangement DLinear and per-dataset-from-scratch baselines cannot match (Appendix~\ref{app:benchmark}).
 
-We now validate that this fix recovers routing diversity, beats the seven-method baseline suite (fixed adapters, LoRA, TRACE, independent ensembles, AdaMix, full fine-tuning, DLinear), and holds under eight causal controls.
+We now validate that this causal intervention recovers routing diversity, beats the seven-method baseline suite (fixed adapters, LoRA, TRACE, independent ensembles, AdaMix, full fine-tuning, DLinear), and holds under eight causal controls.
 
 \section{Experiments}
 
@@ -1431,7 +1431,7 @@ This update adjusts routing weights based on current expert performance, but doe
 With router input $\mathbf{x}_\mathrm{raw}$ (independent of $A$), $p = \sigma(\mathbf{w}^\top G_\psi(\mathbf{x}_\mathrm{raw}))$ is a function of $\mathbf{x}_\mathrm{raw}$ and $(\mathbf{w}, \psi)$ only. Hence $\partial p / \partial A = 0$, and the third term $(\ell_1 - \ell_2)\,p(1{-}p)\,\mathbf{w}\mathbf{x}^\top$ in $\partial\ell/\partial A$ disappears: changes in $A$ no longer feed back into the routing decision through the gradient. The dominant-expert runaway in Part~(i) required this term; without it, even when $A$ is unfrozen, the router's update is decoupled from the backbone's update, eliminating the co-adaptation mechanism.
 \end{proof}
 
-This corollary identifies raw routing as the \emph{minimal causal fix}: it intervenes on the precise term in $\partial\ell/\partial A$ that drives the collapse loop, leaving all other components of the model untouched. The empirical validation is in Figure~\ref{fig:trajectory} (RR-MoA's gradient norms remain balanced across experts even when blocks are unfrozen) and Table~\ref{tab:rrmoa} (frozen-vs-unfrozen RR-MoA both maintain healthy entropy, in contrast to AdaMix where unfreezing collapses entropy to $0.000$).
+This corollary identifies raw routing as the \emph{minimal causal intervention}: it intervenes on the precise term in $\partial\ell/\partial A$ that drives the collapse loop, leaving all other components of the model untouched. The empirical validation is in Figure~\ref{fig:trajectory} (RR-MoA's gradient norms remain balanced across experts even when blocks are unfrozen) and Table~\ref{tab:rrmoa} (frozen-vs-unfrozen RR-MoA both maintain healthy entropy, in contrast to AdaMix where unfreezing collapses entropy to $0.000$).
 
 \section{LoRA Sweep (Full Results)}
 \label{app:lora_sweep}
@@ -1901,7 +1901,7 @@ Our AdaMix baseline follows \citet{wang2022adamix} with $K{=}5$ expert adapter h
 
 \begin{table}[!htbp]
 \centering
-\caption{\textbf{AdaMix-Raw: architecture-agnostic validation} (MOMENT-small, 3 seeds). Replacing AdaMix's hidden-state router with a raw-input router recovers routing entropy and MSE on all 12 cells, confirming the fix generalizes beyond RR-MoA.}
+\caption{\textbf{AdaMix-Raw: architecture-agnostic validation} (MOMENT-small, 3 seeds). Replacing AdaMix's hidden-state router with a raw-input router recovers routing entropy and MSE on all 12 cells, confirming the causal intervention generalizes beyond RR-MoA.}
 \label{tab:adamix_raw}
 \small
 \begin{tabular}{@{}llcccc@{}}
