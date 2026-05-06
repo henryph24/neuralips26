@@ -1,0 +1,41 @@
+seeds (∗/∗∗/∗∗∗ for p<0.05/0.01/0.001). 
+
+[Image #1]
+
+Is this rendering error
+
+---
+
+what is this writing implying: " (∗/∗∗/∗∗∗ for p<0.05/0.01/0.001)"
+
+---
+
+so it is a style ?
+
+---
+
+conclusion part is really short relative to intro. cut intro a bit, add back a bit to conclusion (which currently reads quite compact)
+
+---
+
+recompile
+
+---
+
+frame our problem identification as a contribution because we discover this problem shall we ?
+
+---
+
+the paths to the problem identification
+
+---
+
+take a look at this paper @/Users/hungpq2412/Downloads/Vy_Nguyen_NeurIPS_2026\ \(35\).pdf
+
+---
+
+let's do it
+
+---
+
+kepe other changes but keep the earlier abstract
