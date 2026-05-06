@@ -1,0 +1,47 @@
+recompile
+
+---
+
+reduce the height of some figures to bring all of main to striclty 9 pages
+
+---
+
+recompile
+
+---
+
+figures are way too small now.
+
+---
+
+recompile
+
+---
+
+did we apply margin tricks ? that would cause desk rejection ? respecvt neurips template
+
+---
+
+let's do that
+
+---
+
+recompile
+
+---
+
+[Image #2] this looks so small
+
+---
+
+recompile
+
+---
+
+avoid putting "this paper" ( this style of writing) in "Problem statement (this paper)"[Image #3]
+
+[Image #4] <- similarly
+
+---
+
+"Mechanistic finding" -> Experimental Results ? Method sounds cun ? 2 words [Image #5]
