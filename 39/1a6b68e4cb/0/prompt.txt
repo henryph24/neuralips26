@@ -23,3 +23,7 @@ cross check if code (in the zip) supports all content of main and appendix, chec
 ---
 
 yes let's rebuild
+
+---
+
+/commit-push
