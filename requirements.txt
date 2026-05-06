@@ -1,13 +1,20 @@
+# Core dependencies for RR-MoA reproduction
 torch>=2.1.0
-momentfm
+momentfm>=0.1.4
 peft>=0.7.0
-numpy
-scipy
-scikit-learn
-pandas
-aeon
-matplotlib
-seaborn
-modal
-openai
-anthropic
+numpy>=1.24,<2.0
+scipy>=1.10
+scikit-learn>=1.3
+pandas>=2.0
+matplotlib>=3.7
+seaborn>=0.12
+
+# UEA classification (B7 reviewer-response sweep)
+aeon>=0.7
+
+# Verification (xlsx output for bib_verification)
+openpyxl>=3.1
+
+# --- Optional: install separately if you need non-MOMENT backbones ---
+#   pip install uni2ts                # Moirai / Moirai-MoE
+#   pip install chronos-forecasting   # Chronos

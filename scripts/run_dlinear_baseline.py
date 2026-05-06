@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from scripts.run_standard_evolution import load_standard_data, compute_denorm_mse
+from feasibility.standard_data import load_standard_data, compute_denorm_mse
 
 
 class DLinear(nn.Module):

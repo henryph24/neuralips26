@@ -1,0 +1,22 @@
+{
+  "dataset": "Solar",
+  "mask_ratio": 0.2,
+  "seed": 42,
+  "head_results": {
+    "linear": 0.031088486790048105,
+    "dense_mlp": 0.03383639588229761,
+    "conv": 0.032358713520831,
+    "attention": 0.05620611535186827,
+    "residual_conv": 0.0523579464994316
+  },
+  "rrmoa_mse": 0.0549088040208733,
+  "rrmoa_routing": {
+    "linear": 0.135,
+    "dense_mlp": 0.339,
+    "conv": 0.222,
+    "attention": 0.212,
+    "residual_conv": 0.092
+  },
+  "best_head": "linear",
+  "best_head_mse": 0.031088486790048105
+}

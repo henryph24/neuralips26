@@ -1,0 +1,32 @@
+{
+  "dataset": "Weather",
+  "mask_ratio": 0.2,
+  "seed": 43,
+  "head_results": {
+    "linear": 0.26544037130508713,
+    "dense_mlp": 0.223494007623596,
+    "conv": 0.2105520312626616,
+    "attention": 0.338076075106495,
+    "residual_conv": 0.2190583457202742
+  },
+  "rrmoa_mse": 0.06606079772646983,
+  "rrmoa_entropy": 1.5601165294647217,
+  "rrmoa_routing": {
+    "linear": 0.199,
+    "dense_mlp": 0.274,
+    "conv": 0.165,
+    "attention": 0.207,
+    "residual_conv": 0.155
+  },
+  "adamix_mse": 0.20314183740987393,
+  "adamix_entropy": 0.07458104193210602,
+  "adamix_routing": {
+    "linear": 0.009,
+    "dense_mlp": 0.988,
+    "conv": 0.003,
+    "attention": 0.0,
+    "residual_conv": 0.0
+  },
+  "best_head": "conv",
+  "best_head_mse": 0.2105520312626616
+}

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Overnight batch: address all paper limitations on RACE VM
+# Overnight batch: address all paper limitations on GPU VM
 # Usage: nohup bash scripts/run_overnight_batch.sh > overnight.log 2>&1 &
 set -e
 cd ~/neuralips26

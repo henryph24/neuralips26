@@ -1,0 +1,32 @@
+{
+  "dataset": "ETTm2",
+  "mask_ratio": 0.2,
+  "seed": 44,
+  "head_results": {
+    "linear": 0.6452257800873232,
+    "dense_mlp": 0.5205077874628705,
+    "conv": 0.4751948335754828,
+    "attention": 0.5689124643824182,
+    "residual_conv": 0.5713068697409628
+  },
+  "rrmoa_mse": 0.10778402972880599,
+  "rrmoa_entropy": 1.4472718238830566,
+  "rrmoa_routing": {
+    "linear": 0.175,
+    "dense_mlp": 0.331,
+    "conv": 0.128,
+    "attention": 0.244,
+    "residual_conv": 0.123
+  },
+  "adamix_mse": 0.5151936596798672,
+  "adamix_entropy": 0.04046529904007912,
+  "adamix_routing": {
+    "linear": 0.0,
+    "dense_mlp": 0.993,
+    "conv": 0.006,
+    "attention": 0.0,
+    "residual_conv": 0.0
+  },
+  "best_head": "conv",
+  "best_head_mse": 0.4751948335754828
+}

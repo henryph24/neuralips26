@@ -42,8 +42,6 @@ main.pdf
 # --- macOS / editor / tool junk ---
 .DS_Store
 ~$*
-.claude/
-.firecrawl/
 
 # --- Slide-generation outputs (not part of paper) ---
 slide_images/
@@ -55,13 +53,17 @@ scripts/gen_slide_images.py
 scripts/gen_visuals.py
 scripts/gen_visuals2.py
 scripts/gen_visuals3.py
-scripts/run_gpu_saturation_race.sh
+_quarantine/
 
 # --- Markdown is local-only by policy (no docs in remote repo) ---
 *.md
+!README.md
 
 # --- Other local-only docs ---
 slides_content.txt
 
 # --- Private quarantine: identifying material moved out of evidence_vm/ for anonymity ---
 evidence_vm_private/
+
+# --- Submission archive (rebuilt on demand) ---
+submission.zip

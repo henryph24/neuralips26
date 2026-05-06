@@ -1,0 +1,22 @@
+{
+  "dataset": "ETTm2",
+  "mask_ratio": 0.2,
+  "seed": 45,
+  "head_results": {
+    "linear": 0.7074044443293848,
+    "dense_mlp": 0.5696222078044918,
+    "conv": 1.1498041762060511,
+    "attention": 0.6006293231492018,
+    "residual_conv": 0.5313034728701671
+  },
+  "rrmoa_mse": 0.10767288439750287,
+  "rrmoa_routing": {
+    "linear": 0.129,
+    "dense_mlp": 0.26,
+    "conv": 0.115,
+    "attention": 0.377,
+    "residual_conv": 0.119
+  },
+  "best_head": "residual_conv",
+  "best_head_mse": 0.5313034728701671
+}

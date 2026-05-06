@@ -1,0 +1,34 @@
+{
+  "dataset": "Weather",
+  "horizon": 96,
+  "seed": 43,
+  "unfreeze": "frozen",
+  "K": 5,
+  "top_k": 2,
+  "backbone": "AutonLab/MOMENT-1-small",
+  "baselines": {
+    "linear": {
+      "mse": 0.5274074673652649,
+      "mae": 0.5319424867630005,
+      "param_count": 49248,
+      "mse_denorm": 6758.767578125,
+      "mae_denorm": 34.10855484008789
+    },
+    "attention": {
+      "mse": 0.6209390759468079,
+      "mae": 0.6031320095062256,
+      "param_count": 49761,
+      "mse_denorm": 11001.8447265625,
+      "mae_denorm": 43.73368453979492
+    },
+    "conv": {
+      "mse": 0.5839192867279053,
+      "mae": 0.5707123279571533,
+      "param_count": 209248,
+      "mse_denorm": 8637.8203125,
+      "mae_denorm": 38.476348876953125
+    }
+  },
+  "elapsed": 74.92571878433228,
+  "source": "modal_run_baselines.py"
+}

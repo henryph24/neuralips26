@@ -1,6 +1,6 @@
 #!/bin/bash
 # Master orchestrator for NeurIPS revision experiments.
-# Run on RACE VM (A10G GPU). Total: ~2 GPU hours.
+# Run on GPU VM (A10G GPU). Total: ~2 GPU hours.
 # Each experiment checks for existing results and skips if found.
 
 set -e

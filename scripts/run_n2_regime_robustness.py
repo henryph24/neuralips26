@@ -20,10 +20,36 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from feasibility.model import (load_backbone, _get_encoder_blocks, _get_hidden_dim,
                                 _disable_gradient_checkpointing)
 from feasibility.finetune import _extract_features_batch
-from scripts.run_standard_evolution import (load_standard_data, _detect_backbone_type,
-                                             SEED_ADAPTERS)
+from feasibility.standard_data import load_standard_data, _detect_backbone_type
+from feasibility.adapter_seeds import SEED_ADAPTERS
 from scripts.run_rr_moa import RawRoutedMoA, HEAD_CLASSES, HEAD_NAMES
-from scripts.run_patchwise_analysis import compute_temporal_stats
+
+
+def compute_temporal_stats(raw_windows):
+    """Compute per-window temporal statistics.
+
+    Args:
+        raw_windows: (N, L) numpy array of raw time series windows.
+
+    Returns:
+        dict of (N,) numpy arrays: trend_slope, amplitude, volatility, mean_level.
+    """
+    N, L = raw_windows.shape
+    t = np.arange(L, dtype=np.float64)
+    t_mean = t.mean()
+    t_var = ((t - t_mean) ** 2).sum()
+    x_mean = raw_windows.mean(axis=1, keepdims=True)
+    slopes = ((raw_windows - x_mean) * (t - t_mean)).sum(axis=1) / t_var
+    amplitude = raw_windows.max(axis=1) - raw_windows.min(axis=1)
+    diffs = np.diff(raw_windows, axis=1)
+    volatility = diffs.std(axis=1)
+    mean_level = raw_windows.mean(axis=1)
+    return {
+        "trend_slope": slopes,
+        "amplitude": amplitude,
+        "volatility": volatility,
+        "mean_level": mean_level,
+    }
 
 
 def train_and_eval_per_sample(adapter, model, blocks, X_train, Y_train, X_test, Y_test,

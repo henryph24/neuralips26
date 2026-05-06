@@ -24,8 +24,8 @@ from feasibility.model import (
     load_backbone, _get_encoder_blocks, _apply_unfreeze,
     _disable_gradient_checkpointing,
 )
-from feasibility.code_evolution import SEED_ADAPTERS
-from scripts.run_standard_evolution import (
+from feasibility.adapter_seeds import SEED_ADAPTERS
+from feasibility.standard_data import (
     load_standard_data, train_adapter, _detect_backbone_type,
 )
 

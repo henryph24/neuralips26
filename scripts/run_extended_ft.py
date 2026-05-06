@@ -28,8 +28,8 @@ from feasibility.model import (
     load_backbone, _get_encoder_blocks, _get_hidden_dim,
     _disable_gradient_checkpointing,
 )
-from feasibility.code_evolution import SEED_ADAPTERS
-from scripts.run_standard_evolution import (
+from feasibility.adapter_seeds import SEED_ADAPTERS
+from feasibility.standard_data import (
     load_standard_data, _detect_backbone_type, compute_denorm_mse,
 )
 from scripts.run_rr_moa import _apply_unfreeze

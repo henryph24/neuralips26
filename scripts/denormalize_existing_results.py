@@ -25,8 +25,7 @@ record the exact ``mse_denorm`` directly in ``train_rr_moa`` / ``train_adamix``
 The approximation is an unbiased estimator of the true original-scale MSE
 under the assumption that per-channel squared-errors are equal in normalized
 space, which is approximately true because the model is trained to minimize
-normalized MSE uniformly across samples. See T1.A in
-.claude/plans/cozy-puzzling-lampson.md for rationale.
+normalized MSE uniformly across samples.
 
 Usage::
 
@@ -44,7 +43,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 
-from scripts.run_standard_evolution import load_standard_data
+from feasibility.standard_data import load_standard_data
 
 
 # Cache of (dataset, horizon) -> scaler.

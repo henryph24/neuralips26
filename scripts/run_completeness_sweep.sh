@@ -23,7 +23,7 @@ echo "================================================================"
 ###############################################
 echo ""
 echo "=== 1. B7 Classification re-run ==="
-bash scripts/run_b7_classification_race.sh 2>&1 | tail -5
+bash scripts/run_b7_classification_vm.sh 2>&1 | tail -5
 
 ###############################################
 # 2. TRACE baseline on extended datasets
@@ -220,7 +220,7 @@ sys.path.insert(0, '.')
 from scripts.run_rr_moa import RawRoutedMoA, HEAD_CLASSES, HEAD_NAMES, EXPERT_POOLS
 from feasibility.model import load_backbone, _get_encoder_blocks, _get_hidden_dim, _disable_gradient_checkpointing
 from feasibility.finetune import _extract_features_batch
-from scripts.run_standard_evolution import load_standard_data, _detect_backbone_type
+from feasibility.standard_data import load_standard_data, _detect_backbone_type
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 

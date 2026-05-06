@@ -1,6 +1,6 @@
 #!/bin/bash
 # NeurIPS 8+ experiments: RevIN ablation + Traffic full grid
-# Run on RACE VM (A10G GPU)
+# Run on GPU VM (A10G GPU)
 # Estimated: ~28 hours total (run overnight)
 
 set -e

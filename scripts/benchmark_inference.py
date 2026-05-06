@@ -34,7 +34,7 @@ from scripts.run_rr_moa import (
 )
 from scripts.run_self_routed_moa import SelfRoutedMoA
 from scripts.run_sr_ria import SelfRoutedResidualIA
-from scripts.run_standard_evolution import _detect_backbone_type
+from feasibility.standard_data import _detect_backbone_type
 
 
 class DLinear(nn.Module):

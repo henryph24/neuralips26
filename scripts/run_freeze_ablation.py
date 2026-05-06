@@ -5,7 +5,7 @@ Orchestrates the critical experiment matrix:
   - Top-K ablation: 4 sparsity levels x 1 dataset = 4 runs
   - AdaMix (routing collapse control): 3 datasets x 3 freeze levels = 9 runs
 
-Usage (on RACE VM with GPU):
+Usage (on GPU VM with GPU):
     python scripts/run_freeze_ablation.py                          # full matrix
     python scripts/run_freeze_ablation.py --experiment topk        # Top-K only
     python scripts/run_freeze_ablation.py --experiment freeze      # freeze-level only
@@ -137,11 +137,10 @@ def run_uniform_control(device="cuda", seed=DEFAULT_SEED, epochs=15,
 
 
 def run_macro_pool(device="cuda", seed=DEFAULT_SEED, epochs=15, datasets=None):
-    """T3.A: RR-MoA with the AAS-distilled macro expert pool, strictly
-    frozen backbone, Top-2 sparse. Deliverable is a head-to-head row against
-    the canonical-pool RR-MoA on the same 3 main datasets + extended set,
-    demonstrating that the AAS discoveries actually feed into the RR-MoA
-    experiments (closing reviewer W1).
+    """RR-MoA with the macro expert pool, strictly frozen backbone, Top-2
+    sparse. Produces a head-to-head row against the canonical-pool RR-MoA on
+    the same datasets, showing that the alternative pool integrates into the
+    RR-MoA framework without changing the headline behaviour.
     """
     datasets = datasets or DEFAULT_DATASETS
     results = []
@@ -230,7 +229,7 @@ def main():
                                             datasets=datasets)
 
     if args.experiment in ("macro", "all"):
-        print("\n### T3.A AAS MACRO-EXPERT POOL ###")
+        print("\n### MACRO-EXPERT POOL ###")
         all_results += run_macro_pool(args.device, args.seed, args.epochs,
                                       datasets=datasets)
 

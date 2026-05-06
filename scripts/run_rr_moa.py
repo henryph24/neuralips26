@@ -32,8 +32,8 @@ from feasibility.model import (
     _disable_gradient_checkpointing,
 )
 from feasibility.finetune import _extract_features_batch
-from feasibility.code_evolution import SEED_ADAPTERS, validate_adapter_code
-from scripts.run_standard_evolution import (
+from feasibility.adapter_seeds import SEED_ADAPTERS, validate_adapter_code
+from feasibility.standard_data import (
     load_standard_data, train_adapter, _detect_backbone_type,
     compute_denorm_mse,
 )
@@ -86,10 +86,9 @@ class Conv1dPoolHead(nn.Module):
 HEAD_CLASSES = [MeanPoolHead, LastTokenHead, MaxPoolHead, AttentionPoolHead, Conv1dPoolHead]
 HEAD_NAMES = ["mean", "last", "max", "attention", "conv1d"]
 
-# T3.A: selectable expert pool. ``canonical`` = 5 simple pooling heads
-# (current RR-MoA default); ``macro`` = 5 AAS-discovered cross-domain
-# motifs from feasibility/rrmoa_macro_experts.py that unify the AAS and
-# RR-MoA contributions (W1).
+# Selectable expert pool. ``canonical`` = 5 simple pooling heads (default);
+# ``macro`` = 5 cross-domain motifs from feasibility/rrmoa_macro_experts.py
+# (alternative pool used by the macro-pool ablation).
 EXPERT_POOLS = {
     "canonical": (HEAD_CLASSES, HEAD_NAMES),
     "macro":     (MACRO_EXPERT_CLASSES, MACRO_EXPERT_NAMES),
@@ -532,11 +531,9 @@ def main():
                         choices=list(EXPERT_POOLS.keys()),
                         help="Which expert pool to populate RR-MoA with. "
                              "'canonical' = 5 simple pooling heads (mean/last/max/attn/conv1d, "
-                             "current default). 'macro' = 5 AAS-distilled cross-domain motifs "
-                             "from feasibility/rrmoa_macro_experts.py (BN+mean, multi-scale "
-                             "conv, Conv1d+BN+residual, depthwise separable, gated conv). "
-                             "The 'macro' option is the T3.A integration experiment that "
-                             "unifies the AAS and RR-MoA contributions (reviewer W1).")
+                             "default). 'macro' = 5 cross-domain motifs from "
+                             "feasibility/rrmoa_macro_experts.py (BN+mean, multi-scale conv, "
+                             "Conv1d+BN+residual, depthwise separable, gated conv).")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--backbone", default="AutonLab/MOMENT-1-small")

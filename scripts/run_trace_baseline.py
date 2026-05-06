@@ -1,4 +1,4 @@
-"""TRACE-style baseline for AAS comparison.
+"""TRACE-style baseline.
 
 Implements the two key ideas from TRACE (Li & Zhu, 2025):
 1. Importance-based LoRA module selection (Gated DSIC simplified)
@@ -30,8 +30,8 @@ from feasibility.model import (
     _disable_gradient_checkpointing,
 )
 from feasibility.finetune import _extract_features_batch
-from feasibility.code_evolution import validate_adapter_code, SEED_ADAPTERS
-from scripts.run_standard_evolution import (
+from feasibility.adapter_seeds import validate_adapter_code, SEED_ADAPTERS
+from feasibility.standard_data import (
     load_standard_data, train_adapter, _detect_backbone_type,
 )
 

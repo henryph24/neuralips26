@@ -27,7 +27,7 @@ from feasibility.model import (
 )
 from feasibility.finetune import _extract_features_batch
 from scripts.run_rr_moa import RawRoutedMoA
-from scripts.run_standard_evolution import _detect_backbone_type
+from feasibility.standard_data import _detect_backbone_type
 
 
 def main():

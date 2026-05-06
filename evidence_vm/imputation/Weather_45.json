@@ -1,0 +1,22 @@
+{
+  "dataset": "Weather",
+  "mask_ratio": 0.2,
+  "seed": 45,
+  "head_results": {
+    "linear": 0.20218834327138066,
+    "dense_mlp": 0.16514146705648378,
+    "conv": 0.248633249099846,
+    "attention": 0.32223397359758876,
+    "residual_conv": 0.29694600506038055
+  },
+  "rrmoa_mse": 0.07642062066098201,
+  "rrmoa_routing": {
+    "linear": 0.155,
+    "dense_mlp": 0.292,
+    "conv": 0.122,
+    "attention": 0.277,
+    "residual_conv": 0.154
+  },
+  "best_head": "dense_mlp",
+  "best_head_mse": 0.16514146705648378
+}

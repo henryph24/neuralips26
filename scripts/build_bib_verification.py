@@ -4,6 +4,8 @@ Source of truth: main.tex thebibliography (lines 662-949). Verification queries
 were issued to Exa academic search; results captured in the rows below.
 """
 
+import os
+
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
@@ -132,7 +134,7 @@ def main():
     ws2.column_dimensions["A"].width = 70
     ws2.column_dimensions["B"].width = 20
 
-    out = "/Users/hungpq2412/neuralips26/bib_verification.xlsx"
+    out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bib_verification.xlsx")
     wb.save(out)
     print(f"Wrote {out}")
     print(f"Rows in xlsx: {len(ROWS)}; expected from grep: {EXPECTED_COUNT}; match: {len(ROWS) == EXPECTED_COUNT}")

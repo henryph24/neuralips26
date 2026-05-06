@@ -212,9 +212,9 @@ def main():
     # --- Table 3: RR-MoA freeze ablation + baselines ---
     # Frozen-row baselines were re-run on 2026-05-01 (the original snapshot
     # was from a different RNG state). Where a sidecar JSON in
-    # results/baselines_only/ exists for the same (cell, seed), prefer it
-    # over the baselines field embedded in evidence_vm/rr_moa/.
-    BASE_OVERLAY = os.path.join(os.path.dirname(EVID), "results", "baselines_only")
+    # evidence_vm/baselines_only/ exists for the same (cell, seed), prefer
+    # it over the baselines field embedded in evidence_vm/rr_moa/.
+    BASE_OVERLAY = os.path.join(EVID, "baselines_only")
     rr_groups = defaultdict(list)
     bl_groups = defaultdict(list)
     for f in sorted(glob.glob(f"{EVID}/rr_moa/*_top2_*_4?.json")):
@@ -479,7 +479,7 @@ def main():
             errors.append(f"imputation: only {imp_wins}/{imp_total} wins, paper claims 7/8")
 
     # --- TAB_MI_TIGHTNESS: Exact MI loss and bound tightness (Appendix) ---
-    mi_json_path = os.path.join(EVID, "..", "results", "analysis", "exact_mi_loss.json")
+    mi_json_path = os.path.join(EVID, "analysis", "exact_mi_loss.json")
     if os.path.exists(mi_json_path):
         with open(mi_json_path) as f:
             mi_data = json.load(f)

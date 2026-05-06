@@ -1,27 +1,13 @@
-"""T3.A — AAS macro-expert pool for RR-MoA.
+"""Macro-expert pool for RR-MoA (auxiliary expert pool used by the macro-pool ablation).
 
 The canonical RR-MoA experts (mean, last, max, attn, conv1d in
-``scripts/run_rr_moa.py``) are textbook pooling heads; they do not exercise
-any cross-domain motif that AAS discovered in Section 3. The reviewer flagged
-this as a contribution-integration gap (W1): the paper claims AAS populates
-the RR-MoA expert pool, but the pool actually used throughout Tables 3--7 is
-not populated from AAS.
-
-This module closes that gap by exposing the top-5 distinct macro
-architectures discovered by AAS on ETTh1 seed 42 (gpt-4o model,
-``results/code_evolution/validated_ETTh1_42_gpt-4o.json``) as ``nn.Module``
-expert classes that conform to RR-MoA's expert contract
+``scripts/run_rr_moa.py``) are textbook pooling heads. This module exposes
+five additional macro architectures used as the alternative expert pool in
+the macro-pool ablation, conforming to RR-MoA's expert contract:
 ``__init__(d_model, output_dim, hidden=None) -> forward(hidden_states)``.
 
-The code topology of each class is a faithful transcription of the
-corresponding AAS-evolved adapter; the only differences are cosmetic: a
-shared two-arg constructor signature so that the RR-MoA factory can
-instantiate them uniformly, and a ``hidden`` kwarg accepted (but ignored)
-so that substitution with canonical heads is signature-compatible.
-
-Source file: ``results/code_evolution/validated_ETTh1_42_gpt-4o.json``
-Original reasoning strings are preserved in module docstrings so that the
-provenance is unambiguous to a reviewer.
+Each class accepts a ``hidden`` kwarg (ignored if not used) so that
+substitution between the canonical and macro pools is signature-compatible.
 """
 
 import torch
@@ -30,13 +16,13 @@ import torch.nn.functional as F
 
 
 class BNMeanLinearExpert(nn.Module):
-    """AAS rank 0 -- BatchNorm over d_model then mean-pool and linear.
+    """Macro rank 0 -- BatchNorm over d_model then mean-pool and linear.
 
-    Reasoning (LLM): 'Inspiration from the high performance of simple linear
+    Design rationale: 'Inspiration from the high performance of simple linear
     layers with normalization. This approach attempts batch normalization to
     stabilize learning.'
 
-    Validated on ETTh1 seed 42 (gpt-4o): mse_15ep=0.5952, params=50272.
+    Reference 15-epoch MSE on ETTh1 seed 42: 0.5952 (params=50272).
     """
 
     def __init__(self, d_model: int, output_dim: int, hidden: int = None):
@@ -53,12 +39,12 @@ class BNMeanLinearExpert(nn.Module):
 
 
 class MultiScaleConvResidualExpert(nn.Module):
-    """AAS rank 1 -- multi-scale convolutions (k=3,5,7) averaged with a 1x1 BN residual.
+    """Macro rank 1 -- multi-scale convolutions (k=3,5,7) averaged with a 1x1 BN residual.
 
-    Reasoning (LLM): 'Employ a more complex residual connection around a
+    Design rationale: 'Employ a more complex residual connection around a
     multi-scale convolutional stack for richer feature learning.'
 
-    Validated on ETTh1 seed 42 (gpt-4o): mse_15ep=0.5915, params=104992.
+    Reference 15-epoch MSE on ETTh1 seed 42: 0.5915 (params=104992).
     """
 
     def __init__(self, d_model: int, output_dim: int, hidden: int = None, ch: int = 64):
@@ -84,13 +70,13 @@ class MultiScaleConvResidualExpert(nn.Module):
 
 
 class Conv1dBNResidualExpert(nn.Module):
-    """AAS rank 2 -- Conv1d + BatchNorm + 1x1 residual (ResNet-style stem).
+    """Macro rank 2 -- Conv1d + BatchNorm + 1x1 residual (ResNet-style stem).
 
-    Reasoning (LLM): 'Applying residual connections and global average
+    Design rationale: 'Applying residual connections and global average
     pooling right before linear mapping can enhance gradient flow and
     stability.'
 
-    Validated on ETTh1 seed 42 (gpt-4o): mse_15ep=0.5640, params=38688.
+    Reference 15-epoch MSE on ETTh1 seed 42: 0.5640 (params=38688).
     """
 
     def __init__(self, d_model: int, output_dim: int, hidden: int = None, ch: int = 48):
@@ -110,14 +96,14 @@ class Conv1dBNResidualExpert(nn.Module):
 
 
 class DepthwiseSeparableExpert(nn.Module):
-    """AAS rank 3 -- depthwise separable conv (MobileNet motif), lowest param count.
+    """Macro rank 3 -- depthwise separable conv (MobileNet motif), lowest param count.
 
-    Reasoning (LLM): 'This design introduces depthwise separable
+    Design rationale: 'This design introduces depthwise separable
     convolutions to exploit the spatial structure of the 768 features. This
     should capture local patterns effectively while keeping parameter count
     low.'
 
-    Validated on ETTh1 seed 42 (gpt-4o): mse_15ep=0.5817, params=20768.
+    Reference 15-epoch MSE on ETTh1 seed 42: 0.5817 (params=20768).
     """
 
     def __init__(self, d_model: int, output_dim: int, hidden: int = None, ch: int = 32):
@@ -135,13 +121,13 @@ class DepthwiseSeparableExpert(nn.Module):
 
 
 class GatedConvResidualExpert(nn.Module):
-    """AAS rank 4 -- sigmoid-gated conv + residual (highway / GLU motif).
+    """Macro rank 4 -- sigmoid-gated conv + residual (highway / GLU motif).
 
-    Reasoning (LLM): 'Incorporating a simple gating mechanism to allow the
+    Design rationale: 'Incorporating a simple gating mechanism to allow the
     model to modulate between skip connections and transformations from
     convolutions.'
 
-    Validated on ETTh1 seed 42 (gpt-4o): mse_15ep=0.6155, params=55584.
+    Reference 15-epoch MSE on ETTh1 seed 42: 0.6155 (params=55584).
     """
 
     def __init__(self, d_model: int, output_dim: int, hidden: int = None, ch: int = 64):

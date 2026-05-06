@@ -27,8 +27,8 @@ from feasibility.model import (
     _disable_gradient_checkpointing,
 )
 from feasibility.finetune import _extract_features_batch
-from feasibility.code_evolution import SEED_ADAPTERS
-from scripts.run_standard_evolution import (
+from feasibility.adapter_seeds import SEED_ADAPTERS
+from feasibility.standard_data import (
     load_standard_data, train_adapter, _detect_backbone_type,
 )
 from scripts.run_rr_moa import (

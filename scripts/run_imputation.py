@@ -1,8 +1,8 @@
-"""Imputation task: prove adapter architecture is task-dependent.
+"""Imputation task: 20% masked-timestep reconstruction with the same RR-MoA recipe.
 
-Masks 20% of input timesteps, trains adapter to reconstruct them.
-If AAS discovers a DIFFERENT architecture for imputation vs forecasting,
-this proves adapters must be task-specific across the FM ecosystem.
+Masks 20% of input timesteps and trains the adapter to reconstruct them.
+Used to test whether the routing-collapse diagnosis and RR-MoA fix transfer
+to a second task family (imputation) on the same backbones.
 
 Usage:
     python scripts/run_imputation.py --dataset ETTh1
@@ -27,8 +27,8 @@ from feasibility.model import (
     _disable_gradient_checkpointing,
 )
 from feasibility.finetune import _extract_features_batch
-from feasibility.code_evolution import validate_adapter_code, SEED_ADAPTERS
-from scripts.run_standard_evolution import load_standard_data, _detect_backbone_type
+from feasibility.adapter_seeds import validate_adapter_code, SEED_ADAPTERS
+from feasibility.standard_data import load_standard_data, _detect_backbone_type
 from scripts.run_rr_moa import (
     MeanPoolHead, LastTokenHead, MaxPoolHead, AttentionPoolHead, Conv1dPoolHead,
     HEAD_CLASSES, HEAD_NAMES, RawRoutedMoA,

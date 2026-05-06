@@ -1,0 +1,22 @@
+{
+  "dataset": "Exchange",
+  "mask_ratio": 0.2,
+  "seed": 46,
+  "head_results": {
+    "linear": 1.4465482122879214,
+    "dense_mlp": 1.1945851279947648,
+    "conv": 1.377867905402724,
+    "attention": 1.1864957783870875,
+    "residual_conv": 1.2974563583282666
+  },
+  "rrmoa_mse": 0.1621494441833588,
+  "rrmoa_routing": {
+    "linear": 0.212,
+    "dense_mlp": 0.195,
+    "conv": 0.13,
+    "attention": 0.154,
+    "residual_conv": 0.31
+  },
+  "best_head": "attention",
+  "best_head_mse": 1.1864957783870875
+}

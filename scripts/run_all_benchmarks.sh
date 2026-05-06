@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run all standard benchmarks on RACE VM
+# Run all standard benchmarks on GPU VM
 # Usage: bash scripts/run_all_benchmarks.sh
 set -e
 cd ~/neuralips26

@@ -1,0 +1,22 @@
+{
+  "dataset": "Electricity",
+  "mask_ratio": 0.2,
+  "seed": 46,
+  "head_results": {
+    "linear": 0.18087749596513542,
+    "dense_mlp": 0.16477200869898603,
+    "conv": 0.22522066685573747,
+    "attention": 0.22449996004729886,
+    "residual_conv": 0.24210477690735038
+  },
+  "rrmoa_mse": 0.13555072356445394,
+  "rrmoa_routing": {
+    "linear": 0.16,
+    "dense_mlp": 0.27,
+    "conv": 0.17,
+    "attention": 0.225,
+    "residual_conv": 0.174
+  },
+  "best_head": "dense_mlp",
+  "best_head_mse": 0.16477200869898603
+}

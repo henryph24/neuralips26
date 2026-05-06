@@ -30,7 +30,7 @@ from feasibility.model import (
     _disable_gradient_checkpointing,
 )
 from feasibility.finetune import _extract_features_batch
-from scripts.run_standard_evolution import load_standard_data, _detect_backbone_type
+from feasibility.standard_data import load_standard_data, _detect_backbone_type
 from scripts.run_rr_moa import HEAD_CLASSES, HEAD_NAMES
 
 

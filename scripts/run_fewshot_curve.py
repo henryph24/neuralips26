@@ -25,7 +25,7 @@ from feasibility.model import (
     _disable_gradient_checkpointing,
 )
 from feasibility.finetune import _extract_features_batch
-from scripts.run_standard_evolution import (
+from feasibility.standard_data import (
     load_standard_data, _detect_backbone_type,
 )
 from scripts.run_rr_moa import (
@@ -143,8 +143,8 @@ def train_single_adapter(model, blocks, X_train, Y_train, X_test, Y_test,
                          device="cuda", n_epochs=15, batch_size=128,
                          backbone_type="moment"):
     """Train single conv adapter (frozen backbone, no routing)."""
-    from feasibility.code_evolution import SEED_ADAPTERS
-    from scripts.run_standard_evolution import train_adapter
+    from feasibility.adapter_seeds import SEED_ADAPTERS
+    from feasibility.standard_data import train_adapter
     return train_adapter(
         SEED_ADAPTERS[4], model, blocks, X_train, Y_train, X_test, Y_test,
         device=device, n_epochs=n_epochs, forecast_horizon=Y_train.shape[1],

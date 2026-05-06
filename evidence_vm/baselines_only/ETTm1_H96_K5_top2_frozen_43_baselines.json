@@ -1,0 +1,34 @@
+{
+  "dataset": "ETTm1",
+  "horizon": 96,
+  "seed": 43,
+  "unfreeze": "frozen",
+  "K": 5,
+  "top_k": 2,
+  "backbone": "AutonLab/MOMENT-1-small",
+  "baselines": {
+    "linear": {
+      "mse": 1.2202132940292358,
+      "mae": 0.8940231204032898,
+      "param_count": 49248,
+      "mse_denorm": 37.53147506713867,
+      "mae_denorm": 4.05942964553833
+    },
+    "attention": {
+      "mse": 1.4416770935058594,
+      "mae": 0.9865675568580627,
+      "param_count": 49761,
+      "mse_denorm": 35.151634216308594,
+      "mae_denorm": 4.064185619354248
+    },
+    "conv": {
+      "mse": 1.228573203086853,
+      "mae": 0.8911294341087341,
+      "param_count": 209248,
+      "mse_denorm": 39.67411422729492,
+      "mae_denorm": 4.1163787841796875
+    }
+  },
+  "elapsed": 75.96096563339233,
+  "source": "modal_run_baselines.py"
+}

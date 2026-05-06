@@ -1,0 +1,32 @@
+{
+  "dataset": "Electricity",
+  "mask_ratio": 0.2,
+  "seed": 42,
+  "head_results": {
+    "linear": 0.17113294091662862,
+    "dense_mlp": 0.15885493184902927,
+    "conv": 0.2296460861439585,
+    "attention": 0.2195801750693609,
+    "residual_conv": 0.2943197846469709
+  },
+  "rrmoa_mse": 0.13538118143892108,
+  "rrmoa_entropy": 1.5750141143798828,
+  "rrmoa_routing": {
+    "linear": 0.184,
+    "dense_mlp": 0.262,
+    "conv": 0.217,
+    "attention": 0.2,
+    "residual_conv": 0.137
+  },
+  "adamix_mse": 0.20089650705387016,
+  "adamix_entropy": 0.10931757092475891,
+  "adamix_routing": {
+    "linear": 0.022,
+    "dense_mlp": 0.977,
+    "conv": 0.0,
+    "attention": 0.0,
+    "residual_conv": 0.0
+  },
+  "best_head": "dense_mlp",
+  "best_head_mse": 0.15885493184902927
+}

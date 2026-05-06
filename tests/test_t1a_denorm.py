@@ -22,7 +22,7 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.run_standard_evolution import (
+from feasibility.standard_data import (
     load_standard_data, compute_denorm_mse,
 )
 from scripts.run_rr_moa import RawRoutedMoA, EXPERT_POOLS
