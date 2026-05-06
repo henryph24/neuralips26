@@ -1,0 +1,18 @@
+recompile
+
+---
+
+" and a verify.py script" <- shall not include this one
+
+---
+
+let's do that, review entire paper for over-exposure risk like that
+
+---
+
+actually we included in the supplementary (submission.zip right) "ode and per-run results rel
+          +eased on acceptance"
+
+---
+
+1 is fine
