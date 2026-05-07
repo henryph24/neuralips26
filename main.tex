@@ -649,7 +649,7 @@ Full fine-tuning (all unfrozen) & $1.060 \pm 0.059$ & $0.871 \pm 0.029$ & $0.468
 \end{tabular}
 \end{table}
 
-{\looseness=-1 \textbf{RQ3's second half (transfer): the diagnosis transfers, and predicts where it should not.}\label{sec:cross_backbone} RR-MoA wins on every instance-normalized backbone (MOMENT-small/large $26$--$79\%/32$--$75\%$, Moirai $12$--$29\%$, Moirai-MoE~\citep{liu2025moiraimoe} $37$--$90\%$); LayerNorm-only Chronos and Timer-XL~\citep{liu2025timerxl} show no collapse, the predicted negative-control split. Beyond $H{=}96$, RR-MoA wins $24/24$ multi-horizon and $7/8$ imputation cells (Tables~\ref{tab:cross_backbone}--\ref{tab:horizon}, App.~\ref{app:imputation}); \textbf{Residual-IA\textsuperscript{+}} matches or beats DLinear on $6/6$ datasets at $H{=}96$ and $107/123$ cells across the $6{\times}5{\times}4$ grid (App.~\ref{app:gate_pathology}). The diagnostic predicts failures: Traffic ($R{=}0.14$) is statistically indistinguishable from DLinear; $R(\mathcal{D})$ is computable pre-training, giving an \emph{a priori} go/no-go test.}
+{\looseness=-1 \textbf{RQ3's second half (transfer): the diagnosis transfers, and predicts where it should not.}\label{sec:cross_backbone} RR-MoA wins on every instance-normalized backbone (MOMENT-small/large $26$--$79\%/32$--$75\%$, Moirai $12$--$29\%$, Moirai-MoE~\citep{liu2025moiraimoe} $37$--$90\%$); LayerNorm-only Chronos and Timer-XL~\citep{liu2025timerxl} show no collapse, the predicted negative-control split. Beyond $H{=}96$, RR-MoA wins $12/12$ multi-horizon vs.\ best fixed adapter and $7/8$ imputation cells (Tables~\ref{tab:cross_backbone}--\ref{tab:horizon}, App.~\ref{app:imputation}); \textbf{Residual-IA\textsuperscript{+}} matches or beats DLinear on $5/6$ datasets at $H{=}96$ ($6/6$ at $H{=}192$) and $107/123$ cells across the $6{\times}6{\times}4$ grid (App.~\ref{app:gate_pathology}). The diagnostic predicts failures: Traffic ($R{=}0.14$) is statistically indistinguishable from DLinear; $R(\mathcal{D})$ is computable pre-training, giving an \emph{a priori} go/no-go test.}
 
 \section{Conclusion and Limitations}
 
@@ -1264,11 +1264,11 @@ The RR-MoA routing overhead ($+3.1$\,ms) is dominated by the sparse expert selec
 \section{Multi-Horizon Evaluation}
 \label{app:horizon}
 
-The main paper reports H${=}96$ throughout. Table~\ref{tab:horizon} extends to the standard LTSF horizon set $H{\in}\{96,192,336,720\}$ on ETTh1, ETTm1, and Weather, confirming that RR-MoA's $26$--$79\%$ improvement over the best fixed adapter is not horizon-specific: it wins all $24$ (dataset, horizon, baseline) cells. The DLinear column anchors the supervised baseline; the RR-MoA-vs-DLinear gap narrows monotonically with $H$ on ETTh1 and Weather, consistent with the frozen backbone's horizon-invariant representation becoming relatively more informative as the prediction window lengthens.
+The main paper reports H${=}96$ throughout. Table~\ref{tab:horizon} extends to the standard LTSF horizon set $H{\in}\{96,192,336,720\}$ on ETTh1, ETTm1, and Weather, confirming that RR-MoA's $26$--$79\%$ improvement over the best fixed adapter is not horizon-specific: it wins all $12$ (dataset, horizon) cells vs.\ best fixed adapter. The DLinear column is reported only as the supervised calibration anchor (RR-MoA loses to it across all 12 cells; closing that gap is the subject of Appendix~\ref{app:gap_closing}); the RR-MoA-vs-DLinear gap narrows monotonically with $H$ on ETTh1 and Weather, consistent with the frozen backbone's horizon-invariant representation becoming relatively more informative as the prediction window lengthens.
 
 \begin{table}[!htbp]
 \centering
-\caption{\textbf{Multi-horizon RR-MoA vs.\ DLinear} (MOMENT-small, strictly frozen, Top-2, 5 seeds, test MSE mean$\pm$std). RR-MoA wins all 24 configurations vs.\ best fixed baseline across horizons $96$--$720$. DLinear column provides supervised calibration: the gap narrows from $+63\%$ to $+48\%$ on ETTh1 and from $+33\%$ to $+15\%$ on Weather as $H$ grows, consistent with the frozen backbone's horizon-invariant representation becoming relatively more informative at longer horizons.}
+\caption{\textbf{Multi-horizon RR-MoA vs.\ DLinear} (MOMENT-small, strictly frozen, Top-2, 5 seeds, test MSE mean$\pm$std). RR-MoA wins all 12 configurations vs.\ best fixed baseline across horizons $96$--$720$. DLinear column provides supervised calibration: the gap narrows from $+63\%$ to $+48\%$ on ETTh1 and from $+33\%$ to $+15\%$ on Weather as $H$ grows, consistent with the frozen backbone's horizon-invariant representation becoming relatively more informative at longer horizons.}
 \label{tab:horizon}
 \scriptsize
 \begin{tabular}{@{}lccccccccc@{}}
@@ -1851,7 +1851,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \end{tabular}
 \end{table}
 
-\textbf{Extreme collapse on Exchange and Solar.} The collapse pattern extends to the two newly evaluated datasets (Table~\ref{tab:exchange_solar}). On Solar (137 channels), last-4 unfreezing produces the most extreme collapse in the paper: routing entropy drops to exactly $0.000$ and MSE degrades by $+215$--$243\%$ relative to the best fixed baseline, far worse than the $+0$--$17\%$ degradation observed on the original 6 datasets. On Exchange (8 channels), last-4 AdaMix collapses to $0.000$ entropy but MSE actually improves ($-21\%$), acting as a reasonable single-expert adapter; however, RR-MoA still outperforms it by $2.7\times$ ($1.44$ vs $3.85$).
+\textbf{Extreme collapse on Exchange and Solar.} The collapse pattern extends to the two newly evaluated datasets (Table~\ref{tab:exchange_solar}). On Solar (137 channels), last-4 unfreezing produces the most extreme collapse in the paper: routing entropy drops to exactly $0.000$ and MSE degrades by $+104.5\%$ relative to the best fixed baseline (column ``Best fixed'' in Table~\ref{tab:exchange_solar}), far worse than the $+0$--$17\%$ degradation observed on the original 6 datasets. On Exchange (8 channels), last-4 AdaMix collapses to $0.000$ entropy but MSE actually improves ($-15.7\%$ vs.\ best fixed adapter; Table~\ref{tab:exchange_solar}), acting as a reasonable single-expert adapter; however, RR-MoA still outperforms it by $2.5\times$ ($1.531$ vs $3.851$).
 
 \subsection{Rescue-Baseline Sweep Details}
 \label{app:rescue_details}
@@ -2270,7 +2270,7 @@ Dataset & Method & MSE (mean$\pm$std) & Entropy & Best fixed & $\Delta$\% \\
 \midrule
 \multirow{4}{*}{Solar} & \textbf{RR-MoA (frozen)} & $\mathbf{0.252 \pm 0.021}$ & $1.53$ & \multirow{4}{*}{$0.376$} & $\mathbf{-32.9\%}$ \\
  & AdaMix (frozen) & $0.264 \pm 0.017$ & $0.75$ & & $-29.8\%$ \\
- & AdaMix (last-4) & $0.769 \pm 0.001$ & $\mathbf{0.000}$ & & $+215$--$243\%$ \\
+ & AdaMix (last-4) & $0.769 \pm 0.001$ & $\mathbf{0.000}$ & & $+104.5\%$ \\
  & \cellcolor{gray!8} DLinear (from scratch) & \cellcolor{gray!8} $0.204 \pm 0.002$ & \cellcolor{gray!8} --- & & \cellcolor{gray!8} --- \\
 \bottomrule
 \end{tabular}
@@ -2546,7 +2546,7 @@ This subsection develops the architectural fix that closes the residual DLinear 
 
 \end{tikzpicture}%
 }% end resizebox
-\caption{\textbf{Residual-IA\textsuperscript{+} architecture (dual-stream extension).} \textit{Stream 1} (blue): the frozen TSFM produces hidden states $\mathbf{H}$, fed into each expert's Adapter head. \textit{Stream 2} (green): a shared NLinear branch reads $\mathbf{X}_\mathrm{raw}$ directly, producing $\mathbf{y}_\mathrm{raw}$ — DLinear-equivalent and shared across all $K$ experts. Each expert combines them as $\mathbf{y}_k = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_k(\mathbf{X}_\mathrm{raw})) \cdot \mathrm{Adapter}_k(\mathbf{H})$, with the blend gate initialized at $b{=}{-}2$ so the model starts as effectively-DLinear and learns to add backbone signal where useful. Self-routing $\sigma$ gates (orange) on $\mathbf{X}_\mathrm{raw}$ select which experts contribute. Result: \textbf{6/6 vs DLinear at $H{=}96$} on MOMENT-small; \textbf{107/123 cells} ($88\%$) match-or-beat across 6 backbones $\times$ 6 datasets $\times$ 4 horizons (Tables~\ref{tab:residual_ia_plus}, \ref{tab:residual_ia_plus_mhcb}).}
+\caption{\textbf{Residual-IA\textsuperscript{+} architecture (dual-stream extension).} \textit{Stream 1} (blue): the frozen TSFM produces hidden states $\mathbf{H}$, fed into each expert's Adapter head. \textit{Stream 2} (green): a shared NLinear branch reads $\mathbf{X}_\mathrm{raw}$ directly, producing $\mathbf{y}_\mathrm{raw}$ — DLinear-equivalent and shared across all $K$ experts. Each expert combines them as $\mathbf{y}_k = \mathbf{y}_\mathrm{raw} + \sigma(\mathrm{blend}_k(\mathbf{X}_\mathrm{raw})) \cdot \mathrm{Adapter}_k(\mathbf{H})$, with the blend gate initialized at $b{=}{-}2$ so the model starts as effectively-DLinear and learns to add backbone signal where useful. Self-routing $\sigma$ gates (orange) on $\mathbf{X}_\mathrm{raw}$ select which experts contribute. Result: \textbf{5/6 match-or-beat at $H{=}96$, $6/6$ at $H{=}192$} on MOMENT-small; \textbf{107/123 cells} ($87\%$) match-or-beat across 6 backbones $\times$ 6 datasets $\times$ 4 horizons (Tables~\ref{tab:residual_ia_plus}, \ref{tab:residual_ia_plus_mhcb}).}
 \label{fig:residual_ia_arch}
 \end{figure}
 
@@ -2697,7 +2697,7 @@ The shared raw branch alone is the largest single contributor: it singlehandedly
 
 \textbf{Why ETTh1 remains $+2.2\%$ at H${=}96$.} At $n{=}10$ for both methods, the ETTh1 gap is statistically significant ($p{=}0.037$), although the mean absolute MSE difference is only $0.009$ ($0.428$ vs.\ $0.419$). ETTh1 is the smallest LTSF dataset ($8{,}640$ raw samples), and its channels have strongly correlated seasonal patterns that a from-scratch linear model memorizes efficiently. At H${=}192$ the gap closes to \textbf{parity} ($+1.6\%$, $p{=}0.18$), consistent with DLinear's advantage being specific to short-horizon seasonal memorization on this dataset.
 
-\textbf{Implication.} Residual-IA\textsuperscript{+} achieves \textbf{$107/123$ match-or-beat} ($88\%$) across six backbones, six datasets, and four horizons ($20/24$ MOMENT-small, $87/99$ cross-backbone; Table~\ref{tab:residual_ia_plus_mhcb}), with $65$ significant wins vs $11$ losses ($5.9{:}1$ ratio) and \textbf{6/6 at H${=}192$}. MOMENT-large reaches $23/24$ ($96\%$); Moirai-MoE achieves $15/15$ with $-9.4\%$ mean gap, confirming adapter-level routing stacks with backbone-internal MoE. Practitioners requiring a shared-TSFM deployment topology (Appendix~\ref{app:deployment}) now have an adapter that matches or beats per-tenant DLinear on $100\%$ of benchmarks at H${=}192$.
+\textbf{Implication.} Residual-IA\textsuperscript{+} achieves \textbf{$107/123$ match-or-beat} ($87\%$) across six backbones, six datasets, and four horizons ($20/24$ MOMENT-small, $87/99$ cross-backbone at $88\%$; Table~\ref{tab:residual_ia_plus_mhcb}), with $65$ significant wins vs $11$ losses ($5.9{:}1$ ratio) and \textbf{6/6 at H${=}192$}. MOMENT-large reaches $23/24$ ($96\%$); Moirai-MoE achieves $15/15$ with $-9.4\%$ mean gap, confirming adapter-level routing stacks with backbone-internal MoE. Practitioners requiring a shared-TSFM deployment topology (Appendix~\ref{app:deployment}) now have an adapter that matches or beats per-tenant DLinear on $100\%$ of benchmarks at H${=}192$.
 
 \subsubsection*{The result is not horizon-specific: $20/24$ at $H{\in}\{96{-}720\}$}
 
