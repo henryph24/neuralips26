@@ -9,7 +9,6 @@ The paper diagnoses **normalization-induced routing collapse** in MoE adapters o
 ```
 feasibility/        Library: backbone loaders, fine-tuning loops, dataset helpers
 scripts/            Per-experiment runners (Python) + orchestrators (shell)
-scripts/legacy/     Pre-RR-MoA scripts retained for reference; not part of reproduction
 evidence_vm/        Curated JSON evidence + verify.py (re-derives every numeric claim)
 figures/            Tracked figure PDFs and inline TikZ source
 data/               Dataset CSVs (gitignored; download instructions below)
