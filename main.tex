@@ -416,9 +416,9 @@ We now validate that this causal intervention recovers routing diversity, beats 
 \subsection{Main Results}
 \label{sec:main_results}
 
-Three predictions of the mechanism (\S\ref{sec:mechanism}) anchor the experiments: fixed adapters underperform a per-window mixture; the natural hidden-state MoE collapses on instance-normalized backbones; and optimization-side rescues cannot recover the gap. We test each in turn, then compare RR-MoA against the seven-baseline suite (fixed adapters, LoRA, TRACE, independent ensembles, AdaMix, full fine-tuning, DLinear).
+We organize this section around three research questions implied by the mechanism (\S\ref{sec:mechanism}). \textbf{RQ1 (phenomenon):} does the natural hidden-state MoE collapse on instance-normalized TSFMs, and does a raw-routed mixture beat fixed adapters and full fine-tuning? \textbf{RQ2 (mechanism):} what is the causal mechanism, and do its falsifiable predictions hold under controls and rescue attempts? \textbf{RQ3 (generality):} does the diagnosis transfer to the seven-baseline suite (fixed adapters, LoRA, TRACE, independent ensembles, AdaMix, full fine-tuning, DLinear), other backbones, horizons, and tasks?
 
-\subsubsection*{Fixed adapters underperform; standard MoE collapses}
+\subsubsection*{RQ1 (1/2): standard MoE collapses; RR-MoA wins 54/54 vs fixed adapters}
 
 {\looseness=-1 \textbf{RR-MoA vs.\ fixed adapters.} RR-MoA wins all \textbf{54/54} configurations (6 datasets $\times$ 3 freeze levels $\times$ 3 seeds) against the best fixed adapter from the same five-head pool, with tight standard deviations (Table~\ref{tab:rrmoa}).}
 
@@ -491,20 +491,20 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 
 In contrast, \textbf{RR-MoA} maintains healthy entropy ($0.93$--$1.57$) and wins \textbf{54/54} configurations with $26$--$79\%$ MSE improvements over the best fixed adapter. The 54/54 covers the six primary-benchmark datasets (ETTh1/h2, ETTm1/m2, Weather, Electricity); on Traffic ($R{=}0.14$, defined in \S\ref{sec:diagnosis}), held out as a low-signal-ratio control, RR-MoA correctly does not improve, consistent with Observation's low-$R$ prediction (Figure~\ref{fig:signal_ratio}).
 
-\subsubsection*{The Frozen Paradox: full fine-tuning loses by $12$--$79\%$}
+\subsubsection*{RQ1 (2/2): the Frozen Paradox -- full fine-tuning loses by $12$--$79\%$}
 
-{\looseness=-1 A second prediction follows from the same mechanism: if normalization-driven gradient co-adaptation drives collapse, frozen should match or beat unfrozen within a fixed MoE architecture. Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on all 6 LTSF datasets (Figure~\ref{fig:frozen_paradox}). The headline gap decomposes into \emph{(M1)} an MoE architectural advantage ($26$--$79\%$, Table~\ref{tab:rrmoa}) and \emph{(M2)} a smaller within-architecture freeze effect ($\leq 13\%$; frozen best on $4/6$, light unfreezing wins by ${\leq}13\%$ on the other two; SR-MoA replicates $4/6$, Table~\ref{tab:self_routed}). Proposition~\ref{prop:frozen} attributes M2 to gradient co-adaptation: a Router-Detached Gradient Flow ablation degrades MSE by $+35$--$100\%$ (Appendix~\ref{app:routing_ablations}), and disabling RevIN recovers full-FT by $54$--$61\%$ (Appendix~\ref{app:extended_ft}), pinning the mechanism on normalization. A $90$-config tune (LR $10^{-5}$--$10^{-6}$, $100$ epochs, cosine+warmup, layerwise decay) still loses by $51$--$71\%$.}
+{\looseness=-1 RQ1's second half asks whether freezing matches or beats fine-tuning within a fixed MoE architecture. Frozen RR-MoA beats \emph{full fine-tuning} (all 8 blocks, best of 5 heads $\times$ 2 LRs) by $12$--$79\%$ on all 6 LTSF datasets (Figure~\ref{fig:frozen_paradox}). The headline gap decomposes into \emph{(M1)} an MoE architectural advantage ($26$--$79\%$, Table~\ref{tab:rrmoa}) and \emph{(M2)} a smaller within-architecture freeze effect ($\leq 13\%$; frozen best on $4/6$, light unfreezing wins by ${\leq}13\%$ on the other two; SR-MoA replicates $4/6$, Table~\ref{tab:self_routed}). Proposition~\ref{prop:frozen} attributes M2 to gradient co-adaptation: a Router-Detached Gradient Flow ablation degrades MSE by $+35$--$100\%$ (Appendix~\ref{app:routing_ablations}), and disabling RevIN recovers full-FT by $54$--$61\%$ (Appendix~\ref{app:extended_ft}), pinning the mechanism on normalization. A $90$-config tune (LR $10^{-5}$--$10^{-6}$, $100$ epochs, cosine+warmup, layerwise decay) still loses by $51$--$71\%$.}
 
 \begin{proposition}[Gradient Co-Adaptation Drives Entropy Collapse]
 \label{prop:frozen}
 Consider a $2$-expert MoE with backbone $\mathbf{h}{=}A\mathbf{x}$, router $p{=}\sigma(\mathbf{w}^\top\mathbf{h})$, loss $\ell{=}p\,\ell_1{+}(1{-}p)\,\ell_2$. Under gradient descent on $(A,\mathbf{w})$: \textup{(i)} the dominant expert's loss decreases faster ($\dot{\ell}_k \propto {-}p_k\|\nabla_\mathbf{h}\ell_k\|^2$), and $\dot{p}$ amplifies whichever expert currently has lower loss, creating self-reinforcing collapse toward $p{\in}\{0,1\}$; \textup{(ii)} freezing $A$ removes the co-adaptation feedback through the backbone (full non-collapse additionally requires $(\ell_1{-}\ell_2)$ to flip sign across input regimes, i.e., expert specialization, which is satisfied by the topologically distinct RR-MoA pool). Proof in Appendix~\ref{app:proofs}.
 \end{proposition}
 
-{\looseness=-1 \textit{Remark.} Proposition~\ref{prop:frozen} covers linear $A\mathbf{x}$; Figure~\ref{fig:trajectory}b confirms it in the full 8-block Transformer within ${\sim}50$ steps. Independent ensembles are $37$--$46\%$ worse (Table~\ref{tab:baselines}), so learned routing -- not mere diversity -- drives the gains. \S\ref{sec:mechanism} answered \emph{what} the router needs to read with Observation and the predictor $R(\mathcal{D})$; we now verify those predictions empirically.}
+{\looseness=-1 \textit{Remark.} Proposition~\ref{prop:frozen} covers linear $A\mathbf{x}$; Figure~\ref{fig:trajectory}b confirms it in the full 8-block Transformer within ${\sim}50$ steps. Independent ensembles are $37$--$46\%$ worse (Table~\ref{tab:baselines}), so learned routing -- not mere diversity -- drives the gains. \S\ref{sec:mechanism} answered \emph{what} the router needs to read with Observation and the predictor $R(\mathcal{D})$; we now turn to RQ2 (mechanism).}
 
-\subsubsection*{$R(\mathcal{D})$ makes three predictions, and all three hold}
+\subsubsection*{RQ2 (1/2): $R(\mathcal{D})$ makes three predictions, and all three hold}
 
-Observation and $R(\mathcal{D})$ make three testable predictions: the bound is empirically tight, $R(\mathcal{D})$ predicts raw-routing benefit across datasets, and the predictor respects a falsifiable boundary distinct from a generic-SNR explanation. We verify each in turn, then turn to the rescues the mechanism predicts must fail.
+For RQ2's first half, Observation and $R(\mathcal{D})$ make three testable predictions: the bound is empirically tight, $R(\mathcal{D})$ predicts raw-routing benefit across datasets, and the predictor respects a falsifiable boundary distinct from a generic-SNR explanation. We verify each in turn.
 
 \textbf{$R(\mathcal{D})$ predicts raw-routing benefit and respects a falsifiable boundary.} The bound is empirically tight (Appendix~\ref{app:mi_tightness}) and the learnable mixing coefficient satisfies $\alpha{<}0.5$ on $30/30$ runs (Appendix~\ref{app:learnable_alpha}). $R(\mathcal{D})$ predicts raw-routing benefit at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$; Figure~\ref{fig:signal_ratio}), whereas the conditional entropy $H(E\mid S)$ does not ($\rho{=}{-}0.12$); Traffic ($R{=}0.14$) is a boundary, Solar ($R{=}0.06$) the one outlier (Appendix~\ref{app:routing_ablations}). The discriminating power lies in the boundary case: the most likely competing explanation is that $R(\mathcal{D})$ proxies generic ``hard dataset'' signal-to-noise, but Traffic has high overall predictability (DLinear MSE $0.41$) yet low $R$, and RR-MoA correctly does not improve there, falsifying the SNR alternative. $R(\mathcal{D})$ is therefore actionable pre-training: practitioners can compute it from raw dataset statistics to predict whether raw routing will help on a new dataset.
 
@@ -585,9 +585,9 @@ Observation and $R(\mathcal{D})$ make three testable predictions: the bound is e
 \label{fig:signal_ratio}
 \end{figure}
 
-\subsubsection*{Optimization-side rescues fail; raw-input fixes transfer}
+\subsubsection*{RQ2 (2/2): optimization-side rescues fail; raw-input fixes transfer}
 
-If the input distribution is the bottleneck, two predictions follow: optimization-side rescues should not recover the gap, and the raw-input fix should transfer beyond RR-MoA's specific router. We test each in turn.
+RQ2's second half asks whether the fix must be input-side. If the input distribution is the bottleneck, optimization-side rescues should not recover the gap, and the raw-input fix should transfer beyond RR-MoA's specific router. We test each.
 
 \textbf{Rescue-baseline sweep.} The mechanism predicts that interventions targeting optimization will fail because the router's input distribution is the bottleneck, not its objective. We test this directly by sweeping five standard MoE rescue families (Switch load-balance~\citep{fedus2022switch}, ST-MoE z-loss~\citep{zoph2022stmoe}, entropy regularization, ReMoE ReLU routing~\citep{wang2025remoe}, expert-choice routing~\citep{zhou2022expertchoice}) over $12$ configurations $\times$ 6 datasets $\times$ 2 freeze levels $\times$ 5 seeds $= 720$ run-cells (Table~\ref{tab:rescue}, Appendix~\ref{app:rescue_details}). The best rescue (z-loss $c_z{=}0.01$) reduces MSE by only $10.9\%$, $2.7{\times}$ worse than RR-MoA; excessive balancing ($\alpha{=}10.0$) hurts by $+67.7\%$. Consistent with Observation, Part~(ii): when routing information is structurally absent, no tested rescue compensates.
 
@@ -616,9 +616,9 @@ C8 & $(\mu,\sigma)$ re-injection & Just appending stripped stats back fixes it &
 \end{tabular}
 \end{table}
 
-\subsubsection*{RR-MoA leads the seven-baseline suite}
+\subsubsection*{RQ3: RR-MoA leads the baseline suite and transfers across backbones, horizons, tasks}
 
-{\looseness=-1 RR-MoA beats every method in the seven-baseline suite at $p{<}0.001$ (Table~\ref{tab:baselines}), driven by two complementary gains: residual shape heterogeneity rewards diverse experts on RevIN-normalized hidden states ($26$--$79\%$ over the best fixed adapter, Table~\ref{tab:rrmoa}), while the signal-ratio $\rho{=}{-}0.88$ localizes \emph{dispatch} information in the stripped statistics, explaining both raw-routing benefit and Traffic's null. The Pure Raw-MLP MoE ablation (App.~\ref{app:raw_mlp_moe}) separates ``MoE with raw router'' from ``ensemble with raw input''.}
+{\looseness=-1 For RQ3's first half (method-class generality), RR-MoA beats every method in the seven-baseline suite at $p{<}0.001$ (Table~\ref{tab:baselines}), driven by two complementary gains: residual shape heterogeneity rewards diverse experts on RevIN-normalized hidden states ($26$--$79\%$ over the best fixed adapter, Table~\ref{tab:rrmoa}), while the signal-ratio $\rho{=}{-}0.88$ localizes \emph{dispatch} information in the stripped statistics, explaining both raw-routing benefit and Traffic's null. The Pure Raw-MLP MoE ablation (App.~\ref{app:raw_mlp_moe}) separates ``MoE with raw router'' from ``ensemble with raw input''.}
 
 \begin{table}[!htbp]
 \centering
@@ -649,7 +649,7 @@ Full fine-tuning (all unfrozen) & $1.060 \pm 0.059$ & $0.871 \pm 0.029$ & $0.468
 \end{tabular}
 \end{table}
 
-{\looseness=-1 \textbf{The diagnosis transfers, and predicts where it should not.}\label{sec:cross_backbone} RR-MoA wins on every instance-normalized backbone (MOMENT-small/large $26$--$79\%/32$--$75\%$, Moirai $12$--$29\%$, Moirai-MoE~\citep{liu2025moiraimoe} $37$--$90\%$); LayerNorm-only Chronos and Timer-XL~\citep{liu2025timerxl} show no collapse, the predicted negative-control split. Beyond $H{=}96$, RR-MoA wins $24/24$ multi-horizon and $7/8$ imputation cells (Tables~\ref{tab:cross_backbone}--\ref{tab:horizon}, App.~\ref{app:imputation}); \textbf{Residual-IA\textsuperscript{+}} matches or beats DLinear on $6/6$ datasets at $H{=}96$ and $107/123$ cells across the $6{\times}5{\times}4$ grid (App.~\ref{app:gate_pathology}). The diagnostic predicts failures: Traffic ($R{=}0.14$) is statistically indistinguishable from DLinear; $R(\mathcal{D})$ is computable pre-training, giving an \emph{a priori} go/no-go test.}
+{\looseness=-1 \textbf{RQ3's second half (transfer): the diagnosis transfers, and predicts where it should not.}\label{sec:cross_backbone} RR-MoA wins on every instance-normalized backbone (MOMENT-small/large $26$--$79\%/32$--$75\%$, Moirai $12$--$29\%$, Moirai-MoE~\citep{liu2025moiraimoe} $37$--$90\%$); LayerNorm-only Chronos and Timer-XL~\citep{liu2025timerxl} show no collapse, the predicted negative-control split. Beyond $H{=}96$, RR-MoA wins $24/24$ multi-horizon and $7/8$ imputation cells (Tables~\ref{tab:cross_backbone}--\ref{tab:horizon}, App.~\ref{app:imputation}); \textbf{Residual-IA\textsuperscript{+}} matches or beats DLinear on $6/6$ datasets at $H{=}96$ and $107/123$ cells across the $6{\times}5{\times}4$ grid (App.~\ref{app:gate_pathology}). The diagnostic predicts failures: Traffic ($R{=}0.14$) is statistically indistinguishable from DLinear; $R(\mathcal{D})$ is computable pre-training, giving an \emph{a priori} go/no-go test.}
 
 \section{Conclusion and Limitations}
 
