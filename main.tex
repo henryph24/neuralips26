@@ -86,7 +86,7 @@ The collapse $\to$ mechanism $\to$ minimal-fix arc structures our three contribu
         minimum height=0.7cm, align=center, line width=0.6pt},
     bbbox/.style={box, draw=black!85, fill=blue!3, minimum width=2.4cm, minimum height=1.0cm,
         font=\scriptsize\bfseries},
-    smallbox/.style={box, minimum width=0.85cm, minimum height=0.45cm, font=\tiny, inner xsep=3pt},
+    smallbox/.style={box, minimum width=0.85cm, minimum height=0.32cm, font=\tiny, inner xsep=3pt, inner ysep=1pt},
     waveframe/.style={rectangle, draw=black!40, fill=gray!3, line width=0.4pt,
         minimum width=1.45cm, minimum height=0.55cm, inner sep=1pt},
     headbox/.style={box, draw=black!85, fill=orange!8, minimum width=1.7cm, minimum height=0.85cm,
@@ -130,9 +130,9 @@ The collapse $\to$ mechanism $\to$ minimal-fix arc structures our three contribu
     font=\tiny] (revA) at (4.4, 2.18) {Instance Normalization (RevIN)};
 
 % Hidden states H stack
-\node[smallbox] (hA1) at (7.05, 3.04) {$\mathbf{H}_1$};
+\node[smallbox] (hA1) at (7.05, 3.14) {$\mathbf{H}_1$};
 \node[smallbox] (hA2) at (7.05, 2.78) {$\mathbf{H}_2$};
-\node[smallbox] (hA3) at (7.05, 2.52) {$\mathbf{H}_3$};
+\node[smallbox] (hA3) at (7.05, 2.42) {$\mathbf{H}_3$};
 
 % Single static head
 \node[headbox] (headA) at (9.4, 2.78) {Single static\\[-1pt]adapter head};
@@ -177,9 +177,9 @@ The collapse $\to$ mechanism $\to$ minimal-fix arc structures our three contribu
     font=\tiny] (revB) at (4.4, -0.22) {Instance Normalization (RevIN)};
 
 % Hidden states H stack
-\node[smallbox] (hB1) at (6.7, 0.64) {$\mathbf{H}_1$};
+\node[smallbox] (hB1) at (6.7, 0.74) {$\mathbf{H}_1$};
 \node[smallbox] (hB2) at (6.7, 0.38) {$\mathbf{H}_2$};
-\node[smallbox] (hB3) at (6.7, 0.12) {$\mathbf{H}_3$};
+\node[smallbox] (hB3) at (6.7, 0.02) {$\mathbf{H}_3$};
 
 % Router
 \node[routerbox] (routerB) at (8.1, 0.38) {Router};
@@ -397,7 +397,7 @@ When $E=f(M,\Sigma)$ and the stripped statistics are independent of the shape ($
 \end{equation}
 where $G_\psi: \mathbb{R}^{T\times c} \to \mathbb{R}^K$ is a small Conv1d\,+\,pooling\,+\,linear gate ($853$ params) operating directly on the raw time series, $\mathcal{T} \subset \{1,\ldots,K\}$ is the set of Top-$k$ indices, and each $\mathrm{Expert}_j$ is a canonical adapter head. By construction $\sum_j \widetilde{w}_j = 1$ with support only on $\mathcal{T}$, so only $k$ of $K$ experts execute per sample. With $K{=}5$, $k{=}2$ we obtain $40\%$ of the dense expert FLOPs while retaining $63\%$ of the dense MSE improvement over the best fixed adapter (App.~\ref{app:topk}). Routing on raw input preserves the temporal statistics (trend, amplitude, volatility) that RevIN strips away.
 
-\textbf{Cost, expert pool, deployment.} The router is a Conv1d gate of $853$ parameters ($0.4\%$ of one expert head, ${<}10^{-3}$ of the frozen backbone); with $k{=}2$ of $K{=}5$ active per window, RR-MoA adds two adapter forward passes plus the gate to one frozen TSFM forward. The expert pool itself comprises $K{=}5$ topologically distinct adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), spanning pooling families with distinct expressivity regimes for transformer-based sequence models~\citep{ennadir2025pooling}; architectural diversity is critical, since five identical experts (same topology, different initialization) degrade MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}; pseudocode in Algorithm~\ref{alg:rrmoa}, Appendix~\ref{app:setup}). Because the backbone is strictly frozen, a single TSFM held in GPU memory can be shared across many tenants while per-task adapter pools (${\sim}500$K params each) hot-swap from host RAM, an arrangement DLinear and per-dataset-from-scratch baselines cannot match (Appendix~\ref{app:benchmark}).
+\textbf{Cost, expert pool, deployment.} The router is a Conv1d gate of $853$ parameters ($0.4\%$ of one expert head, ${<}10^{-3}$ of the frozen backbone); with $k{=}2$ of $K{=}5$ active per window, RR-MoA adds two adapter forward passes plus the gate to one frozen TSFM forward. The expert pool itself comprises $K{=}5$ topologically distinct adapters (mean-pool, last-token, max-pool, attention-pool, Conv1d-pool), spanning pooling families with distinct expressivity regimes for transformer-based sequence models~\citep{ennadir2025pooling}; architectural diversity is critical, since five identical experts (same topology, different initialization) degrade MSE by $8$--$15\%$ (Appendix~\ref{app:diversity}; pseudocode in Algorithm~\ref{alg:rrmoa}, Appendix~\ref{app:setup}). Because the backbone is strictly frozen, a single TSFM held in GPU memory can be shared across many tenants while per-task adapter pools ($354$--$466$K params each) hot-swap from host RAM, an arrangement DLinear and per-dataset-from-scratch baselines cannot match (Appendix~\ref{app:benchmark}).
 
 We now validate that this causal intervention recovers routing diversity, beats the seven-method baseline suite (fixed adapters, LoRA, TRACE, independent ensembles, AdaMix, full fine-tuning, DLinear), and holds under eight causal controls.
 
@@ -489,7 +489,7 @@ Dataset & Freeze level & MSE (mean$\pm$std) & Routing entropy (mean$\pm$std) \\
 \label{fig:causal_contrast}
 \end{figure}
 
-In contrast, \textbf{RR-MoA} maintains healthy entropy ($1.0$--$1.57$) and wins \textbf{54/54} configurations with $26$--$79\%$ MSE improvements over the best fixed adapter. The win is not universal, and the diagnostic predicts where it should not be: on Traffic ($R{=}0.14$, defined in \S\ref{sec:diagnosis}) RR-MoA correctly does not improve, consistent with Observation's low-$R$ prediction (Figure~\ref{fig:signal_ratio}).
+In contrast, \textbf{RR-MoA} maintains healthy entropy ($0.93$--$1.57$) and wins \textbf{54/54} configurations with $26$--$79\%$ MSE improvements over the best fixed adapter. The 54/54 covers the six primary-benchmark datasets (ETTh1/h2, ETTm1/m2, Weather, Electricity); on Traffic ($R{=}0.14$, defined in \S\ref{sec:diagnosis}), held out as a low-signal-ratio control, RR-MoA correctly does not improve, consistent with Observation's low-$R$ prediction (Figure~\ref{fig:signal_ratio}).
 
 \subsubsection*{The Frozen Paradox: full fine-tuning loses by $12$--$79\%$}
 
@@ -508,7 +508,7 @@ Observation and $R(\mathcal{D})$ make three testable predictions: the bound is e
 
 \textbf{$R(\mathcal{D})$ predicts raw-routing benefit and respects a falsifiable boundary.} The bound is empirically tight (Appendix~\ref{app:mi_tightness}) and the learnable mixing coefficient satisfies $\alpha{<}0.5$ on $30/30$ runs (Appendix~\ref{app:learnable_alpha}). $R(\mathcal{D})$ predicts raw-routing benefit at Spearman $\rho{=}{-}0.88$ ($p{<}0.002$, $n{=}9$; Figure~\ref{fig:signal_ratio}), whereas the conditional entropy $H(E\mid S)$ does not ($\rho{=}{-}0.12$); Traffic ($R{=}0.14$) is a boundary, Solar ($R{=}0.06$) the one outlier (Appendix~\ref{app:routing_ablations}). The discriminating power lies in the boundary case: the most likely competing explanation is that $R(\mathcal{D})$ proxies generic ``hard dataset'' signal-to-noise, but Traffic has high overall predictability (DLinear MSE $0.41$) yet low $R$, and RR-MoA correctly does not improve there, falsifying the SNR alternative. $R(\mathcal{D})$ is therefore actionable pre-training: practitioners can compute it from raw dataset statistics to predict whether raw routing will help on a new dataset.
 
-{\looseness=-1 \textbf{Rawness vs.\ bypass; dose-response.} Replacing raw with RevIN-normalized router input degrades MSE by $60$--$88\%$ while entropy stays high (Table~\ref{tab:router_input}): the router needs the stripped statistics' \emph{content}, not the bypass. The interpolation $\mathbf{x}_\alpha = (1{-}\alpha)\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ shows a phase transition at $\alpha{\to}1$ (Figure~\ref{fig:dose_response}; $150$ runs; SNR-onset $\alpha^*{\approx}0.40$, Appendix~\ref{app:prop2_depth}); a temporal-shuffle ablation confirms routing depends on $(M,\Sigma)$, not temporal ordering (Appendix~\ref{app:routing_ablations}).}
+{\looseness=-1 \textbf{Per-window statistics, not raw access, drive routing.} \emph{(i)} Swapping $\mathbf{x}_\text{raw}$ for $\text{RevIN}(\mathbf{x}_\text{raw})$ at the router degrades MSE by $60$--$88\%$ while entropy stays high (Table~\ref{tab:router_input}): the router needs the stripped $(M,\Sigma)$ \emph{content}, not a non-RevIN bypass. \emph{(ii)} Interpolating $\mathbf{x}_\alpha = (1{-}\alpha)\mathbf{x}_\text{raw} + \alpha\,\text{RevIN}(\mathbf{x}_\text{raw})$ phase-transitions only at $\alpha{\to}1$ (Figure~\ref{fig:dose_response}; $150$ runs; SNR-onset $\alpha^*{\approx}0.40$, Appendix~\ref{app:prop2_depth}); partial stripping is tolerable. \emph{(iii)} Temporal-shuffling the window leaves routing unchanged (Appendix~\ref{app:routing_ablations}): the active feature is the order-invariant $(M,\Sigma)$.}
 
 \begin{figure}[!htbp]
 \centering
@@ -1422,7 +1422,7 @@ and analogously $\dot{\ell}_2\big|_A \approx -\eta\,(1{-}p)\left\|\frac{\partial
 \begin{equation*}
 \dot{\mathbf{w}} = -\eta\,\frac{\partial\ell}{\partial\mathbf{w}} = -\eta\,(\ell_1 - \ell_2)\,p(1{-}p)\,\mathbf{h}
 \end{equation*}
-This update adjusts routing weights based on current expert performance, but does \emph{not} reshape $\mathbf{h}$ to favor one expert: the $A$-mediated feedback loop that drove the runaway in Part~(i) is absent. Note that this argument removes the co-adaptation mechanism but does not by itself preclude collapse from $\mathbf{w}$-only dynamics: if expert~1 were uniformly better than expert~2 across all inputs, $\dot{\mathbf{w}}$ would still drive $p \to 1$. Empirical non-collapse therefore additionally requires that $(\ell_1 - \ell_2)$ flips sign across input regimes, i.e.\ that experts specialize to different windows. The RR-MoA pool is constructed with topologically distinct heads (mean/last/max/attention/Conv1d-pool) precisely to satisfy this; the resulting per-window expert specialization is empirically validated in Figure~\ref{fig:routing_viz} and Table~\ref{tab:rrmoa} (entropy stays in $[1.0, 1.57]$ across 54/54 configurations).
+This update adjusts routing weights based on current expert performance, but does \emph{not} reshape $\mathbf{h}$ to favor one expert: the $A$-mediated feedback loop that drove the runaway in Part~(i) is absent. Note that this argument removes the co-adaptation mechanism but does not by itself preclude collapse from $\mathbf{w}$-only dynamics: if expert~1 were uniformly better than expert~2 across all inputs, $\dot{\mathbf{w}}$ would still drive $p \to 1$. Empirical non-collapse therefore additionally requires that $(\ell_1 - \ell_2)$ flips sign across input regimes, i.e.\ that experts specialize to different windows. The RR-MoA pool is constructed with topologically distinct heads (mean/last/max/attention/Conv1d-pool) precisely to satisfy this; the resulting per-window expert specialization is empirically validated in Figure~\ref{fig:routing_viz} and Table~\ref{tab:rrmoa} (entropy stays in $[0.93, 1.57]$ across 54/54 configurations).
 \end{proof}
 
 \textbf{Corollary (Raw routing decouples the router from $A$).}
@@ -1880,7 +1880,7 @@ Load-balance $\alpha{=}10.0$                         & $2.773$ ($+67.7\%$) & $1.
 ReMoE ReLU $+$ $L_1$                  & $1.586$ ($-4.1\%$) & $0.58$ & 16/60 (27\%) & 60/60 \\
 Expert-choice ($c{=}2$)                      & $1.590$ ($-3.9\%$) & $0.17$ & \textbf{44/60 (73\%)} & 60/60 \\
 \midrule
-\textbf{RR-MoA (ours)} & $\mathbf{0.540}$ (pooled) & $\mathbf{1.0\text{--}1.57}$ & \textbf{0/54 (0\%)} & 54/54 wins \\
+\textbf{RR-MoA (ours)} & $\mathbf{0.540}$ (pooled) & $\mathbf{0.93\text{--}1.57}$ & \textbf{0/54 (0\%)} & 54/54 wins \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2859,7 +2859,7 @@ Weather     & $0.209 \pm 0.007$ & $\mathit{0.198}$ & $\mathit{0.208}$ & $+5.5\%$
 
 \textbf{Honest interpretation.} Across the 6 datasets, the Raw-MLP MoE slightly outperforms Dual-Stream on average ($-1.5\%$), winning 3/6 datasets outright (ETTh2: $-5.7\%$; ETTm2: $-17.9\%$; Electricity: $-0.7\%$). It loses by $3$--$7\%$ on the three datasets with complex temporal dynamics (ETTh1, ETTm1, Weather). The TSFM is therefore not adding universal value to the gap-closing result; it adds dataset-dependent, modest value where complex dynamics exist, and contributes essentially nothing on the linear-dominated datasets.
 
-\textbf{Routing entropy diagnostics.} In all $30$ Raw-MLP MoE runs, routing entropy saturates near $\log K = 1.609$ (range $1.20$--$1.60$, mean $\approx 1.49$, i.e., $93\%$ of the uniform maximum), indicating the router degenerates to near-uniform mixing. Per-dataset means lie in $[1.31, 1.60]$: highest on Electricity ($1.60$, $99\%$ of $\log K$), lowest on ETTh2 ($1.31$, $81\%$). This means the Raw-MLP MoE is operating as a learned ensemble of $5$ size-diverse MLPs rather than as a per-sample mixture of specialists; the diversity comes from the heterogeneous expert capacities rather than from per-window routing decisions. \textbf{Contrast with main RR-MoA.} Under the same $K{=}5$, Top-$2$, raw-router protocol but \emph{with the frozen MOMENT-small backbone present}, main RR-MoA achieves mean entropy $1.34$ on the same six datasets ($83\%$ of $\log K$, $0.15$~nats lower than the backbone-free version), with per-dataset means spanning $[1.11, 1.44]$ (per-seed values span the broader $[1.0, 1.57]$ range cited in the abstract). The two most specialized routers (per-dataset mean) are on ETTh2 ($1.11$, $69\%$ of $\log K$) and ETTm2 ($1.18$, $73\%$); the least specialized on Electricity ($1.44$, $90\%$). Removing the backbone shifts entropy uniformly toward $\log K$ across all six datasets, quantifying the difference between ``MoE-as-ensemble'' (no backbone) and ``MoE-as-specialist-mixture'' (with backbone): the backbone induces enough hidden-state structure that the same Conv1d gate, on the same raw input, makes substantively non-uniform routing decisions. Figure~\ref{fig:routing_viz} corroborates this with expert-assignment scatter against amplitude/volatility quartiles.
+\textbf{Routing entropy diagnostics.} In all $30$ Raw-MLP MoE runs, routing entropy saturates near $\log K = 1.609$ (range $1.20$--$1.60$, mean $\approx 1.49$, i.e., $93\%$ of the uniform maximum), indicating the router degenerates to near-uniform mixing. Per-dataset means lie in $[1.31, 1.60]$: highest on Electricity ($1.60$, $99\%$ of $\log K$), lowest on ETTh2 ($1.31$, $81\%$). This means the Raw-MLP MoE is operating as a learned ensemble of $5$ size-diverse MLPs rather than as a per-sample mixture of specialists; the diversity comes from the heterogeneous expert capacities rather than from per-window routing decisions. \textbf{Contrast with main RR-MoA.} Under the same $K{=}5$, Top-$2$, raw-router protocol but \emph{with the frozen MOMENT-small backbone present}, main RR-MoA achieves mean entropy $1.34$ on the same six datasets ($83\%$ of $\log K$, $0.15$~nats lower than the backbone-free version), with per-dataset means spanning $[1.11, 1.44]$ (per-seed values span the broader $[0.93, 1.57]$ range reported in \S\ref{sec:rrmoa}). The two most specialized routers (per-dataset mean) are on ETTh2 ($1.11$, $69\%$ of $\log K$) and ETTm2 ($1.18$, $73\%$); the least specialized on Electricity ($1.44$, $90\%$). Removing the backbone shifts entropy uniformly toward $\log K$ across all six datasets, quantifying the difference between ``MoE-as-ensemble'' (no backbone) and ``MoE-as-specialist-mixture'' (with backbone): the backbone induces enough hidden-state structure that the same Conv1d gate, on the same raw input, makes substantively non-uniform routing decisions. Figure~\ref{fig:routing_viz} corroborates this with expert-assignment scatter against amplitude/volatility quartiles.
 
 \textbf{What this does and does not say about the paper's core claims.} This finding does \emph{not} undermine the central diagnosis of the paper: normalization-induced routing collapse on hidden-state routers (AdaMix) is a real, mechanistically-explained phenomenon, predicted by Observation for any TSFM with internal RevIN and verified empirically on MOMENT-small/large; pre-normalization routing (RR-MoA) is the causal fix at the router input. That diagnosis is independent of whether the MOMENT backbone is the most efficient architecture for forecasting on every dataset: the mechanism predicts the same failure mode for any backbone with internal instance normalization that satisfies the bound's premise. What this finding \emph{does} say is that the dual-stream gap-closing story should be reframed: rather than ``the TSFM has complementary nonlinear features that dual-stream extracts,'' the more accurate reading is ``the TSFM contributes complementary signal on datasets with nonlinear dynamics (where it wins by $1$--$6\%$), and contributes essentially nothing on datasets where DLinear is already near-optimal (where pure raw-MLP MoE matches or beats it).''
 
