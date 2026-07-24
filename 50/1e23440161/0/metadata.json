@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "501e23440161",
+  "session_id": "58a28c47-4f66-444e-b22b-26fac4d701f6",
+  "strategy": "manual-commit",
+  "created_at": "2026-07-24T17:19:43.397951Z",
+  "branch": "rebuttal-local",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "rebuttal/DRAFT.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7edc1506ca0c",
+  "token_usage": {
+    "input_tokens": 1201,
+    "cache_creation_tokens": 132079,
+    "cache_read_tokens": 3061903,
+    "output_tokens": 74849,
+    "api_call_count": 29
+  },
+  "session_metrics": {
+    "turn_count": 3
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-07-24T17:19:43.282711Z",
+    "agent_lines": 371,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 371,
+    "agent_percentage": 100
+  }
+}

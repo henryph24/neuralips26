@@ -1,0 +1,12 @@
+Continue working on the rebuttal draft 
+write more explicitly (bad writing: we will foreground the arc <- read hard to understand for non native).
+
+---
+
+For writing point 3 to 8, be more respectful to meta reviewer. For instance, instead of saying It does not, RR-MoA also wins … write in a way that show them we now why our writing confuses them. Then clarify. Review for similar writing issues. 
+
+ For writing: H>720 remains untested, say that we are grareful for this and will incorporate in upcoming work. Review for similar chances for writing such accordingly
+
+---
+
+Add a bit explainer on: “ rate-distortion and information-bottleneck framings “
