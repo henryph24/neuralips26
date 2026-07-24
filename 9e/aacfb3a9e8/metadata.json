@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "9eaacfb3a9e8",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 10,
+  "files_touched": [
+    "scripts/modal_input_len_ablation.py",
+    "scripts/modal_ria_offsuite.py",
+    "scripts/ria_offsuite_core.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9e/aacfb3a9e8/0/metadata.json",
+      "transcript": "/9e/aacfb3a9e8/0/full.jsonl",
+      "content_hash": "/9e/aacfb3a9e8/0/content_hash.txt",
+      "prompt": "/9e/aacfb3a9e8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 418,
+    "cache_creation_tokens": 2579776,
+    "cache_read_tokens": 118490860,
+    "output_tokens": 611536,
+    "api_call_count": 230
+  }
+}
