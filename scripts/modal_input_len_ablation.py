@@ -40,6 +40,9 @@ image = (
     .add_local_dir("scripts", "/root/scripts")
     .add_local_file("data/weather.csv", "/root/data/weather.csv")
     .add_local_file("data/electricity.csv", "/root/data/electricity.csv")
+    .add_local_file("data/exchange_rate.csv", "/root/data/exchange_rate.csv")
+    .add_local_file("data/solar.csv", "/root/data/solar.csv")
+    .add_local_file("data/traffic.csv", "/root/data/traffic.csv")
 )
 
 app = modal.App("rrmoa-inputlen-ablation", image=image)
