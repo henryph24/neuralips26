@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "c8e23ac0669c",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 10,
+  "files_touched": [
+    "scripts/input_len_ablation.py",
+    "scripts/modal_input_len_ablation.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c8/e23ac0669c/0/metadata.json",
+      "transcript": "/c8/e23ac0669c/0/full.jsonl",
+      "content_hash": "/c8/e23ac0669c/0/content_hash.txt",
+      "prompt": "/c8/e23ac0669c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 278,
+    "cache_creation_tokens": 1706753,
+    "cache_read_tokens": 58567874,
+    "output_tokens": 441547,
+    "api_call_count": 153
+  }
+}
