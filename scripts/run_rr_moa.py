@@ -95,6 +95,27 @@ class DeepMLPHead(nn.Module):
     def forward(self, h):
         return self.net(h.mean(dim=1))
 
+class HyperExpertHead(nn.Module):
+    """Dynamically-generated expert (rebuttal 8b2Z: "learned / dynamically
+    generated ... adapter pools"). Instead of a hand-designed pooling op, a small
+    hypernetwork conditioned on the pooled hidden state generates the expert's
+    transform per sample (FiLM modulation of a learned readout), so the expert
+    is produced at inference rather than fixed by hand. The raw router (the
+    collapse fix) is unchanged; only the expert pool is generated."""
+    def __init__(self, d_model, output_dim, hidden=64):
+        super().__init__()
+        self.hidden = hidden
+        self.down = nn.Linear(d_model, hidden)
+        self.act = nn.GELU()
+        self.film = nn.Linear(hidden, 2 * hidden)   # hypernet: generates (gamma, beta)
+        self.readout = nn.Linear(hidden, output_dim)
+    def forward(self, h):
+        z = self.act(self.down(h.mean(dim=1)))      # (B, hidden)
+        gb = self.film(z)                           # (B, 2*hidden), generated per sample
+        gamma, beta = gb[:, :self.hidden], gb[:, self.hidden:]
+        return self.readout(gamma * z + beta)       # (B, output_dim)
+
+
 HEAD_CLASSES = [MeanPoolHead, LastTokenHead, MaxPoolHead, AttentionPoolHead, Conv1dPoolHead]
 HEAD_NAMES = ["mean", "last", "max", "attention", "conv1d"]
 
@@ -112,6 +133,9 @@ EXPERT_POOLS = {
     "large-diverse": (HEAD_CLASSES + list(MACRO_EXPERT_CLASSES),
                       HEAD_NAMES + list(MACRO_EXPERT_NAMES)),
     "deep-mlp":      ([DeepMLPHead], ["deep_%d" % i for i in range(5)]),
+    # Rebuttal (8b2Z): dynamically-generated experts (hypernetwork/FiLM), the
+    # "learned / dynamically generated" pool the paper lists as open.
+    "hyper-gen":     ([HyperExpertHead], ["hyper_%d" % i for i in range(5)]),
 }
 
 

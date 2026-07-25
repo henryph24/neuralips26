@@ -29,7 +29,7 @@ from input_len_ablation import (
 BACKBONE = "AutonLab/MOMENT-1-small"
 _FIXED = {"linear": SEED_ADAPTERS[0], "attention": SEED_ADAPTERS[3], "conv": SEED_ADAPTERS[4]}
 # one expert per distinct type in the pool
-POOL_K = {"canonical": 5, "macro": 5, "large-diverse": 10, "deep-mlp": 5}
+POOL_K = {"canonical": 5, "macro": 5, "large-diverse": 10, "deep-mlp": 5, "hyper-gen": 5}
 
 
 def _setup(device):
