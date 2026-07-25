@@ -1,0 +1,9 @@
+we need to split this into more easy to follow sentence: "This is the central point and we treat it as such. The reviewer is correct that our abstract’s headline numbers (54/54; 12-79% over full fine-tuning) are all comparisons within the frozen-adapter/PEFT regime; those are the right baselines for the frozen-adapter question we ask, and we agree a from-scratch DLinear belongs beside them as the out-of-regime yardstick, which is exactly right for RR-MoA-proper, the minimal diagnostic probe whose only role is to isolate the router input; we would gently add that it does not carry over to the method we deploy: Residual-IA+, reported in the submitted Appendix P, matches or beats DLinear rather than trailing it:"
+
+---
+
+what was: "the 546-run sweep was development effort, " even mean, is this already availbe in the submission or we promise to include this. Write clearer
+
+---
+
+"yardstick" is not a common word, use easier term, review the for response for such hard vocab for non native to understand
