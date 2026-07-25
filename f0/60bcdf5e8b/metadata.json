@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f060bcdf5e8b",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "scripts/modal_learned_pool.py",
+    "scripts/pool_core.py",
+    "scripts/run_rr_moa.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f0/60bcdf5e8b/0/metadata.json",
+      "transcript": "/f0/60bcdf5e8b/0/full.jsonl",
+      "content_hash": "/f0/60bcdf5e8b/0/content_hash.txt",
+      "prompt": "/f0/60bcdf5e8b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 778,
+    "cache_creation_tokens": 1426655,
+    "cache_read_tokens": 209048587,
+    "output_tokens": 900382,
+    "api_call_count": 425
+  }
+}
