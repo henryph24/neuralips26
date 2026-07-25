@@ -990,3 +990,7 @@ No *core scientific claim* is left as a bare promise.
 The single most valuable pre-submission edit is #1 (qualify the LayerNorm negative-control claim); the single fact to double-check is #2 (SR-MoA 13–42% vs 23–38%).</result>
 <usage><subagent_tokens>127220</subagent_tokens><tool_uses>18</tool_uses><duration_ms>577956</duration_ms></usage>
 </task-notification>
+
+---
+
+/commit-push
