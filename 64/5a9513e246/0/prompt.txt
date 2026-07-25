@@ -1,0 +1,55 @@
+regarding: "response_pm4m.md", remove mechanical souless writing such as: " because the PDF is frozen, presentation fixes are stated as camera-ready commitments (“we will…”)."
+
+---
+
+can we write this in a way that is more easy to read: """We read the criticism as fair about our framing, not our evidence: we led with “5/6 match-or-beat” and titled the appendix “Closing the DLinear Gap,” which foregrounded the one losing cell (ETTh1/H=96). We will (i) promote the full grid and the 65:11 win-count into the main text, (ii) retitle to the outperformance the numbers show, and (iii) reframe the abstract’s DLinear comparison as scope, not deficit: “Because the router isolates the collapse mechanism rather than maximizing accuracy, the minimal RR-MoA probe trails a from-scratch DLinear on linear-dominated datasets; our deployment adapter Residual-IA+ removes this gap, matching or beating DLinear across six backbones and four horizons.” We also accept the narrow, true version: RR-MoA-proper does trail DLinear in absolute MSE, sharpest on ETTh1/H=96, and we will introduce it plainly as a diagnostic instrument, not an accuracy claim."""
+
+---
+
+instead of this: "W6 (minor). All accepted. The router parameter count is 853 (Conv1d 528 + Linear 325), matching the main text, Fig 2, Table A.1, and the released code; the Checklist’s “~1.1K” was a stale rounding and we will correct it." I think in the unified rebuttal we have proper reason while we estimated it 1100 initially
+
+---
+
+I mean give them reason why it was 1100, earlier we count in range of 1000-1200 depending on experts or something
+
+---
+
+let remove what they don't raise such as: " so we will correct "13-42%" to the exact 23-38% and keep the over-RR
+         +-MoA referent explicit. We will also remove the stray parenthesis in R(D) and standardize "fine-tuning.""
+
+---
+
+I mean, clarify the referent, but not the range
+
+---
+
+Emphasize, praise this reviewer as reading very in details
+
+---
+
+We are not addressing: "W3 — The collapse mechanism predicts that backbones without learnable-affine encoder normalization should not collapse, and the paper confirms Moirai does not. Yet RR-MoA still "wins" 12–29% on Moirai. If there is no collapse to fix, this gain must come from something other than collapse-repair — most plausibly the predictive value of the raw signal itself, consistent with the Pure Raw-MLP result in P.3. This weakens the causal chain "collapse → raw routing is the fix," and the cross-backbone wins should not be presented as uniform validation of the diagnosis." explicitly enough, or the current writing in the rebutall is not clear enough
+
+---
+
+lovely lovely, now you read  these one by one and see if we leave anything not explicit enough: """Weaknesses
+
+W1 — The abstract's "54/54 wins" and "beats full fine-tuning by 12–79%" are all measured against frozen-adapter / PEFT baselines, i.e., methods constrained to the same frozen-backbone regime the paper studies. Table 4, Appendix M, and Appendix P.3 show that the whole RR-MoA family is beaten in absolute MSE by a 49K-parameter DLinear (e.g., 0.680 vs 0.416 on ETTh1) and that the TSFM backbone is explicitly "dead weight" on several datasets. This is a material caveat that does not appear in the abstract or introduction. I would ask the authors to move the DLinear comparison and the backbone-contribution analysis into the main text and to reframe the contribution accordingly; as currently presented, the framing oversells a method whose absolute forecasting quality is below a trivial linear baseline.
+
+W2 — Figure 2 is too simple and small; parts of it overlap, making it difficult to see clearly, and it fails to clearly illustrate the paper’s core modules and contributions.
+
+W3 — The collapse mechanism predicts that backbones without learnable-affine encoder normalization should not collapse, and the paper confirms Moirai does not. Yet RR-MoA still "wins" 12–29% on Moirai. If there is no collapse to fix, this gain must come from something other than collapse-repair — most plausibly the predictive value of the raw signal itself, consistent with the Pure Raw-MLP result in P.3. This weakens the causal chain "collapse → raw routing is the fix," and the cross-backbone wins should not be presented as uniform validation of the diagnosis.
+
+W4 — Closing the DLinear gap requires a 546-run sweep plus a stack of dataset-specific engineering choices (shared NLinear branch, b=−2 gate init, 5-epoch warmup, validation-based early stopping), after which the result is still only 5/6 match-or-beat at a −2.8% mean gap (ETTh1 still loses). Appendix P.3 then shows a backbone-free Raw-MLP MoE matches or beats the dual-stream variant on average, indicating the gains come largely from the raw/NLinear branch (essentially DLinear) rather than the TSFM. This makes Residual-IA+ read as heavy tuning to approach a linear baseline, and its generalization beyond these six benchmarks is unclear.
+
+W5 — The (M,Σ)-centric account is in tension with the authors' own ablations. The sufficient-statistic router using only [μ,σ] degrades MSE by +48% (Appendix F), showing (μ,σ) is not sufficient, while temporal shuffling barely changes performance, indicating the router relies on order-invariant distributional content broader than (M,Σ). Since both Observation 1 and R(D) are built specifically around (M,Σ), the theory does not cleanly match the empirically operative signal.
+
+W6 — Minor Issue:
+
+Inconsistencies in router parameter counts: The main text, Fig. 2, and Table A.1 all list 853, while item 4 of the Checklist states ~1100.
+An extra parenthesis is present in R(D) on line 146.
+The statement “13–42% over RR-MoA on six datasets” on line 64 is incorrect, it should be over baselines.
+The terms “finetuning” and “fine-tuning” are used inconsistently; they should be standardized to a single form.""" for this particular reviewer who we needs to bring from 2 to 3
+
+---
+
+apply
