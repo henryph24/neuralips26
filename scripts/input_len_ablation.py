@@ -63,13 +63,14 @@ def _mask_last_l(batch, seq_len, input_len, device):
 
 def train_rr_moa_masked(model, blocks, X_train, Y_train, X_test, Y_test, input_len,
                         device="cuda", n_epochs=15, forecast_horizon=96, batch_size=128,
-                        backbone_type="moment", K=5, top_k=2, router_input_mode="raw"):
+                        backbone_type="moment", K=5, top_k=2, router_input_mode="raw",
+                        expert_pool="canonical"):
     """Fork of scripts/run_rr_moa.train_rr_moa with a last-L input mask and a
     raw router that reads only the L observed steps.  Backbone strictly frozen."""
     hdim = _get_hidden_dim(model)
     adapter = RawRoutedMoA(
         hdim, forecast_horizon, input_len=input_len, K=K, hidden=64, top_k=top_k,
-        router_input_mode=router_input_mode,
+        router_input_mode=router_input_mode, expert_pool=expert_pool,
     ).to(device)
 
     trainable = [p for p in adapter.parameters() if p.requires_grad]

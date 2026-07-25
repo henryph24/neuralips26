@@ -83,6 +83,18 @@ class Conv1dPoolHead(nn.Module):
         x = F.gelu(self.conv(h.permute(0, 2, 1)))
         return self.out(x.mean(dim=2))
 
+class DeepMLPHead(nn.Module):
+    """Deeper (2-hidden-layer) MLP expert -- a higher-capacity adapter than the
+    canonical single-hidden-layer heads."""
+    def __init__(self, d_model, output_dim, hidden=64):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(d_model, hidden), nn.GELU(),
+            nn.Linear(hidden, hidden), nn.GELU(),
+            nn.Linear(hidden, output_dim))
+    def forward(self, h):
+        return self.net(h.mean(dim=1))
+
 HEAD_CLASSES = [MeanPoolHead, LastTokenHead, MaxPoolHead, AttentionPoolHead, Conv1dPoolHead]
 HEAD_NAMES = ["mean", "last", "max", "attention", "conv1d"]
 
@@ -96,6 +108,10 @@ EXPERT_POOLS = {
     "identical-mean":   ([MeanPoolHead],       ["mean_%d" % i for i in range(5)]),
     "identical-conv1d": ([Conv1dPoolHead],      ["conv1d_%d" % i for i in range(5)]),
     "identical-attn":   ([AttentionPoolHead],   ["attn_%d" % i for i in range(5)]),
+    # Rebuttal (8b2Z): richer / larger heterogeneous pools beyond the canonical five.
+    "large-diverse": (HEAD_CLASSES + list(MACRO_EXPERT_CLASSES),
+                      HEAD_NAMES + list(MACRO_EXPERT_NAMES)),
+    "deep-mlp":      ([DeepMLPHead], ["deep_%d" % i for i in range(5)]),
 }
 
 
