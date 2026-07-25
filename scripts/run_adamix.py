@@ -550,7 +550,7 @@ def main():
     parser.add_argument("--disable-revin", action="store_true",
                         help="Controlled ablation: disable RevIN inside MOMENT backbone")
     parser.add_argument("--norm-type", default="revin",
-                        choices=["revin", "batchnorm", "groupnorm"],
+                        choices=["revin", "batchnorm", "groupnorm", "layernorm"],
                         help="Normalization type inside MOMENT (generalization test)")
     # --- MoE rescue-baseline flags (Section 3 rescue sub-table) -----------
     parser.add_argument("--router-type", default="softmax",

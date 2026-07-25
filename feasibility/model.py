@@ -54,6 +54,25 @@ def load_moment(device: str = "cpu", model_name: str = "AutonLab/MOMENT-1-small"
                     return self.gn(x)
                 return x
         model.normalizer = _GroupNormNormalizer().to(device)
+    elif norm_type == "layernorm":
+        class _LayerNormNormalizer(nn.Module):
+            """Replace RevIN with a per-window LayerNorm over the time axis
+            (input-position, learnable affine) for the normalizer-family
+            generalization test. Like RevIN it strips per-window location-scale,
+            but with a single shared affine rather than per-channel affine."""
+            def __init__(self, num_features: int = 512):
+                super().__init__()
+                self.ln = nn.LayerNorm(num_features)
+
+            def forward(self, x, mode="norm", mask=None):
+                if mode == "norm":
+                    # x: (B, C, L). LayerNorm over the last (time) axis strips
+                    # each window's mean/scale, mirroring RevIN's stripping.
+                    if x.shape[-1] != self.ln.normalized_shape[0]:
+                        return torch.nn.functional.layer_norm(x, (x.shape[-1],))
+                    return self.ln(x)
+                return x  # denorm identity (no reversible inverse), as for BN/GN
+        model.normalizer = _LayerNormNormalizer().to(device)
 
     return model
 
