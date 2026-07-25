@@ -181,3 +181,7 @@ run it
 <status>completed</status>
 <summary>Background command "Run full 12-cell expert-pool experiment on Modal A10G" completed (exit code 0)</summary>
 </task-notification>
+
+---
+
+yes it is great, but the writing in the rebuttal response should not give the impression that we hastily runs these to defned. Write in a way that still show the result but say that inial feasibility suggests that ...
