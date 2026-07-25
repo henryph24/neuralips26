@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "61ff7ed7d8d6",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "feasibility/model.py",
+    "scripts/modal_convergence.py",
+    "scripts/modal_earns_keep.py",
+    "scripts/modal_norm_swap.py",
+    "scripts/norm_swap_core.py",
+    "scripts/run_adamix.py",
+    "scripts/tsfm_earns_keep_core.py",
+    "scripts/w7_significance_reanalysis.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/61/ff7ed7d8d6/0/metadata.json",
+      "transcript": "/61/ff7ed7d8d6/0/full.jsonl",
+      "content_hash": "/61/ff7ed7d8d6/0/content_hash.txt",
+      "prompt": "/61/ff7ed7d8d6/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 248,
+    "cache_creation_tokens": 1014694,
+    "cache_read_tokens": 43215936,
+    "output_tokens": 327856,
+    "api_call_count": 135
+  }
+}

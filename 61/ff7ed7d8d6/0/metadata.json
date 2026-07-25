@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "61ff7ed7d8d6",
+  "session_id": "b953e6f9-5b97-4f46-9569-cc5e76299704",
+  "strategy": "manual-commit",
+  "created_at": "2026-07-25T06:04:12.583924Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "feasibility/model.py",
+    "scripts/modal_convergence.py",
+    "scripts/modal_earns_keep.py",
+    "scripts/modal_norm_swap.py",
+    "scripts/norm_swap_core.py",
+    "scripts/run_adamix.py",
+    "scripts/tsfm_earns_keep_core.py",
+    "scripts/w7_significance_reanalysis.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "6c72efd688c4",
+  "token_usage": {
+    "input_tokens": 248,
+    "cache_creation_tokens": 1014694,
+    "cache_read_tokens": 43215936,
+    "output_tokens": 327856,
+    "api_call_count": 135
+  },
+  "session_metrics": {
+    "turn_count": 11
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-07-25T06:04:12.056257Z",
+    "agent_lines": 577,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 577,
+    "agent_percentage": 100
+  }
+}
