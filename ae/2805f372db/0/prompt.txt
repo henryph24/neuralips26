@@ -1,0 +1,49 @@
+No em-dash at all in all rebutall response
+
+---
+
+fix that too
+
+---
+
+so we have individual rebuttal responses by. Do we need a separate one for AC: """Meta Review of Submission16168 by Area Chair QYXJ
+Meta Reviewby Area Chair QYXJ19 Jul 2026, 14:14 (modified: 24 Jul 2026, 00:57)Senior Area Chairs, Area Chairs, Authors, Reviewers Submitted, Program Chairs, Area Chair QYXJRevisions
+Metareview:
+The paper studies the problem of collapsing mixture of experts to a single expert when attached to time-series foundation models. Among the key strengths of the method include:
+
+studies and interesting and practically relevant problem
+paper is well-presented and includes diverse set of experiments.
+the idea is novel with good causal analyses.
+the proposed signal-relation metric carries practical value.
+Some important concerns mentioned by the reviewers are:
+
+overstate of claims in the paper and requires reframing of contributions
+the (M,Σ)-centric quantity contradicts with paper's ablations.
+experimental setup focusses only on forecasting (primary) and imputation (secondary).
+the method requires a strictly frozen backbone.
+the approach seems to be memory-consuming since it operates on raw inputs.
+the theoretical analysis is limited to interaction between IN and router inputs.
+how the approach will scale to more number of experts while avoiding memory bandwidth bottleneck.
+causal intervention is limited to IN.
+The paper received mix initial ratings. Despite two reviewers leaning towards paper acceptance, all of the reviewers identified important points and concerns that need to be addressed in the rebuttal phase. Authors can primarily focus on 3-8 points and clarify any factual errors made by reviewers.
+
+""". Because I notice that there is a button [Image #5] in open review. Check the NeurIPS 2026 instructions on the web first
+
+---
+
+create a pdf version of each
+
+---
+
+for: "Response to Reviewer 8b2Z" who gives us 4, be more thankful instead of saying they miss out on some of the reading
+
+---
+
+same for reviewer who gives 5
+
+---
+
+for reviewer 8b2z: "Appendix D.1 adds rate-distortion and information-bottleneck framings toward a
+broader account. We agree feature asymmetries beyond location-scale are not yet formalized,
+and our own ablations already show the operative routing signal is broader than (μ,σ) (App. F,
+SSR +48%); formalizing that is valuable future theory" <- a bit hard to follow. Add a bit explainer on: “ rate-distortion and information-bottleneck framings “. "the operative routing signal " can be rewritten for easier understanding
