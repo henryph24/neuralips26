@@ -16,12 +16,12 @@ Underlying all of them is one general finding: normalization-induced routing col
 
 ## If 8b2Z raises a NEW point — open with one line of thanks, then answer from this fact-sheet
 
-- **Memory:** 853-param router, +6 MB on a 359 MB backbone (+1.7%), <0.1 ms; the frozen backbone is the floor every adapter already loads (Table B.1).
+- **Memory:** 853-param router, +6 MB on a 359 MB backbone (+1.7%), under 0.1 ms; the frozen backbone is the floor every adapter already loads (Table B.1).
 - **Expert scaling:** router input is K-independent; only the 64→K logit head grows; Top-2 keeps compute and memory traffic at O(2); stable across K∈{1..10} (Table I.2).
 - **Normalizer generality:** RevIN→BatchNorm 0.62→0.004, GroupNorm 0.51→0.000, [NEW] input-position LayerNorm →0.000; encoder-internal LayerNorm/RMSNorm (Chronos, Timer-XL) do not collapse. Rule: collapse iff the normalizer strips per-window statistics at the router's input.
-- **Task diversity:** [NEW] classification entropy 1.46-1.59 (no collapse); imputation 7/8; [NEW] input-length 72 runs, no collapse at any L, raw > normalized routing at all 24 cells.
+- **Task diversity:** [NEW] classification entropy 1.46-1.59 (no collapse); imputation 7/8; [NEW] input-length 72 runs, no collapse at any L, raw beats normalized routing at all 24 cells.
 - **Convergence:** [NEW] 200 epochs (incl. Electricity, the slowest to converge), entropy 1.02-1.34, MSE stable-to-improved vs 15 epochs.
-- **Statistics:** [NEW] pooled Wilcoxon p ≈ 3e-11 uncorrected (Bonferroni still < 1e-9); Traffic null genuine even uncorrected (+2.9%, p=0.88).
+- **Statistics:** [NEW] pooled Wilcoxon p ≈ 3×10⁻¹¹ uncorrected (Bonferroni still below 10⁻⁹); Traffic null genuine even uncorrected (+2.9%, p=0.88).
 - **Raw routing on an existing MoE:** AdaMix-Raw recovers entropy 0.49→1.55, MSE improves 42-88% across all 12 cells — isolates the router input as the cause.
 - **Vision:** ViT-B/16 + InstanceNorm1d collapses (0.000); ResNet-18 does not (App. H.1).
 - **Significance / generality:** general property of instance-normalized backbones (App. H/H.1); R(D) is training-free and a-priori (ρ=-0.88, n=9) and abstains on the Traffic null.
