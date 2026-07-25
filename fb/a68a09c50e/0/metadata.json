@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "fba68a09c50e",
+  "session_id": "c7ec746b-6118-4c6c-bc50-6e942e056935",
+  "strategy": "manual-commit",
+  "created_at": "2026-07-25T13:23:51.341751Z",
+  "branch": "main",
+  "checkpoints_count": 15,
+  "files_touched": [
+    "rebuttal/response_8b2z.md",
+    "rebuttal/response_jemj.md",
+    "rebuttal/response_pm4m.md",
+    "scripts/anomaly_core.py",
+    "scripts/horizon_k_core.py",
+    "scripts/input_len_ablation.py",
+    "scripts/modal_anomaly.py",
+    "scripts/modal_horizon_k.py",
+    "scripts/modal_pool.py",
+    "scripts/modal_ria_horizon.py",
+    "scripts/pool_core.py",
+    "scripts/run_rr_moa.py"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-4-8[1m]",
+  "turn_id": "62dde13c2333",
+  "token_usage": {
+    "input_tokens": 709,
+    "cache_creation_tokens": 1302328,
+    "cache_read_tokens": 201104900,
+    "output_tokens": 809225,
+    "api_call_count": 387
+  },
+  "session_metrics": {
+    "turn_count": 57
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-07-25T13:23:50.414351Z",
+    "agent_lines": 685,
+    "human_added": 0,
+    "human_modified": 2,
+    "human_removed": 0,
+    "total_committed": 687,
+    "agent_percentage": 99.70887918486171
+  }
+}

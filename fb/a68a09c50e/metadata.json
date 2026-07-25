@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "fba68a09c50e",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 15,
+  "files_touched": [
+    "rebuttal/response_8b2z.md",
+    "rebuttal/response_jemj.md",
+    "rebuttal/response_pm4m.md",
+    "scripts/anomaly_core.py",
+    "scripts/horizon_k_core.py",
+    "scripts/input_len_ablation.py",
+    "scripts/modal_anomaly.py",
+    "scripts/modal_horizon_k.py",
+    "scripts/modal_pool.py",
+    "scripts/modal_ria_horizon.py",
+    "scripts/pool_core.py",
+    "scripts/run_rr_moa.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/fb/a68a09c50e/0/metadata.json",
+      "transcript": "/fb/a68a09c50e/0/full.jsonl",
+      "content_hash": "/fb/a68a09c50e/0/content_hash.txt",
+      "prompt": "/fb/a68a09c50e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 709,
+    "cache_creation_tokens": 1302328,
+    "cache_read_tokens": 201104900,
+    "output_tokens": 809225,
+    "api_call_count": 387
+  }
+}
