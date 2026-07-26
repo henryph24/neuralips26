@@ -1,6 +1,6 @@
 **Response to Reviewer Pm4m**
 
-We thank the reviewer for the careful, constructive review, and are glad the problem was found practically important, the contributions easy to follow, and the experiments extensive. We are grateful for the close reading, down to the router parameter count and α initialization, and for noting that addressing these concerns would raise the score. We address every point below; all supporting results are in the submitted paper unless tagged [NEW].
+We thank the reviewer for the careful, constructive review, for the close reading down to the router parameter count and α initialization, and for noting that addressing these concerns would raise the score. We address every point below; all supporting results are in the submitted paper unless tagged [NEW].
 
 **W1 (framing / DLinear).** This is the reviewer's central concern, and we take it seriously. The reviewer is correct that our abstract's headline numbers (54/54; 12-79% over full fine-tuning) are all comparisons within the frozen-adapter/PEFT regime. Those are the right baselines for the frozen-adapter question we ask, and we agree a from-scratch DLinear belongs beside them as a benchmark from outside that regime. Against that benchmark, the reviewer's point holds for RR-MoA-proper, the minimal diagnostic probe whose only role is to isolate the router input. But it does not apply to the variant we deploy. Residual-IA+, reported in the submitted Appendix P, matches or beats DLinear rather than trailing it:
 

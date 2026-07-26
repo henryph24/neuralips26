@@ -1,6 +1,6 @@
 **Response to Reviewer jemj**
 
-We are very grateful for the reviewer's generous and careful assessment, and for highlighting the paper's novelty, its rigorous causal analysis, the strength and breadth of the experiments, and the practical value of the signal-ratio metric. Below are brief answers to the four questions, folding in the two limitations noted.
+We are very grateful for the reviewer's generous assessment, and especially for valuing the paper's novelty and the signal-ratio metric. Below are brief answers to the four questions, folding in the two limitations noted.
 
 **Task diversity / Q1 (classification, anomaly).** [NEW] We ran RR-MoA on three UEA classification datasets and a reconstruction-based anomaly check on SMD, 3 seeds each. Routing entropy stays healthy in every cell (near the log 5 ≈ 1.61 maximum, far from the 0.00 collapse floor), so the anti-collapse mechanism is not forecasting-specific. Frozen-backbone features cap absolute accuracy and detection, so we read both as mechanism-generalization, not performance claims.
 
