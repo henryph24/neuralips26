@@ -2,10 +2,10 @@
 
 We thank the reviewer for the careful and constructive review. We are glad the reviewer found the problem practically important, the paper's contributions easy to follow, and the experiments extensive. We are also grateful for the exceptionally close reading, down to the router parameter count and the α initialization, and for noting that addressing these concerns would raise the score. We address every point below; all supporting results are already in the submitted paper unless tagged [NEW].
 
-**W1 (framing / DLinear).** This is the reviewer's central concern, and we take it seriously. The reviewer is correct that our abstract's headline numbers (54/54; 12-79% over full fine-tuning) are all comparisons within the frozen-adapter/PEFT regime. Those are the right baselines for the frozen-adapter question we ask, and we agree a from-scratch DLinear belongs beside them as a benchmark from outside that regime. Against that benchmark, the reviewer's point holds for RR-MoA-proper, the minimal diagnostic probe whose only role is to isolate the router input. But it does not apply to the method we deploy. Residual-IA+, reported in the submitted Appendix P, matches or beats DLinear rather than trailing it:
+**W1 (framing / DLinear).** This is the reviewer's central concern, and we take it seriously. The reviewer is correct that our abstract's headline numbers (54/54; 12-79% over full fine-tuning) are all comparisons within the frozen-adapter/PEFT regime. Those are the right baselines for the frozen-adapter question we ask, and we agree a from-scratch DLinear belongs beside them as a benchmark from outside that regime. Against that benchmark, the reviewer's point holds for RR-MoA-proper, the minimal diagnostic probe whose only role is to isolate the router input. But it does not apply to the variant we deploy. Residual-IA+, reported in the submitted Appendix P, matches or beats DLinear rather than trailing it:
 
 - 65 significant wins vs 11 losses (5.9:1); 107/123 match-or-beat (87%) across 6 backbones × 6 datasets × 4 horizons.
-- 6/6 at the H=192 deployment horizon; MOMENT-large 23/24 with zero losses (16 significant wins); Moirai-MoE 15/15 (100%).
+- 6/6 at H=192; MOMENT-large 23/24 with zero losses (16 significant wins); Moirai-MoE 15/15 (100%).
 - It dominates on non-stationary data at long horizons (ETTm2 -27.0% at H=720; ETTh2 wins at all four horizons).
 - Even at the single least-favorable case cited (MOMENT-small, H=96), the net mean gap is -2.8%, a win, with ETTh1 the only loss.
 
