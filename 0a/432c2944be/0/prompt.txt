@@ -1,0 +1,281 @@
+soften the tone: "This is exactly the experiment
+we ran, and it is in the submission. " in 8b2z rebuttal response
+
+---
+
+if we had done, make sure we refer to a correct appendix. Here is the original submission again /Users/hungpq2412/Downloads/16168_Raw_Routed_Mixture_of_Ad.pdf
+
+---
+
+that is really seriousm launch subagents to independetly review if we refer to proper tables or figures
+
+---
+
+/commit-push
+
+---
+
+This sentence in the response to pm4m: "The criticism is fair about our framing, not our evidence. " reads quite AI-ish and not warm. I want something like: "We acknowledge that the reviewer's comment is correct about our framing, yet we'd like to further clarify that..." Review for similar class of writing in all responses
+
+---
+
+/commit-push
+
+---
+
+One more pass: on tone, make the writing reads warmer, human, easy for non-native. Easy sentence structure
+
+---
+
+At beginning of each rebuttal response echo the strengths recognized by the reviewer, thank them. We should give the impression that while each response is tailored for individual reviewer, we want the meta-reviewer to like our response. Here is the meta reviewer again: """Metareview:
+The paper studies the problem of collapsing mixture of experts to a single expert when attached to time-series foundation models. Among the key strengths of the method include:
+
+studies and interesting and practically relevant problem
+paper is well-presented and includes diverse set of experiments.
+the idea is novel with good causal analyses.
+the proposed signal-relation metric carries practical value.
+Some important concerns mentioned by the reviewers are:
+
+overstate of claims in the paper and requires reframing of contributions
+the (M,Σ)-centric quantity contradicts with paper's ablations.
+experimental setup focusses only on forecasting (primary) and imputation (secondary).
+the method requires a strictly frozen backbone.
+the approach seems to be memory-consuming since it operates on raw inputs.
+the theoretical analysis is limited to interaction between IN and router inputs.
+how the approach will scale to more number of experts while avoiding memory bandwidth bottleneck.
+causal intervention is limited to IN.
+The paper received mix initial ratings. Despite two reviewers leaning towards paper acceptance, all of the reviewers identified important points and concerns that need to be addressed in the rebuttal phase. Authors can primarily focus on 3-8 points and clarify any factual errors made by reviewers."""
+
+---
+
+Did we answer the meta reviewer: “    1    the (M,Σ)-centric quantity contradicts with paper's ablations.
+“ Through the response to the pm4m reviewer
+
+---
+
+While individual responses are meant for each indiviau reviewer, we want to make it easy for AC reviewer to be happy (that we cared for them). Another go at these issues raised by meta reviewer: """Some important concerns mentioned by the reviewers are:
+
+overstate of claims in the paper and requires reframing of contributions
+the (M,Σ)-centric quantity contradicts with paper's ablations.
+experimental setup focusses only on forecasting (primary) and imputation (secondary).
+the method requires a strictly frozen backbone.
+the approach seems to be memory-consuming since it operates on raw inputs.
+the theoretical analysis is limited to interaction between IN and router inputs.
+how the approach will scale to more number of experts while avoiding memory bandwidth bottleneck.
+causal intervention is limited to IN.
+The paper received mix initial ratings. Despite two reviewers leaning towards paper acceptance, all of the reviewers identified important points and concerns that need to be addressed in the rebuttal phase. Authors can primarily focus on 3-8 points and clarify any factual errors made by reviewers."""
+
+---
+
+Yeah I love this: ""We agree this is a real tension" to something like "This looks like a contradiction, but it dissolves once R(D) is read as a ratio, not a sufficiency claim"""
+
+---
+
+then no, restore to We understand .... 
+
+Contribution Type: Use-inspired: The main contribution is in framing or designing approaches to meet the needs of a specific real-world application. (This often involves, e.g., engaging with domain experts.)
+Strengths And Weaknesses:
+Strengths The experimental evaluation covers six representative long-term time-series forecasting (LTSF) benchmarks, providing evidence across a diverse set of datasets.
+
+The paper identifies a plausible causal mechanism, termed normalization-induced routing collapse, and proposes a simple yet targeted intervention that directly addresses the issue without introducing substantial architectural complexity.
+
+The proposed signal-relation metric appears capable of predicting dataset vulnerability prior to training, which could provide practical value beyond the specific method introduced in the paper.
+
+The experiments provide empirical evidence for the existence of routing collapse and demonstrate the effectiveness of RR-MoA in mitigating this phenomenon.
+
+Weaknesses Since the router operates directly on raw inputs, bypassing input normalization, the approach may be less memory-efficient than conventional designs. The implications for GPU memory usage and computational efficiency are not fully discussed.
+
+The theoretical analysis focuses primarily on the interaction between instance normalization and router inputs. It remains unclear to what extent the proposed explanation accounts for other factors, such as dataset-specific distributional properties or feature asymmetries.
+
+The scalability of the approach deserves further investigation. As the number of experts increases, the dimensionality of the router input and the associated memory bandwidth requirements may become a bottleneck.
+
+The causal analysis is conducted mainly through interventions on instance normalization. It is therefore unclear whether similar routing-collapse phenomena arise under other normalization schemes, such as BatchNorm, LayerNorm, or RMSNorm.
+
+The experimental evaluation is limited to forecasting and missing-value imputation tasks. The applicability of the proposed insights to other settings, such as classification or generative modeling, remains unexplored.
+
+Some experiments appear to use a relatively small number of training epochs. It would be helpful to provide additional evidence that the reported results are not affected by incomplete convergence.
+
+The statistical analysis may be sensitive to the choice of weighting schemes and multiple-testing corrections. If these procedures are overly conservative, they could reduce statistical power and potentially obscure meaningful effects.
+
+Quality: 2: not good
+Clarity: 2: not good
+Significance: 2: not good
+Originality: 3: good
+Questions:
+The paper attributes routing collapse primarily to the use of normalized inputs for routing decisions. Have the authors considered applying the proposed raw-routing strategy to existing MoE architectures, such as AdaMix or related variants? Such an experiment would help clarify whether the routing input itself is the dominant source of the problem, or whether other architectural factors also contribute to routing collapse.
+
+The causal analysis is based on eight intervention settings, including RevIN ablation and BatchNorm swap. Do the authors expect the same causal mechanisms and intervention effects to hold in other tasks or domains, such as image modeling? Additional discussion on the generality of the proposed explanation would help assess whether the identified mechanism is specific to LTSF or reflects a broader phenomenon in MoE architectures.
+
+Several experiments appear to be conducted using relatively short training schedules. Have the authors evaluated the method under longer training regimes (200 epochs or beyond)? It would be useful to understand whether the reported advantages persist after full convergence and whether longer training affects routing stability or performance.
+
+Limitations:
+The empirical analysis focuses primarily on instance-normalization methods that remove sample-specific statistics, such as RevIN and RMSNorm. It remains unclear whether similar routing-collapse phenomena would arise under other normalization schemes (BatchNorm or GroupNorm), which may limit the generality of the proposed explanation. The experiments consider forecasting horizons up to 720 time steps. It is therefore unclear whether the same conclusions hold for substantially longer temporal horizons, where internal representations and routing behaviors may become more diverse. The study employs a fixed set of relatively simple adapters (linear, attention-based, and convolutional adapters). The behavior of the proposed method in settings with learned, dynamically generated, or substantially larger adapter pools remains unexplored. Consequently, the scalability and robustness of the conclusions to more complex routing scenarios are not yet established.
+
+Rating: 4: Borderline accept: Technically solid paper where reasons to accept outweigh reasons to reject, e.g., limited evaluation. Please use sparingly.
+Confidence: 3: You are fairly confident in your assessment. It is possible that you did not understand some parts of the submission or that you are unfamiliar with some pieces of related work. Math/other details were not carefully checked.
+Ethical Concerns: NO or VERY MINOR ethics concerns only
+Paper Formatting Concerns:
+I did not notice any major formatting, anonymity, or policy-related concerns.
+
+Code Of Conduct Acknowledgement: Yes
+Responsible Reviewing Acknowledgement: Yes
+
+---
+
+can we run a few more experiments here to tackle those future work right now
+
+---
+
+<task-notification>
+<task-id>bhgr5ivco</task-id>
+<tool-use-id>toolu_013Cc1d8WPCaEsdCLNoLy2M3</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bhgr5ivco.output</output-file>
+<status>completed</status>
+<summary>Background command "Preflight 1 cell on Modal (warm cache + validate)" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bvj3rhzw9</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bvj3rhzw9.output</output-file>
+<status>completed</status>
+<summary>Background command "Anomaly preflight (machine-1-1, seed 42) to validate pipeline" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b0u1d22zt</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/b0u1d22zt.output</output-file>
+<status>completed</status>
+<summary>Background command "Residual-IA+ vs DLinear at H=1000,2000 (18 cells)" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+can we also add a few expert pool and do initial experiments with taht
+
+---
+
+run it
+
+---
+
+<task-notification>
+<task-id>bvpg3jjjt</task-id>
+<tool-use-id>toolu_011stVtMoyB5i7CAzWtLYDgM</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bvpg3jjjt.output</output-file>
+<status>completed</status>
+<summary>Background command "Run pool experiment preflight on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bym6xpoqp</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bym6xpoqp.output</output-file>
+<status>completed</status>
+<summary>Background command "Run full 12-cell expert-pool experiment on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+yes it is great, but the writing in the rebuttal response should not give the impression that we hastily runs these to defned. Write in a way that still show the result but say that inial feasibility suggests that ...
+
+---
+
+Yes
+
+---
+
+yes go
+
+---
+
+yes I want that too
+
+---
+
+can we have another experiment against modal.com for this: "The one thing genuinely left as honest future work (and correctly not claimed) is learned/dynamically-generated expert pools" <- add to rebuttal to say something like our initial feasibility suggests that ... and more rigorous work in future
+
+---
+
+<task-notification>
+<task-id>b2oim4mz1</task-id>
+<tool-use-id>toolu_01EL9gWcAAcLEAjzcRNe1rx2</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/b2oim4mz1.output</output-file>
+<status>completed</status>
+<summary>Background command "Run learned-pool preflight on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b10z63mf3</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/b10z63mf3.output</output-file>
+<status>completed</status>
+<summary>Background command "Run full learned-pool experiment (12 cells) on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+did we factor in the rebuttal responses and regenerate the pdf ?
+
+---
+
+one more pass on this: """// On tone, make the writing reads warmer, human, easy for non-native. Easy sentence structure """
+
+---
+
+/commit-push
+
+---
+
+in the submission did we say that we deploy Residual-IA+, as in the rebuttal response to pm4m of: "But it does not apply to the method we deploy. Residual-IA+,". Am concerned if the word: "deploy" is the right term
+
+---
+
+yes
+
+---
+
+for the [NEW] tag in all review can we add full results (as table instead of summaried writing)
+
+---
+
+Full results, trim the current response a bit
+
+---
+
+can I have full per seed for all reviwers, can we reduce verbosity a bit but make sure content remains intact semantically
+
+---
+
+then let's report a denser snapshot
+
+---
+
+let be more balanced here, and say that we can provide more details in the revised manusccript if accepted
+
+---
+
+/commit-push
+
+---
+
+verify all the numbers of core arguments are fully grounded in the submission, such as: """On “the raw branch does the work; the TSFM is dead weight (App. P.3)”: P.3’s “dead weight”
+is measured against the intermediate Dual-Stream (ETTh2 0.452, ETTm2 0.252), not the
+final Residual-IA+ (ETTh2 0.346, ETTm2 0.188)""""
+
+---
+
+let review are numbers included in core rebuttal to make sure we use correctly
+
+---
+
+let review are numbers included in core rebuttal to make sure we use correctly what was there in the original submission
