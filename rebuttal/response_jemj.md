@@ -61,4 +61,4 @@ We are very grateful for the reviewer's generous and careful assessment, and for
 
 **Q4 (training memory, raw + normalized paths).** Training keeps one frozen backbone plus tiny trainable adapters (354-466K, about 1% of the ~40M backbone) and the 853-parameter raw router (0.002% of the backbone). The raw path is just a single univariate window, so peak training memory comes from the frozen backbone's activations, the same floor as any frozen-backbone adapter method. At inference the whole stack adds only +5.9% latency and +6 MB (+1.7% of the 359 MB backbone; Table B.1).
 
-We thank the reviewer again for the strong and encouraging assessment, and will fold these clarifications into the camera-ready.
+We thank the reviewer again for the strong and encouraging assessment. We report per-seed results here, and would be glad to include the full per-cell tables in the revised manuscript if the paper is accepted.
