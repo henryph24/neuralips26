@@ -29,7 +29,16 @@ On "the raw branch does the work; the TSFM is dead weight (App. P.3)": one clari
 
 **W6 (minor).** The exact router count is 853 for the reported K=5 model: a Conv1d gate (528 parameters) plus a Linear(64, K) output head (325 at K=5), consistent across the main text, Fig 2, Table A.1, and the released code. Because that head scales with the number of experts K, counting over our expert-count sweep (Table I.3, up to K=10, where the head reaches 650) puts the router in the 1,000-1,200 range at the high end; the Checklist's "~1.1K" reflects that larger-K count rather than the reported K=5 configuration, and we will correct it to 853. On the SR-MoA figure, the improvement is over RR-MoA (SR-MoA beats RR-MoA on all six datasets, Fig. F.1), not over the baselines. We will also standardize "fine-tuning" and recheck the flagged R(D) parenthesis.
 
-**Q1 (input length 512 / horizon 96).** The input length is indeed fixed at 512, and the reviewer is right to question it. Multi-horizon results, though, are already in the submitted paper (Table C.1: RR-MoA 12/12 vs best fixed over H∈{96,192,336,720}; Residual-IA+ reaches 6/6 at H=192 in Table P.6); we may not have presented them prominently enough. [NEW] For input length we add an ablation (L∈{96,192,336,512}, 6 datasets, 3 seeds): routing never collapses (entropy 0.98-1.48 at every L), raw routing beats the normalized-routing control at all 24 cells, and beats the best fixed adapter at 70/72. Conclusions hold on both axes.
+**Q1 (input length 512 / horizon 96).** The input length is indeed fixed at 512, and the reviewer is right to question it. Multi-horizon results, though, are already in the submitted paper (Table C.1: RR-MoA 12/12 vs best fixed over H∈{96,192,336,720}; Residual-IA+ reaches 6/6 at H=192 in Table P.6); we may not have presented them prominently enough. [NEW] Input-length ablation (L∈{96,192,336,512}, 6 datasets, 3 seeds): no collapse at any L; raw beats revin and the best fixed adapter (70/72).
+
+*Input-length (H=96; entropy and raw-vs-revin ranges over 6 datasets, 3 seeds):*
+
+| L | entropy | raw vs revin | beats fixed |
+|---|---|---|---|
+| 96 | 1.24-1.47 | -31 to -83% | 18/18 |
+| 192 | 1.16-1.47 | -24 to -84% | 17/18 |
+| 336 | 1.10-1.48 | -27 to -76% | 18/18 |
+| 512 | 0.98-1.47 | -17 to -77% | 17/18 |
 
 **Q2 (α inconsistency).** Thank you for catching this; it is a wording slip. α is initialized at σ(0)=0.5 (the logit is a parameter at 0.0); 0.492 is the mean α at the end of the first logged epoch, after one epoch has moved it below 0.5, not the initialization (trajectory 0.5 → 0.492 → 0.468). We will correct the wording.
 
