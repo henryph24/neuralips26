@@ -1,0 +1,877 @@
+soften the tone: "This is exactly the experiment
+we ran, and it is in the submission. " in 8b2z rebuttal response
+
+---
+
+if we had done, make sure we refer to a correct appendix. Here is the original submission again /Users/hungpq2412/Downloads/16168_Raw_Routed_Mixture_of_Ad.pdf
+
+---
+
+that is really seriousm launch subagents to independetly review if we refer to proper tables or figures
+
+---
+
+/commit-push
+
+---
+
+This sentence in the response to pm4m: "The criticism is fair about our framing, not our evidence. " reads quite AI-ish and not warm. I want something like: "We acknowledge that the reviewer's comment is correct about our framing, yet we'd like to further clarify that..." Review for similar class of writing in all responses
+
+---
+
+/commit-push
+
+---
+
+One more pass: on tone, make the writing reads warmer, human, easy for non-native. Easy sentence structure
+
+---
+
+At beginning of each rebuttal response echo the strengths recognized by the reviewer, thank them. We should give the impression that while each response is tailored for individual reviewer, we want the meta-reviewer to like our response. Here is the meta reviewer again: """Metareview:
+The paper studies the problem of collapsing mixture of experts to a single expert when attached to time-series foundation models. Among the key strengths of the method include:
+
+studies and interesting and practically relevant problem
+paper is well-presented and includes diverse set of experiments.
+the idea is novel with good causal analyses.
+the proposed signal-relation metric carries practical value.
+Some important concerns mentioned by the reviewers are:
+
+overstate of claims in the paper and requires reframing of contributions
+the (M,Σ)-centric quantity contradicts with paper's ablations.
+experimental setup focusses only on forecasting (primary) and imputation (secondary).
+the method requires a strictly frozen backbone.
+the approach seems to be memory-consuming since it operates on raw inputs.
+the theoretical analysis is limited to interaction between IN and router inputs.
+how the approach will scale to more number of experts while avoiding memory bandwidth bottleneck.
+causal intervention is limited to IN.
+The paper received mix initial ratings. Despite two reviewers leaning towards paper acceptance, all of the reviewers identified important points and concerns that need to be addressed in the rebuttal phase. Authors can primarily focus on 3-8 points and clarify any factual errors made by reviewers."""
+
+---
+
+Did we answer the meta reviewer: “    1    the (M,Σ)-centric quantity contradicts with paper's ablations.
+“ Through the response to the pm4m reviewer
+
+---
+
+While individual responses are meant for each indiviau reviewer, we want to make it easy for AC reviewer to be happy (that we cared for them). Another go at these issues raised by meta reviewer: """Some important concerns mentioned by the reviewers are:
+
+overstate of claims in the paper and requires reframing of contributions
+the (M,Σ)-centric quantity contradicts with paper's ablations.
+experimental setup focusses only on forecasting (primary) and imputation (secondary).
+the method requires a strictly frozen backbone.
+the approach seems to be memory-consuming since it operates on raw inputs.
+the theoretical analysis is limited to interaction between IN and router inputs.
+how the approach will scale to more number of experts while avoiding memory bandwidth bottleneck.
+causal intervention is limited to IN.
+The paper received mix initial ratings. Despite two reviewers leaning towards paper acceptance, all of the reviewers identified important points and concerns that need to be addressed in the rebuttal phase. Authors can primarily focus on 3-8 points and clarify any factual errors made by reviewers."""
+
+---
+
+Yeah I love this: ""We agree this is a real tension" to something like "This looks like a contradiction, but it dissolves once R(D) is read as a ratio, not a sufficiency claim"""
+
+---
+
+then no, restore to We understand .... 
+
+Contribution Type: Use-inspired: The main contribution is in framing or designing approaches to meet the needs of a specific real-world application. (This often involves, e.g., engaging with domain experts.)
+Strengths And Weaknesses:
+Strengths The experimental evaluation covers six representative long-term time-series forecasting (LTSF) benchmarks, providing evidence across a diverse set of datasets.
+
+The paper identifies a plausible causal mechanism, termed normalization-induced routing collapse, and proposes a simple yet targeted intervention that directly addresses the issue without introducing substantial architectural complexity.
+
+The proposed signal-relation metric appears capable of predicting dataset vulnerability prior to training, which could provide practical value beyond the specific method introduced in the paper.
+
+The experiments provide empirical evidence for the existence of routing collapse and demonstrate the effectiveness of RR-MoA in mitigating this phenomenon.
+
+Weaknesses Since the router operates directly on raw inputs, bypassing input normalization, the approach may be less memory-efficient than conventional designs. The implications for GPU memory usage and computational efficiency are not fully discussed.
+
+The theoretical analysis focuses primarily on the interaction between instance normalization and router inputs. It remains unclear to what extent the proposed explanation accounts for other factors, such as dataset-specific distributional properties or feature asymmetries.
+
+The scalability of the approach deserves further investigation. As the number of experts increases, the dimensionality of the router input and the associated memory bandwidth requirements may become a bottleneck.
+
+The causal analysis is conducted mainly through interventions on instance normalization. It is therefore unclear whether similar routing-collapse phenomena arise under other normalization schemes, such as BatchNorm, LayerNorm, or RMSNorm.
+
+The experimental evaluation is limited to forecasting and missing-value imputation tasks. The applicability of the proposed insights to other settings, such as classification or generative modeling, remains unexplored.
+
+Some experiments appear to use a relatively small number of training epochs. It would be helpful to provide additional evidence that the reported results are not affected by incomplete convergence.
+
+The statistical analysis may be sensitive to the choice of weighting schemes and multiple-testing corrections. If these procedures are overly conservative, they could reduce statistical power and potentially obscure meaningful effects.
+
+Quality: 2: not good
+Clarity: 2: not good
+Significance: 2: not good
+Originality: 3: good
+Questions:
+The paper attributes routing collapse primarily to the use of normalized inputs for routing decisions. Have the authors considered applying the proposed raw-routing strategy to existing MoE architectures, such as AdaMix or related variants? Such an experiment would help clarify whether the routing input itself is the dominant source of the problem, or whether other architectural factors also contribute to routing collapse.
+
+The causal analysis is based on eight intervention settings, including RevIN ablation and BatchNorm swap. Do the authors expect the same causal mechanisms and intervention effects to hold in other tasks or domains, such as image modeling? Additional discussion on the generality of the proposed explanation would help assess whether the identified mechanism is specific to LTSF or reflects a broader phenomenon in MoE architectures.
+
+Several experiments appear to be conducted using relatively short training schedules. Have the authors evaluated the method under longer training regimes (200 epochs or beyond)? It would be useful to understand whether the reported advantages persist after full convergence and whether longer training affects routing stability or performance.
+
+Limitations:
+The empirical analysis focuses primarily on instance-normalization methods that remove sample-specific statistics, such as RevIN and RMSNorm. It remains unclear whether similar routing-collapse phenomena would arise under other normalization schemes (BatchNorm or GroupNorm), which may limit the generality of the proposed explanation. The experiments consider forecasting horizons up to 720 time steps. It is therefore unclear whether the same conclusions hold for substantially longer temporal horizons, where internal representations and routing behaviors may become more diverse. The study employs a fixed set of relatively simple adapters (linear, attention-based, and convolutional adapters). The behavior of the proposed method in settings with learned, dynamically generated, or substantially larger adapter pools remains unexplored. Consequently, the scalability and robustness of the conclusions to more complex routing scenarios are not yet established.
+
+Rating: 4: Borderline accept: Technically solid paper where reasons to accept outweigh reasons to reject, e.g., limited evaluation. Please use sparingly.
+Confidence: 3: You are fairly confident in your assessment. It is possible that you did not understand some parts of the submission or that you are unfamiliar with some pieces of related work. Math/other details were not carefully checked.
+Ethical Concerns: NO or VERY MINOR ethics concerns only
+Paper Formatting Concerns:
+I did not notice any major formatting, anonymity, or policy-related concerns.
+
+Code Of Conduct Acknowledgement: Yes
+Responsible Reviewing Acknowledgement: Yes
+
+---
+
+can we run a few more experiments here to tackle those future work right now
+
+---
+
+<task-notification>
+<task-id>bhgr5ivco</task-id>
+<tool-use-id>toolu_013Cc1d8WPCaEsdCLNoLy2M3</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bhgr5ivco.output</output-file>
+<status>completed</status>
+<summary>Background command "Preflight 1 cell on Modal (warm cache + validate)" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bvj3rhzw9</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bvj3rhzw9.output</output-file>
+<status>completed</status>
+<summary>Background command "Anomaly preflight (machine-1-1, seed 42) to validate pipeline" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b0u1d22zt</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/b0u1d22zt.output</output-file>
+<status>completed</status>
+<summary>Background command "Residual-IA+ vs DLinear at H=1000,2000 (18 cells)" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+can we also add a few expert pool and do initial experiments with taht
+
+---
+
+run it
+
+---
+
+<task-notification>
+<task-id>bvpg3jjjt</task-id>
+<tool-use-id>toolu_011stVtMoyB5i7CAzWtLYDgM</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bvpg3jjjt.output</output-file>
+<status>completed</status>
+<summary>Background command "Run pool experiment preflight on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bym6xpoqp</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/bym6xpoqp.output</output-file>
+<status>completed</status>
+<summary>Background command "Run full 12-cell expert-pool experiment on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+yes it is great, but the writing in the rebuttal response should not give the impression that we hastily runs these to defned. Write in a way that still show the result but say that inial feasibility suggests that ...
+
+---
+
+Yes
+
+---
+
+yes go
+
+---
+
+yes I want that too
+
+---
+
+can we have another experiment against modal.com for this: "The one thing genuinely left as honest future work (and correctly not claimed) is learned/dynamically-generated expert pools" <- add to rebuttal to say something like our initial feasibility suggests that ... and more rigorous work in future
+
+---
+
+<task-notification>
+<task-id>b2oim4mz1</task-id>
+<tool-use-id>toolu_01EL9gWcAAcLEAjzcRNe1rx2</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/b2oim4mz1.output</output-file>
+<status>completed</status>
+<summary>Background command "Run learned-pool preflight on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b10z63mf3</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/6b7afd1d-6212-4171-9bc6-38e01cb987c7/tasks/b10z63mf3.output</output-file>
+<status>completed</status>
+<summary>Background command "Run full learned-pool experiment (12 cells) on Modal A10G" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+did we factor in the rebuttal responses and regenerate the pdf ?
+
+---
+
+one more pass on this: """// On tone, make the writing reads warmer, human, easy for non-native. Easy sentence structure """
+
+---
+
+/commit-push
+
+---
+
+in the submission did we say that we deploy Residual-IA+, as in the rebuttal response to pm4m of: "But it does not apply to the method we deploy. Residual-IA+,". Am concerned if the word: "deploy" is the right term
+
+---
+
+yes
+
+---
+
+for the [NEW] tag in all review can we add full results (as table instead of summaried writing)
+
+---
+
+Full results, trim the current response a bit
+
+---
+
+can I have full per seed for all reviwers, can we reduce verbosity a bit but make sure content remains intact semantically
+
+---
+
+then let's report a denser snapshot
+
+---
+
+let be more balanced here, and say that we can provide more details in the revised manusccript if accepted
+
+---
+
+/commit-push
+
+---
+
+verify all the numbers of core arguments are fully grounded in the submission, such as: """On “the raw branch does the work; the TSFM is dead weight (App. P.3)”: P.3’s “dead weight”
+is measured against the intermediate Dual-Stream (ETTh2 0.452, ETTm2 0.252), not the
+final Residual-IA+ (ETTh2 0.346, ETTm2 0.188)""""
+
+---
+
+let review are numbers included in core rebuttal to make sure we use correctly
+
+---
+
+let review are numbers included in core rebuttal to make sure we use correctly what was there in the original submission
+
+---
+
+let tighten
+
+---
+
+let's do this: """I can tighten to "≤3% on
+  4/6 (the other two improve)""""
+
+---
+
+/commit-push
+
+---
+
+I don't like the structure of sentence such as: ". The 15-epoch numbers are conservative, not a convergence artifact", say something, then not. Strive for, we understand why you see/catch, ... we clarify that ..."
+
+Review for this structure
+
+---
+
+openers of each review, while should restate some of the strengths, do it less like we copy in whole. Be concise a bit here
+
+---
+
+have another pass. here is the full review by each reviewer: """OpenReview
+.net
+Search articles, authors and reviews...
+Notifications5
+Activity
+Tasks
+Hung Phan 
+back arrowGo to NeurIPS 2026 Conference homepage
+Raw-Routed Mixture of Adapters: A Causal Intervention for Routing Collapse in Time Series Foundation Models
+Download PDF
+Hung Phan, Thuy T. Nguyen, Minh Ngoc Dinh, Nhat-Quang Tran 
+03 May 2026 (modified: 28 May 2026)
+NeurIPS 2026 Conference Submission
+Conference, Senior Area Chairs, Area Chairs, Reviewers, Authors
+Revisions
+CC BY 4.0
+TL;DR: MoE adapters on instance-normalized time series foundation models collapse; eight causal controls isolate RevIN as the cause and prescribe raw-input routing (RR-MoA/SR-MoA/Residual-IA+), beating prior adapters and full fine-tuning.
+Abstract:
+Time series foundation models (TSFMs) commonly adapt to new data by attaching a single trainable head to a frozen backbone, a one-size-fits-all setup that underfits heterogeneous regimes. Replacing the head with a mixture of experts is the standard upgrade, but on instance-normalized backbones (the dominant TSFM design class) it fails: routing entropy collapses to zero and one expert absorbs every input, a failure we call normalization-induced routing collapse. Standard MoE rescue mechanisms do not repair it, because the cause is in the router's input, not its optimization. Pre-encoder normalization strips the statistics a router would need to tell regimes apart. A mutual-information decomposition makes this precise and yields a signal-ratio that, computed before training, predicts dataset vulnerability (Spearman 
+). Eight causal controls, including a vision-modality replication, isolate instance normalization as the cause. The prescription is a minimal causal intervention: Raw-Routed Mixture of Adapters (RR-MoA), which routes on the raw, pre-normalization input. Under a strictly frozen backbone, RR-MoA wins 54/54 comparisons against the strongest fixed adapter and significantly outperforms LoRA, TRACE, AdaMix, and full fine-tuning. The effect generalizes across six backbones and an imputation task. Frozen RR-MoA also beats full fine-tuning by 12–79% (the Frozen Paradox); two architecturally distinct variants confirm the principle generalizes beyond this specific router. Code is provided in the supplementary material.
+
+Checklist Confirmation: I confirm that I have included a paper checklist in the paper PDF.
+Supplementary Material:  zip
+Responsible Reviewing: We acknowledge the responsible reviewing obligations as authors.
+Primary Area: Deep learning advancements (e.g., architectures, optimizers, representation learning)
+Secondary Area: Generalization and multi-task learning (e.g., transfer learning, meta-learning, OOD generalization), General machine learning (e.g., core contributions in supervised and unsupervised methods)
+Contribution Type: General: Most submissions will fall into this type.
+Academic Integrity: I acknowledge that I have read the NeurIPS Handbook and commit to adhering to all policies in the Handbook (https://neurips.cc/Conferences/2026/MainTrackHandbook), the NeurIPS Code of Conduct and the NeurIPS Academic Integrity Policy.
+LLM Usage: Prefer not to declare (you can then skip the rest)
+LLM Experiment: Opt in to include this paper in the LLM-assisted peer review experiment.
+Declaration: I confirm that the above information is accurate.
+Reviewer Nomination:  Minh Ngoc Dinh
+Submission Number: 16168
+Discussion
+Filter by reply type...
+Filter by author...
+Search keywords...
+
+Sort: Newest First
+4 / 4 replies shown
+Add:
+Meta Review of Submission16168 by Area Chair QYXJ
+Meta Reviewby Area Chair QYXJ19 Jul 2026, 14:14 (modified: 24 Jul 2026, 00:57)Senior Area Chairs, Area Chairs, Authors, Reviewers Submitted, Program Chairs, Area Chair QYXJRevisions
+Metareview:
+The paper studies the problem of collapsing mixture of experts to a single expert when attached to time-series foundation models. Among the key strengths of the method include:
+
+studies and interesting and practically relevant problem
+paper is well-presented and includes diverse set of experiments.
+the idea is novel with good causal analyses.
+the proposed signal-relation metric carries practical value.
+Some important concerns mentioned by the reviewers are:
+
+overstate of claims in the paper and requires reframing of contributions
+the (M,Σ)-centric quantity contradicts with paper's ablations.
+experimental setup focusses only on forecasting (primary) and imputation (secondary).
+the method requires a strictly frozen backbone.
+the approach seems to be memory-consuming since it operates on raw inputs.
+the theoretical analysis is limited to interaction between IN and router inputs.
+how the approach will scale to more number of experts while avoiding memory bandwidth bottleneck.
+causal intervention is limited to IN.
+The paper received mix initial ratings. Despite two reviewers leaning towards paper acceptance, all of the reviewers identified important points and concerns that need to be addressed in the rebuttal phase. Authors can primarily focus on 3-8 points and clarify any factual errors made by reviewers.
+
+Add:
+New Author AC Confidential Comment
+* denotes a required field
+Title
+(Optional) Brief summary of your comment.
+
+Comment*
+Confidential comments (max 5000 characters).
+
+Write
+Preview
+TeX is supported
+Readers*
+NeurIPS 2026 Conference Program ChairsNeurIPS 2026 Conference Submission16168 Senior Area ChairsNeurIPS 2026 Conference Submission16168 Area ChairsNeurIPS 2026 Conference Submission16168 Authors
+Signatures*
+signatures
+Edit History
+Readers*
+NeurIPS 2026 Conference Program ChairsNeurIPS 2026 Conference Submission16168 Senior Area ChairsNeurIPS 2026 Conference Submission16168 Area ChairsNeurIPS 2026 Conference Submission16168 Authors
+Signatures*
+NeurIPS 2026 Conference Submission16168 Authors
+Official Review of Submission16168 by Reviewer Pm4m
+Official Reviewby Reviewer Pm4m26 Jun 2026, 17:14 (modified: 23 Jul 2026, 21:58)Program Chairs, Senior Area Chairs, Area Chairs, Reviewers Submitted, Authors, Reviewer Pm4mRevisions
+Summary:
+This paper studies why mixture of experts adapter heads can fail when adapting frozen time series foundation models. The authors identify normalization induced routing collapse, where a hidden state router collapses to a single expert within a few optimization steps when used with backbones that apply learnable affine instance normalization, such as RevIN in MOMENT. The paper argues that this failure is caused mainly by the router input rather than by the routing optimization itself, since RevIN removes per window mean and scale information that is important for distinguishing temporal regimes. This diagnosis is supported by a mutual information analysis, a training free signal ratio that correlates with collapse risk, and several causal controls, including normalization ablations, comparisons across backbones, and a replication in vision models. As a remedy, the authors propose RR-MoA, which routes using the raw input before normalization while keeping expert adaptation on frozen hidden states. The method is reported to outperform fixed adapters, LoRA, TRACE, AdaMix, and full fine tuning across all evaluated settings, with additional variants used to support generality across multiple backbones, forecasting horizons, and an imputation task.
+
+Contribution Type: General: Most submissions will fall into this type.
+Strengths And Weaknesses:
+Strengths
+
+S1 — The paper studies an interesting problem setting that is practically important.
+
+S2 — The paper is logically structured, making its contributions easy to follow.
+
+S3 — The authors conducted extensive experiments to demonstrate the effectiveness of the proposed methodology.
+
+Weaknesses
+
+W1 — The abstract's "54/54 wins" and "beats full fine-tuning by 12–79%" are all measured against frozen-adapter / PEFT baselines, i.e., methods constrained to the same frozen-backbone regime the paper studies. Table 4, Appendix M, and Appendix P.3 show that the whole RR-MoA family is beaten in absolute MSE by a 49K-parameter DLinear (e.g., 0.680 vs 0.416 on ETTh1) and that the TSFM backbone is explicitly "dead weight" on several datasets. This is a material caveat that does not appear in the abstract or introduction. I would ask the authors to move the DLinear comparison and the backbone-contribution analysis into the main text and to reframe the contribution accordingly; as currently presented, the framing oversells a method whose absolute forecasting quality is below a trivial linear baseline.
+
+W2 — Figure 2 is too simple and small; parts of it overlap, making it difficult to see clearly, and it fails to clearly illustrate the paper’s core modules and contributions.
+
+W3 — The collapse mechanism predicts that backbones without learnable-affine encoder normalization should not collapse, and the paper confirms Moirai does not. Yet RR-MoA still "wins" 12–29% on Moirai. If there is no collapse to fix, this gain must come from something other than collapse-repair — most plausibly the predictive value of the raw signal itself, consistent with the Pure Raw-MLP result in P.3. This weakens the causal chain "collapse → raw routing is the fix," and the cross-backbone wins should not be presented as uniform validation of the diagnosis.
+
+W4 — Closing the DLinear gap requires a 546-run sweep plus a stack of dataset-specific engineering choices (shared NLinear branch, b=−2 gate init, 5-epoch warmup, validation-based early stopping), after which the result is still only 5/6 match-or-beat at a −2.8% mean gap (ETTh1 still loses). Appendix P.3 then shows a backbone-free Raw-MLP MoE matches or beats the dual-stream variant on average, indicating the gains come largely from the raw/NLinear branch (essentially DLinear) rather than the TSFM. This makes Residual-IA+ read as heavy tuning to approach a linear baseline, and its generalization beyond these six benchmarks is unclear.
+
+W5 — The (M,Σ)-centric account is in tension with the authors' own ablations. The sufficient-statistic router using only [μ,σ] degrades MSE by +48% (Appendix F), showing (μ,σ) is not sufficient, while temporal shuffling barely changes performance, indicating the router relies on order-invariant distributional content broader than (M,Σ). Since both Observation 1 and R(D) are built specifically around (M,Σ), the theory does not cleanly match the empirically operative signal.
+
+W6 — Minor Issue:
+
+Inconsistencies in router parameter counts: The main text, Fig. 2, and Table A.1 all list 853, while item 4 of the Checklist states ~1100.
+An extra parenthesis is present in R(D) on line 146.
+The statement “13–42% over RR-MoA on six datasets” on line 64 is incorrect, it should be over baselines.
+The terms “finetuning” and “fine-tuning” are used inconsistently; they should be standardized to a single form.
+Quality: 2: not good
+Clarity: 2: not good
+Significance: 3: good
+Originality: 3: good
+Questions:
+The experiments use almost only 512 as input length and 96 as the forecasting horizon. If the input length and forecasting length change, do the methods and conclusion in the paper still hold?
+
+α is not initialized inconsistently. Appendix K states that ℓ is initialized to 0, so α = σ(0) = 0.5, but afterward it says, “Initialize with 0.492 and decrease monotonically.” Where does this inconsistency come from?
+
+If the author can address my concerns, I would raise my score.
+
+Limitations:
+yes
+
+Rating: 2: Reject: For instance, a paper with technical flaws, weak evaluation, inadequate reproducibility and incompletely addressed ethical considerations.
+Confidence: 4: You are confident in your assessment, but not absolutely certain. It is unlikely, but not impossible, that you did not understand some parts of the submission or that you are unfamiliar with some pieces of related work.
+Ethical Concerns: NO or VERY MINOR ethics concerns only
+Paper Formatting Concerns:
+N.A.
+
+Code Of Conduct Acknowledgement: Yes
+Responsible Reviewing Acknowledgement: Yes
+Add:
+Official Review of Submission16168 by Reviewer jemj
+Official Reviewby Reviewer jemj26 Jun 2026, 12:11 (modified: 23 Jul 2026, 21:58)Program Chairs, Senior Area Chairs, Area Chairs, Reviewers Submitted, Authors, Reviewer jemjRevisions
+Summary:
+Problem Statement - Time series foundation models (TSFMs) like MOMENT, PatchTST, and TimesFM use instance normalization (RevIN) to handle distribution shift, subtracting per-window mean (
+) and dividing by standard deviation (
+) before encoding. When practitioners attach Mixture-of-Experts (MoE) adapter heads to these frozen backbones, the router collapses to selecting a single expert—routing entropy drops to 0.000±0.000. This occurs because RevIN strips the per-window statistics (
+, 
+) that distinguish input regimes, leaving the router with homogenized hidden states that cannot differentiate between a calm baseline and a volatile spike.
+
+Method - The proposed method applies a minimal causal intervention: route on raw pre-normalization input X_raw while experts consume the frozen backbone's hidden states H. The router is a lightweight Conv1d gate (853 parameters) that selects Top-2 of K=5 architecturally diverse experts (mean-pool, last-token, max-pool, attention-pool, Conv1d). This preserves the temporal statistics RevIN discards.
+
+Experimental Setup -
+
+6 LTSF benchmarks (ETTh1/h2, ETTm1/m2, Weather, Electricity)
+6 TSFMs spanning 3 normalization regimes (MOMENT-small/large, Moirai, Moirai-MoE, Chronos, Timer-XL)
+Forecasting (H∈{96,192,336,720}) and 20%-masked imputation
+Fixed adapters, LoRA (108-run sweep), TRACE, AdaMix, independent ensembles, full fine-tuning, DLinear
+Key Findings
+
+RR-MoA wins 54/54 comparisons against best fixed adapters (26–79% MSE improvement)
+Frozen RR-MoA beats full fine-tuning by 12–79% ("Frozen Paradox")
+Signal ratio R(D) predicts raw-routing benefit at Spearman correlation
+Contribution Type: General: Most submissions will fall into this type.
+Strengths And Weaknesses:
+Strengths
+
+Novel and Important Problem Identification
+Rigorous Causal Analysis
+Strong Experimental Validation
+Theoretical Contributions
+Principle Generalizes Beyond Specific Architecture
+The paper demonstrates the principle is architecture-agnostic through
+Practical Value
+Router adds only few extra (853) parameters
+Weakness
+
+Limited Task Diversity
+The evaluation focuses on forecasting (primary) and imputation (secondary). Classification, anomaly detection, and very long horizons (>720) are acknowledged as open.
+Frozen Backbone Requirement
+The strongest results require a strictly frozen backbone. Proposition 1 explains why (co-adaptation feedback loop), but this limits applicability when backbone adaptation is genuinely needed.
+Quality: 4: excellent
+Clarity: 4: excellent
+Significance: 4: excellent
+Originality: 3: good
+Questions:
+Have you evaluated on classification or anomaly detection? The routing signal for these tasks may differ from forecasting.
+Could raw routing be combined with selective backbone adaptation (e.g., last 2 blocks unfrozen with lower LR)?
+How does performance scale for H ∈ {1000, 2000}? Does the frozen backbone's horizon-invariant representation become limiting?
+What is the memory overhead during training when maintaining both raw and normalized paths?
+Limitations:
+Limited task diversity (forecasting/imputation only), gap to from-scratch baselines in absolute terms, and frozen-backbone requirement are the main limitations, all acknowledged by the authors.
+
+Rating: 5: Accept: Technically solid paper, with high potential value on at least one sub-area of AI or moderate-to-high impact on more than one area of AI, with good-to-excellent evaluation, resources, reproducibility, and no unaddressed ethical considerations.
+Confidence: 4: You are confident in your assessment, but not absolutely certain. It is unlikely, but not impossible, that you did not understand some parts of the submission or that you are unfamiliar with some pieces of related work.
+Ethical Concerns: NO or VERY MINOR ethics concerns only
+Paper Formatting Concerns:
+NA
+
+Code Of Conduct Acknowledgement: Yes
+Responsible Reviewing Acknowledgement: Yes
+Add:
+Official Review of Submission16168 by Reviewer 8b2Z
+Official Reviewby Reviewer 8b2Z24 Jun 2026, 02:58 (modified: 23 Jul 2026, 21:58)Program Chairs, Senior Area Chairs, Area Chairs, Reviewers Submitted, Authors, Reviewer 8b2ZRevisions
+Summary:
+The routing distribution degenerates into a single-expert solution, with routing entropy approaching zero and one expert receiving nearly all inputs. We refer to this failure mode as normalization-induced routing collapse. Standard MoE rescue mechanisms do not repair it, because the cause is in the router’s input, not its optimization. This paper proposes Raw-Routed Mixture of Adapters (RR-MoA), which routes on the raw, pre-normalization input. This is a minimal causal intervention. Under a strictly frozen backbone, RRMoA wins 54/54 comparisons against the strongest fixed adapter and significantly outperforms LoRA, TRACE, AdaMix, and full fine-tuning. The effect generalizes across six backbones and an imputation task. Frozen RR-MoA also beats full fine-tuning by 12–79% (the Frozen Paradox); two architecturally distinct variants confirm the principle generalizes beyond this specific router.
+
+Contribution Type: Use-inspired: The main contribution is in framing or designing approaches to meet the needs of a specific real-world application. (This often involves, e.g., engaging with domain experts.)
+Strengths And Weaknesses:
+Strengths The experimental evaluation covers six representative long-term time-series forecasting (LTSF) benchmarks, providing evidence across a diverse set of datasets.
+
+The paper identifies a plausible causal mechanism, termed normalization-induced routing collapse, and proposes a simple yet targeted intervention that directly addresses the issue without introducing substantial architectural complexity.
+
+The proposed signal-relation metric appears capable of predicting dataset vulnerability prior to training, which could provide practical value beyond the specific method introduced in the paper.
+
+The experiments provide empirical evidence for the existence of routing collapse and demonstrate the effectiveness of RR-MoA in mitigating this phenomenon.
+
+Weaknesses Since the router operates directly on raw inputs, bypassing input normalization, the approach may be less memory-efficient than conventional designs. The implications for GPU memory usage and computational efficiency are not fully discussed.
+
+The theoretical analysis focuses primarily on the interaction between instance normalization and router inputs. It remains unclear to what extent the proposed explanation accounts for other factors, such as dataset-specific distributional properties or feature asymmetries.
+
+The scalability of the approach deserves further investigation. As the number of experts increases, the dimensionality of the router input and the associated memory bandwidth requirements may become a bottleneck.
+
+The causal analysis is conducted mainly through interventions on instance normalization. It is therefore unclear whether similar routing-collapse phenomena arise under other normalization schemes, such as BatchNorm, LayerNorm, or RMSNorm.
+
+The experimental evaluation is limited to forecasting and missing-value imputation tasks. The applicability of the proposed insights to other settings, such as classification or generative modeling, remains unexplored.
+
+Some experiments appear to use a relatively small number of training epochs. It would be helpful to provide additional evidence that the reported results are not affected by incomplete convergence.
+
+The statistical analysis may be sensitive to the choice of weighting schemes and multiple-testing corrections. If these procedures are overly conservative, they could reduce statistical power and potentially obscure meaningful effects.
+
+Quality: 2: not good
+Clarity: 2: not good
+Significance: 2: not good
+Originality: 3: good
+Questions:
+The paper attributes routing collapse primarily to the use of normalized inputs for routing decisions. Have the authors considered applying the proposed raw-routing strategy to existing MoE architectures, such as AdaMix or related variants? Such an experiment would help clarify whether the routing input itself is the dominant source of the problem, or whether other architectural factors also contribute to routing collapse.
+
+The causal analysis is based on eight intervention settings, including RevIN ablation and BatchNorm swap. Do the authors expect the same causal mechanisms and intervention effects to hold in other tasks or domains, such as image modeling? Additional discussion on the generality of the proposed explanation would help assess whether the identified mechanism is specific to LTSF or reflects a broader phenomenon in MoE architectures.
+
+Several experiments appear to be conducted using relatively short training schedules. Have the authors evaluated the method under longer training regimes (200 epochs or beyond)? It would be useful to understand whether the reported advantages persist after full convergence and whether longer training affects routing stability or performance.
+
+Limitations:
+The empirical analysis focuses primarily on instance-normalization methods that remove sample-specific statistics, such as RevIN and RMSNorm. It remains unclear whether similar routing-collapse phenomena would arise under other normalization schemes (BatchNorm or GroupNorm), which may limit the generality of the proposed explanation. The experiments consider forecasting horizons up to 720 time steps. It is therefore unclear whether the same conclusions hold for substantially longer temporal horizons, where internal representations and routing behaviors may become more diverse. The study employs a fixed set of relatively simple adapters (linear, attention-based, and convolutional adapters). The behavior of the proposed method in settings with learned, dynamically generated, or substantially larger adapter pools remains unexplored. Consequently, the scalability and robustness of the conclusions to more complex routing scenarios are not yet established.
+
+Rating: 4: Borderline accept: Technically solid paper where reasons to accept outweigh reasons to reject, e.g., limited evaluation. Please use sparingly.
+Confidence: 3: You are fairly confident in your assessment. It is possible that you did not understand some parts of the submission or that you are unfamiliar with some pieces of related work. Math/other details were not carefully checked.
+Ethical Concerns: NO or VERY MINOR ethics concerns only
+Paper Formatting Concerns:
+I did not notice any major formatting, anonymity, or policy-related concerns.
+
+Code Of Conduct Acknowledgement: Yes
+Responsible Reviewing Acknowledgement: Yes
+Add:
+New Rebuttal
+* denotes a required field
+Rebuttal*
+Rebuttals can include Markdown formatting and LaTeX forumulas, for more information see https://openreview.net/faq, max length: 10000
+
+Write
+Preview
+TeX is supported
+Readers*
+NeurIPS 2026 Conference Program ChairsNeurIPS 2026 Conference Submission16168 Authors
+Signatures*
+signatures
+Edit History
+Readers*
+NeurIPS 2026 Conference Program ChairsNeurIPS 2026 Conference Submission16168 Authors
+Signatures*
+NeurIPS 2026 Conference Submission16168 Authors
+About OpenReview
+Contact
+FAQ
+Hosting a Venue
+Sponsors
+Terms of Use / Privacy Policy
+All Venues
+Donate
+News
+OpenReview is a long-term project to advance science through improved peer review with legal nonprofit status. We gratefully acknowledge the support of the OpenReview Sponsors. © 2026 OpenReview
+
+Raw-Routed Mixture of Adapters: A Causal Intervention for Routing Collapse in Time Series Foundation Models | OpenReview
+Voice Typing
+
+Ready for your note — just start speaking...
+Copy
+No text detected. Try
+⌃
+⌘
+R
+to capture text and listen.
+
+Save to Library
+⌥
+L
+
+Talk to Assistant
+Dictate
+⌥
+S
+
+Screenshot to Listen
+⌃
+⌘
+R
+
+Settings
+"""
+
+I need each point to be concluded with a sentence that conclusively closes the weakpoint/ questions
+
+---
+
+/commit-push
+
+---
+
+are we surfacing this explicitly enough (raised by metareviwer): "the method requires a strictly frozen backbone." in what rebuttal response ?
+
+---
+
+can we be more confident here: """    7 +**W2 (dataset-distributional / feature-asymmetry factors).** *(Meta-review point 6: theory limited
+         +to IN–router interaction.)* We appreciate this, and you are right that the formal theory is intenti
+         +onally narrow. Observation 1 isolates the single removable quantity, per-sample location-scale, and
+         + that narrowness is what makes R(D) usable before training: a training-free predictor of which data
+         +sets collapse (ρ=-0.88, n=9) that correctly predicts no gain on the boundary cases (Traffic R=0.14,
+         + Solar R=0.06). We broaden it two ways. First, Appendix D.1 reads the same loss as rate-distortion:
+         + instance normalization is lossy compression that throws away each window's mean and scale, so R(D)
+         + measures how much routing signal sits in that thrown-away part, rather than being a hand-built rat
+         +io. An information-bottleneck reading (App. F) explains why collapse happens: the normalize-then-en
+         +code pipeline keeps only what predicts the target and drops the rest, and "the rest" includes what
+         +the router needs. Second, the mechanism holds well beyond instance normalization: it also shows up
+         +under BatchNorm1d, GroupNorm, and in a vision model (App. H, H.1, W4). We do not yet formalize data
+         +set-specific distributional structure or feature asymmetries beyond mean and scale; those are genui
+         +ne open theory, and our ablations already show the router relies on more than (μ,σ) (App. F, SSR +4
+         +8%).""". Let first check what we had in the orignal submission and the appendix
+
+---
+
+/commit-push
+
+---
+
+let do one warm tone, logical pass (on the raw feedback to see if our responses attack the issue). Propose first, do not over-write yet
+
+---
+
+yes please
+
+---
+
+/commit-push and regenerate
+
+---
+
+We are saying that raw routing adds no meaningful memory.
+ Let's re-verify this technically.
+
+---
+
+ok let's add deeper and clearer topical opener to that rebuttal
+
+---
+
+I don't like it. I like the version: we can understand why ...
+
+---
+
+the ending sentence: " So raw
+  ▎ routing adds no meaningful memory." should at least show reviewer they have a point
+
+---
+
+" formal theory is intentionally narrow." <- reword here too
+
+---
+
+This is a natural worry,
+since in a standard MoE the router input grows with the expert count. <- reword the "this is a natural worry"
+
+---
+
+I think the second sentence: "In ours it does not: the router
+         + input is the raw window, independent of K; only the K
+         +-way logit layer (64→K) grows, which is tiny." <- it should explain right here with evidence instead of deffering to the later sentences
+
+---
+
+so if k=5 it is still O(2) ? <- I find this non intutive
+
+---
+
+We are glad the review recognizes the signal-ratio’s value (“predicting
+dataset vulnerability prior to training… practical value beyond the specific method”). This is
+the paper’s most transferable contribution: <- Start with: "We appreciate instead of we glad"
+
+"the paper's most transferable contributio" <- need reword here
+
+---
+
+I think we should be careful with: "the most, the best, etc"
+
+---
+
+reword: " exactly the value" <- write more humbled
+
+---
+
+then it is confusing, the ratio is there.
+
+---
+
+/commit-push
+
+---
+
+the review: """W4 — Closing the DLinear gap requires a 546-run sweep plus a stack of dataset-specific engineering choices (shared NLinear branch, b=−2 gate init, 5-epoch warmup, validation-based early stopping), after which the result is still only 5/6 match-or-beat at a −2.8% mean gap (ETTh1 still loses). Appendix P.3 then shows a backbone-free Raw-MLP MoE matches or beats the dual-stream variant on average, indicating the gains come largely from the raw/NLinear branch (essentially DLinear) rather than the TSFM. This makes Residual-IA+ read as heavy tuning to approach a linear baseline, and its generalization beyond these six benchmarks is unclear."""
+
+from pm4m 
+
+currently why answer like this: """W4 (heavy tuning; generalization beyond six). On “heavy tuning”: the 546-run sweep
+(Appendix P) was a one-time search for the recipe, not a per-dataset cost; the recipe is then
+fixed, and should not read as a SOTA search. The result is a win over DLinear (65:11), not
+parity. [NEW] Applied unchanged (gate-init b=-2, 5-epoch warmup, shared NLinear,
+validation early-stop) to three unseen datasets, Residual-IA+ matches or beats DLinear on
+8/9 cells: Solar 3/3 (-9.5%), Traffic 3/3 (parity), Exchange 2/3, no collapse. A recipe that
+transfers to unseen data without re-tuning is difficult to attribute to per-dataset tuning, and it
+speaks directly to “generalization beyond these six is unclear.”
+On “the raw branch does the work; the TSFM is dead weight (App. P.3)”: P.3’s “dead weight”
+is measured against the intermediate Dual-Stream (ETTh2 0.452, ETTm2 0.252), not the
+final Residual-IA+ (ETTh2 0.346, ETTm2 0.188), and that intermediate itself loses to
+DLinear. P.3’s own backbone-free Raw-MLP MoE loses to DLinear on all six datasets (mean
++11.2%): remove the TSFM and you fall behind. [NEW] We ran the clean test: Residual-IA+
+vs a same-size backbone-free Raw-MLP MoE, raw branch held fixed so only the backbonediffers, at H=192 (where the paper says the backbone helps most). Residual-IA+ wins 18/18
+(mean -11.8%), including ETTh2/ETTm2/Electricity, the datasets called dead-weight at
+H=96, and still matches or beats a 49K DLinear. The backbone’s contribution is horizondependent: small at H=96, decisively positive at H≥192."""
+
+
+I think we should answer first, that it generalise, etc, then elaborate, then conclude. It should answer first
+
+---
+
+write proper sentences, warm but firm
+
+---
+
+opener should thank first, be appreciative
+
+---
+
+/commit-push
+
+---
+
+regenerate the pdfs
+
+---
+
+"Conclusions hold on both axes." in the response for pm4m. Reword. Answer in full sentences: "The experiments use almost only 512 as input length and 96 as the forecasting horizon. If the input length and forecasting length change, do the methods and conclusion in the paper still hold?". And it should be rendered above the table of: "Routing entropy per seed (each cell = seeds 42/43/44; H=96):"
+
+---
+
+be warmer than: To ans
+         +wer the reviewer's question directly
+
+---
+
+be more formal
+
+---
+
+did we recently remove: "Multi-horizon results, though, are already in the submitted paper (Table
+C.1: RR-MoA 12/12 vs best fixed over H∈{96,192,336,720}"
+
+---
+
+I love the earlier version, it is much clearer
+
+---
+
+/commit-push
+
+---
+
+I like this version: "On “the raw branch does the work; the TSFM is dead weight (App. P.3)”: P.3’s “dead weight”
+is measured against the intermediate Dual-Stream (ETTh2 0.452, ETTm2 0.252), not the
+final Residual-IA+ (ETTh2 0.346, ETTm2 0.188), and that intermediate itself loses to
+DLinear. P.3’s own backbone-free Raw-MLP MoE loses to DLinear on all six datasets (mean
++11.2%): remove the TSFM and you fall behind. [NEW] We ran the clean test: Residual-IA+
+vs a same-size backbone-free Raw-MLP MoE, raw branch held fixed so only the backbonediffers, at H=192 (where the paper says the backbone helps most). Residual-IA+ wins 18/18
+(mean -11.8%), including ETTh2/ETTm2/Electricity, the datasets called dead-weight at
+H=96, and still matches or beats a 49K DLinear. The backbone’s contribution is horizondependent: small at H=96, decisively positive at H≥192." better than the current ones. Howerver, keep: "We appreciate this careful read, and believe both concerns have direct answers: the recipe is fixed once and generalizes to unseen data without re-tuning, and the TSFM is not dead weight.". Emphasize in the opener that " remove the TSFM and you fall behind. "
+
+---
+
+bring: "Remove it and the model falls behind." to the opener as well
+
+---
+
+Spit this: "On "the raw branch does the work; the TSFM is dead weight (App. P.3)": P.3's "dead weight" is measured against the intermediate Dual-Stream (ETTh2 0.452, ETTm2 0.252), not the final Residual-IA+ (ETTh2 0.346, ETTm2 0.188), and that intermediate itself loses to DLinear. P.3's own backbone-free Raw-MLP MoE loses to DLinear on all six datasets (mean +11.2%): remove the TSFM and you fall behind. " into many simpler sentences to facilitate the readability
+
+---
+
+Write clearer, what TSFM addes here, read that appendix closely
+
+---
+
+did we have numbers to back that up: "What the TSFM adds is the nonlinear signal the
+  ▎ linear branch cannot, which carries Residual-IA+ past DLinear" like decomposition in the submitted paper
+
+---
+
+yes please
+
+---
+
+yes please
+
+---
+
+remove what they dont ask for: " the exact range is 23-38%, which we will gladly correct. We will standardize "fine-tuning" and recheck the flagged R(D) parenthesis."
+
+---
+
+remove what they dont ask for: " the exact range is 23-38%": """Inconsistencies in router parameter counts: The main text, Fig. 2, and Table A.1 all list 853, while item 4 of the Checklist states ~1100.
+An extra parenthesis is present in R(D) on line 146.
+The statement “13–42% over RR-MoA on six datasets” on line 64 is incorrect, it should be over baselines.
+The terms “finetuning” and “fine-tuning” are used inconsistently; they should be standardized to a single form."""
+
+---
+
+now on jemy, we need to answer: "The routing signal for these tasks may differ from forecasting." more decisvely. Be more appreciative. I really hate the word: "natural". Before directly saying: "* A strictly frozen backbone is not required.", show appreciation and a bit of understanding on why he asked this. He is our most generous reviewer
+
+---
+
+some reminder on the raw feedback of jemj: "Contribution Type: General: Most submissions will fall into this type.
+Strengths And Weaknesses:
+Strengths
+
+Novel and Important Problem Identification
+Rigorous Causal Analysis
+Strong Experimental Validation
+Theoretical Contributions
+Principle Generalizes Beyond Specific Architecture
+The paper demonstrates the principle is architecture-agnostic through
+Practical Value
+Router adds only few extra (853) parameters
+Weakness
+
+Limited Task Diversity
+The evaluation focuses on forecasting (primary) and imputation (secondary). Classification, anomaly detection, and very long horizons (>720) are acknowledged as open.
+Frozen Backbone Requirement
+The strongest results require a strictly frozen backbone. Proposition 1 explains why (co-adaptation feedback loop), but this limits applicability when backbone adaptation is genuinely needed.
+Quality: 4: excellent
+Clarity: 4: excellent
+Significance: 4: excellent
+Originality: 3: good
+Questions:
+Have you evaluated on classification or anomaly detection? The routing signal for these tasks may differ from forecasting.
+Could raw routing be combined with selective backbone adaptation (e.g., last 2 blocks unfrozen with lower LR)?
+How does performance scale for H ∈ {1000, 2000}? Does the frozen backbone's horizon-invariant representation become limiting?
+What is the memory overhead during training when maintaining both raw and normalized paths?
+Limitations:
+Limited task diversity (forecasting/imputation only), gap to from-scratch baselines in absolute terms, and frozen-backbone requirement are the main limitations, all acknowledged by the authors.
+
+Rating: 5: Accept: Technically solid paper, with high potential value on at least one sub-area of AI or moderate-to-high impact on more than one area of AI, with good-to-excellent evaluation, resources, reproducibility, and no unaddressed ethical considerations."
+
+---
+
+read comlicated: "We appreciate this question, and we see why it comes up: our strongest cells are frozen, and Proposition 1 explains why (the co-adaptation feedback loop), so it can look as though the method needs the backbone fixed, which
+  ▎ would limit it where adaptation is genuinely needed. It does not.", appreciate but make it more readable and easier to follow
