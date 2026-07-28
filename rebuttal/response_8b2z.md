@@ -58,4 +58,4 @@ Thank you for the careful assessment. We are grateful the causal mechanism and t
 
 **On significance.** We appreciate that the review recognizes the signal-ratio's value ("predicting dataset vulnerability prior to training... practical value beyond the specific method"). This is what R(D) provides: training-free and computed a priori (ρ=-0.88, n=9), it tells a practitioner before training where raw routing helps and where it will not (Traffic, R=0.14). With the collapse diagnosis, that is a reusable result for the TSFM-adapter community, whichever backbone wins. It is also general, not LTSF-specific: it extends to any instance-normalized backbone with a mixture head (App. H, H.1).
 
-The memory, scaling, normalizer, task-diversity, horizon, convergence, and statistical concerns are now addressed, several already in the submission. We would be grateful if the reviewer would reconsider the score.
+Thank you for this thorough and constructive review; it genuinely made the paper stronger. We hope our responses address each concern, and would gladly add anything further; if they do, we would be grateful for a higher score.
