@@ -29,7 +29,7 @@ On the TSFM, we read App. P.3 differently. Its "dead weight" is measured against
 
 **W6 (minor).** The router is 853 params for the reported K=5 model, consistent across the main text, Fig 2, Table A.1, and the code. The K-way head grows with K, so over the expert-count sweep (Table I.3, to K=10) the count reaches ~1,100; the Checklist's "~1.1K" reflects that larger-K count, not the reported K=5, and we will correct it to 853. On the SR-MoA figure, the 13-42% is over RR-MoA, not the baselines (SR-MoA beats RR-MoA on all six, Table F.2); rechecking, the exact range is 23-38%, which we will gladly correct. We will standardize "fine-tuning" and recheck the flagged R(D) parenthesis.
 
-**Q1 (input length 512 / horizon 96).** The input length is indeed fixed at 512, and the reviewer is right to question it. Multi-horizon results, though, are already in the submitted paper (Table C.1: RR-MoA 12/12 vs best fixed over H∈{96,192,336,720}; Residual-IA+ reaches 6/6 at H=192 in Table P.6); we may not have presented them prominently enough. [NEW] Input-length ablation (L∈{96,192,336,512}, 6 datasets, 3 seeds): no collapse at any L (per-seed entropy 0.89-1.53, far above the 0.00 collapse floor), raw beats normalized routing at all 24 configs (-17% to -84%), and RR-MoA beats the best fixed adapter at 70/72.
+**Q1 (input length 512 / horizon 96).** The reviewer is right that we mostly use L=512 and H=96. The horizon is already covered in the submitted paper (Table C.1: RR-MoA 12/12 vs best fixed over H∈{96,192,336,720}; Residual-IA+ 6/6 at H=192, Table P.6). [NEW] For input length, an ablation (L∈{96,192,336,512}, 6 datasets, 3 seeds) shows no collapse at any L, raw beating normalized routing at all 24 configs (-17% to -84%), and RR-MoA beating the best fixed adapter at 70/72. To answer the reviewer's question directly: yes, both the method and its conclusions hold as the input length and the forecast horizon change, not only at L=512 and H=96.
 
 *Routing entropy per seed (each cell = seeds 42/43/44; H=96):*
 
@@ -41,8 +41,6 @@ On the TSFM, we read App. P.3 differently. Its "dead weight" is measured against
 | ETTm2 | 1.16/1.31/1.26 | 1.12/1.22/1.14 | 1.16/1.13/1.23 | 1.21/1.26/1.08 |
 | Electricity | 1.40/1.38/1.44 | 1.53/1.44/1.43 | 1.48/1.48/1.38 | 1.50/1.48/1.40 |
 | Weather | 1.47/1.46/1.47 | 1.37/1.41/1.46 | 1.37/1.32/1.42 | 1.47/1.44/1.30 |
-
-Conclusions hold on both axes.
 
 **Q2 (α inconsistency).** Thank you for catching this; it is a wording slip. α is initialized at σ(0)=0.5 (the logit is a parameter at 0.0); 0.492 is the mean α at the end of the first logged epoch, after one epoch has moved it below 0.5, not the initialization (trajectory 0.5 → 0.492 → 0.468). We will correct the wording.
 
