@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "c871d78232ee",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 17,
+  "files_touched": [
+    "rebuttal/reply_pm4m_round2.md",
+    "scripts/linear_anchors_core.py",
+    "scripts/modal_linear_anchors.py",
+    "scripts/modal_nlinear_anchor.py",
+    "scripts/modal_stat_decodability.py",
+    "scripts/nlinear_anchor_core.py",
+    "scripts/stat_decodability_core.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c8/71d78232ee/0/metadata.json",
+      "transcript": "/c8/71d78232ee/0/full.jsonl",
+      "content_hash": "/c8/71d78232ee/0/content_hash.txt",
+      "prompt": "/c8/71d78232ee/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2162,
+    "cache_creation_tokens": 514453,
+    "cache_read_tokens": 92495017,
+    "output_tokens": 380063,
+    "api_call_count": 271
+  }
+}
