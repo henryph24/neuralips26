@@ -239,3 +239,78 @@ avoid: "and our rebuttal is what created it." directly link to our defense
 ---
 
 lovely but write more politely, not aggressive
+
+---
+
+remove: "  17 +Three corrections follow, all of them to our rebuttal rather than to the paper. We withdraw the sentence. Calling the change "a sharper claim, not a weaker one" presented a revision the
+         + paper did not need as a strengthening. And the rule we offered Reviewer 8b2Z was shorthand: collapse needs two things together, the statistics removed from what the router reads *and*
+         +a learnable affine map that can co-adapt (Prop. 1). We will also correct the Kim et al. 2022 citation." <- it echoes our own error
+
+---
+
+I find accept 4/6 as headline is not good, how do we write differently to keep headline
+
+---
+
+I want this: "we should have made it clearer and more careful in the rebuttal" rather than acklowedge flat contradiction !
+
+---
+
+yes please
+
+---
+
+we should back down less
+
+---
+
+enhance readability here: """§4.1, Table N.2’s caption and the regime taxonomy all say the same thing, so the paper needs no revision. As worded, our rebuttal sentence claims something about the hidden states that neither we nor the paper intended.
+How it happened is worth setting out, since your question put fair pressure on a real gap. You asked why raw routing helps on a backbone that does not collapse, and read the gain as App. P.3’s raw-signal predictiveness. Keen to show it was a routing effect, we reached for a mechanism mirroring the collapse story: statistics removed, raw input restores them. We argued from the normalization operation: per-instance scaling subtracts each window’s mean and divides by its scale, so the encoder never sees the location-scale, and we took the router to be likewise. That last step we had not checked, and we should have presented the change as a revision rather than a strengthening. What a normalizer takes out of its input does not tell you what survives in the representation built from it, since a deep encoder can carry them forward.""" the word "set out" needs a reword. It needs to read fully understandable, warm tone, no such structure like "Keen to show it was a routing effect, we reached for a mec..."
+
+---
+
+verify one more time: " What a normalizer removes from its input does not settle what survives in the representation the encoder builds, because a deep encoder can carry those statistics forward." since we cannot afford to lose one more round
+
+---
+
+can we somehow hide: "gives 4/6." instead of keep exposing the things they don't ask for
+
+---
+
+remove: " Kim et al. 2022 citatio".
+
+"" Both points have made the work more accurate, and we are grateful.""" <- we appreciate, "grateful" sounds heavy
+
+---
+
+one more pass on where we are oversharing
+
+---
+
+"As written, it makes a claim about the hidden states that we did not intend and the paper does not make." <- we should have written it more clearly and scoped ? can we ?
+
+---
+
+"""
+It may help to explain how that sentence came about, because your question raised a fair point. You asked why raw routing still helps on a backbone that does not collapse, and you read the gain as App. P.3’s raw-signal predictiveness. We wanted to show it was a routing effect instead, so we looked for a mechanism that matched the collapse story: the statistics are removed, and the raw input brings them back.
+Our reasoning started from what normalization does to its input. Per-instance scaling subtracts each window’s mean and divides by its scale, so the encoder never sees the location-scale. We then assumed the router could not see it either. But that assumption is about the representation the encoder builds, not about the operation, and it needed measuring rather than inferring. We had not measured it, and we should have presented the change as a revision rather than a strengthening.""" reasoning is good but keep it less repeated, don't drive too much attention to where we got it wrong !
+
+---
+
+user simpler structure than had we: """ Had we simply quoted that, no contradiction would have appeared. We do not stand behind the sentence as written, or the framing that called the change a strengthening."""
+
+---
+
+"The effect you identify is real, and confined to three of nine datasets." should we use "and" or "however"
+
+---
+
+"This speaks to your concern directly: " <- soften the tone, review entire writing again
+
+---
+
+if we explained first already, this "Since you asked which claim holds, we verified it. Probing the tensor a hidden-state router reads, the window mean is recoverable from Moirai’s hidden states (R²=0.996) but not MOMENT’s under RevIN (−0.311), with RevIN off as a control (0.999). The statistics survive on Moirai, exactly as §4.1 says. This shows what the router can read; it does not by itself isolate the normalizer as the cause." read very defensive and give the impression that we are unsure ourselves. How do we still use this results but more confidently
+
+---
+
+/commit-push
