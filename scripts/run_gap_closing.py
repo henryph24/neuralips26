@@ -278,8 +278,12 @@ class GapClosingMoA(nn.Module):
     def __init__(self, d_model, output_dim, input_len=512, K=5, hidden=64,
                  top_k=2, variant="dual-stream", raw_hidden=192, raw_depth=2,
                  gate_init=-2.0, adapter_hidden=None,
-                 raw_branch_shared=False, raw_arch="linear"):
+                 raw_branch_shared=False, raw_arch="linear", backbone_off=False):
         super().__init__()
+        # backbone_off zeroes the residual gate: the single-variable control that
+        # leaves the raw branch, router and schedule identical and removes only
+        # the frozen-backbone path.
+        self.backbone_off = backbone_off
         assert variant in self.VARIANTS, f"Unknown variant: {variant}"
         self.variant = variant
         self.output_dim = output_dim
@@ -397,6 +401,8 @@ class GapClosingMoA(nn.Module):
         if self.variant in ("ia-gating", "residual-ia"):
             logits, router_feat = self._compute_logits(raw_input, return_feat=True)
             gates = torch.sigmoid(self.gate_head(router_feat))  # (B, K)
+            if self.backbone_off:
+                gates = torch.zeros_like(gates)
         else:
             logits = self._compute_logits(raw_input)
             gates = None
@@ -490,7 +496,8 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
                       cosine_schedule=False, raw_depth=2,
                       gate_init=-2.0, warmup_epochs=0, adapter_hidden=None,
                       X_val=None, Y_val=None, val_early_stop=False, val_patience=5,
-                      raw_branch_shared=False, raw_arch="linear", grad_clip=0.0):
+                      raw_branch_shared=False, raw_arch="linear", grad_clip=0.0,
+                      backbone_off=False):
     """Train gap-closing MoA variant."""
     import copy
     hdim = _get_hidden_dim(model)
@@ -500,6 +507,7 @@ def train_gap_closing(model, blocks, X_train, Y_train, X_test, Y_test,
         raw_depth=raw_depth, gate_init=gate_init,
         adapter_hidden=adapter_hidden,
         raw_branch_shared=raw_branch_shared, raw_arch=raw_arch,
+        backbone_off=backbone_off,
     ).to(device)
 
     print(f"  Variant: {variant}, K={adapter.K}, top_k={adapter.top_k}, "
