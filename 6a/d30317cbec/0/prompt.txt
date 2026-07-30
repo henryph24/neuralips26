@@ -731,3 +731,7 @@ write more convincingly on this: """Beating NLinear does not by itself isolate t
 ---
 
 Iterate on the optimization until the language carries the lowest possible risk
+
+---
+
+/commit-push
