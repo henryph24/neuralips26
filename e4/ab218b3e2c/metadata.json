@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "e4ab218b3e2c",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 15,
+  "files_touched": [
+    "rebuttal/reply_pm4m_round2.md",
+    "scripts/backbone_toggle_core.py",
+    "scripts/modal_backbone_toggle.py",
+    "scripts/run_gap_closing.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e4/ab218b3e2c/0/metadata.json",
+      "transcript": "/e4/ab218b3e2c/0/full.jsonl",
+      "content_hash": "/e4/ab218b3e2c/0/content_hash.txt",
+      "prompt": "/e4/ab218b3e2c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2627,
+    "cache_creation_tokens": 4505518,
+    "cache_read_tokens": 277599193,
+    "output_tokens": 647528,
+    "api_call_count": 518
+  }
+}
