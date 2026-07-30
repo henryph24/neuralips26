@@ -94,7 +94,8 @@ def _train_nlinear(X_train, Y_train, X_test, Y_test, horizon=96, device="cuda",
 
 
 def run_cell(dataset, seed, horizon=96, backbone="AutonLab/MOMENT-1-small",
-             device="cuda", ria_max_epochs=30):
+             device="cuda", ria_max_epochs=30, weight_decay=0.0,
+             raw_hidden=192, raw_depth=2):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -119,8 +120,9 @@ def run_cell(dataset, seed, horizon=96, backbone="AutonLab/MOMENT-1-small",
         device=device, n_epochs=ria_max_epochs, forecast_horizon=horizon,
         batch_size=128, backbone_type=bb, K=5, hidden=64, top_k=2,
         variant="residual-ia", test_ch=test_ch, scaler=scaler,
-        raw_hidden=192, lr=1e-3, weight_decay=0.0, cosine_schedule=True,
-        raw_depth=2, gate_init=-2.0, warmup_epochs=5, adapter_hidden=None,
+        raw_hidden=raw_hidden, lr=1e-3, weight_decay=weight_decay,
+        cosine_schedule=True,
+        raw_depth=raw_depth, gate_init=-2.0, warmup_epochs=5, adapter_hidden=None,
         X_val=X_val, Y_val=Y_val, val_early_stop=True, val_patience=5,
         raw_branch_shared=True, raw_arch="nlinear", grad_clip=1.0,
     )
@@ -134,6 +136,8 @@ def run_cell(dataset, seed, horizon=96, backbone="AutonLab/MOMENT-1-small",
     ria_mse = ria["mse"]
     return {
         "dataset": dataset, "seed": int(seed), "horizon": horizon,
+        "backbone": backbone, "epochs": ria_max_epochs,
+        "weight_decay": weight_decay,
         "ria_mse": ria_mse, "ria_entropy": ria.get("routing_entropy"),
         "ria_param_count": ria.get("param_count"),
         "dlinear_mse": dlinear_mse,
