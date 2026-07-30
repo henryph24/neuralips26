@@ -1,0 +1,741 @@
+all rebuttals have been submitted but look like there is an optional AC comment that we need to send as well: """Meta Review of Submission16168 by Area Chair QYXJ
+Meta Reviewby Area Chair QYXJ19 Jul 2026, 14:14 (modified: 24 Jul 2026, 00:57)Senior Area Chairs, Area Chairs, Authors, Reviewers Submitted, Program Chairs, Area Chair QYXJRevisions
+Metareview:
+The paper studies the problem of collapsing mixture of experts to a single expert when attached to time-series foundation models. Among the key strengths of the method include:
+
+studies and interesting and practically relevant problem
+paper is well-presented and includes diverse set of experiments.
+the idea is novel with good causal analyses.
+the proposed signal-relation metric carries practical value.
+Some important concerns mentioned by the reviewers are:
+
+overstate of claims in the paper and requires reframing of contributions
+the (M,Σ)-centric quantity contradicts with paper's ablations.
+experimental setup focusses only on forecasting (primary) and imputation (secondary).
+the method requires a strictly frozen backbone.
+the approach seems to be memory-consuming since it operates on raw inputs.
+the theoretical analysis is limited to interaction between IN and router inputs.
+how the approach will scale to more number of experts while avoiding memory bandwidth bottleneck.
+causal intervention is limited to IN.
+The paper received mix initial ratings. Despite two reviewers leaning towards paper acceptance, all of the reviewers identified important points and concerns that need to be addressed in the rebuttal phase. Authors can primarily focus on 3-8 points and clarify any factual errors made by reviewers."""
+
+draft that one for me, refer to what we had in 3 individual rebuttals
+
+---
+
+this one: "Your comment or reply (max 5000 characters). Add formatting using Markdown and formulas using LaTeX. For more information see https://openreview.net/faq"
+
+---
+
+let write very warm and thankful, for pointing at factual issues by other reviewers be emotionally intelligent here because this official comment will be seen by everyone. You can write with references to full explain in the review indivudal rebuttal
+
+---
+
+so that is the official comment, now we have this thing call Author AC Confidential Comment[Image #2] as task ? <- is this required
+
+---
+
+let now get back to the reviewer pm4m, here is his response to our rebuttal: """Official Commentby Reviewer Pm4m29 Jul 2026, 17:26Program Chairs, Senior Area Chairs, Area Chairs, Reviewers Submitted, Authors
+Comment:
+Response to Authors
+I thank the authors for the detailed rebuttal and the new experiments. The minor issues (router parameter count, α initialization, Figure 2, line 64) are resolved However, two substantive issues remain (W3 and W4), and in both cases the rebuttal contradicts either the paper itself or leaves the decisive control missing. My reasons are as follows.
+
+1. The rebuttal's explanation of the Moirai gains contradicts the paper itself
+The paper, §4.1 (lines 188–190), states that non-learnable I/O scaling "preserves the (M, Σ) statistics in the hidden states the router reads". This is the stated reason regime (ii) is not vulnerable. The rebuttal's response to my W3 asserts the opposite: Moirai's non-learnable normalization "also strips per-window location-scale from the hidden states, and the raw input lets the router recover it." The rebuttal presents the reversal as "a sharper claim, not a weaker one" without acknowledging that it rewrites the paper's stated mechanism. Table N.2's caption meanwhile hedges in the original direction ("hidden states retain enough signal to avoid collapse"), and the rule offered to Reviewer 8b2Z ("a normalizer causes collapse when it strips routing-relevant statistics at the router's input") silently replaces the paper's learnable-affine criterion.
+
+Which claim is correct?
+
+2. "Residual-IA+ matches or beats DLinear" is confounded by NLinear vs. a simplified DLinear
+Two facts from the submission itself: Residual-IA+'s shared raw branch is NLinear (App. P.1, fix (v): y = Linear(x − x_T) + x_T), while the calibration anchor is the simplified single-Linear DLinear without trend-seasonal decomposition (App. A, lines 640–643). NLinear's from-scratch advantage over DLinear on level-drifting data is a known result from [17] itself, and the paper's own Batch-4 analysis (lines 1309–1315) shows the same pattern inside the adapter: the NLinear branch helps most on precisely the non-stationary ETT datasets, "matching NLinear's design rationale."
+
+The headline defense of W1/W4 (65 significant wins vs. 11 losses) therefore compares a method whose base predictor is a stronger linear model against a weaker linear anchor. As reported, the grid cannot distinguish "the backbone adds value" from "NLinear beats a simplified DLinear." The [NEW] Exchange result (a ~10× RR-MoA deficit in Table N.4 flipping to 2/3 match-or-beat) is exactly what level anchoring predicts on near-random-walk data, backbone or not. Add a variant from-scratch NLinear, trained under the same protocol as the DLinear anchor would be persuasive.
+
+"""
+
+---
+
+while that running, help me withWhich claim is correct?
+
+---
+
+yes please
+
+---
+
+<task-notification>
+<task-id>bz6qvpf1r</task-id>
+<tool-use-id>toolu_019nwNr4Dkx5DjoCf5TE8MwE</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/bz6qvpf1r.output</output-file>
+<status>completed</status>
+<summary>Background command "Run n=10 anchor comparison at H=96" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b8fpud8q4</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/b8fpud8q4.output</output-file>
+<status>completed</status>
+<summary>Background command "Run probe: MOMENT RevIN on/off, Chronos, Timer" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>brwbxzcl3</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/brwbxzcl3.output</output-file>
+<status>completed</status>
+<summary>Background command "Run probe: Moirai arms on uni2ts image" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+why our rebuttal is wrong. here is our rebuttal: "W3 (Moirai gains without collapse). The reviewer is right, and we should have made this clearer. On Moirai there is no collapse, so its 12-29% gain is not collapse-repair. We read it as two results. (1) It confirms the prediction: Moirai has no learnable-affine input normalization, so the co-adaptation that drives collapse cannot occur. (2) Raw routing still helps, for a different reason: Moirai's non-learnable normalization (Kim et al. 2022) also strips per-window location-scale from the hidden states, and the raw input lets the router recover it, a routing effect, not the raw-signal predictiveness the reviewer links to App. P.3: in RR-MoA the raw signal feeds only the router, and experts use frozen hidden states. So the gain cannot come from the Pure Raw-MLP mechanism, where experts read the raw signal directly. So the cross-backbone wins split into two regimes the diagnosis predicts: collapse-repair on learnable-affine RevIN backbones, routing-signal recovery elsewhere. That is a sharper claim than uniform collapse-repair, not a weaker one; the causal chain stands, and we will add the Moirai citation.".
+
+---
+
+why our rebuttal is wrong. here is our rebuttal: "W3 (Moirai gains without collapse). The reviewer is right, and we should have made this clearer. On Moirai there is no collapse, so its 12-29% gain is not collapse-repair. We read it as two results. (1) It confirms the prediction: Moirai has no learnable-affine input normalization, so the co-adaptation that drives collapse cannot occur. (2) Raw routing still helps, for a different reason: Moirai's non-learnable normalization (Kim et al. 2022) also strips per-window location-scale from the hidden states, and the raw input lets the router recover it, a routing effect, not the raw-signal predictiveness the reviewer links to App. P.3: in RR-MoA the raw signal feeds only the router, and experts use frozen hidden states. So the gain cannot come from the Pure Raw-MLP mechanism, where experts read the raw signal directly. So the cross-backbone wins split into two regimes the diagnosis predicts: collapse-repair on learnable-affine RevIN backbones, routing-signal recovery elsewhere. That is a sharper claim than uniform collapse-repair, not a weaker one; the causal chain stands, and we will add the Moirai citation.".
+
+I need something to make my further reply to this official comment convincing
+
+---
+
+<task-notification>
+<task-id>bl4a7spli</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/bl4a7spli.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-run Moirai arms with degeneracy diagnostics" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bvj3dxw3t</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/bvj3dxw3t.output</output-file>
+<status>completed</status>
+<summary>Background command "Extend RIA+ grid to n=10 seeds at H=96" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+I think we should focus on addressing 2 issues that are raised first
+
+---
+
+so if paper is correct how do we defend the rebuttal we just sent out yesterday on Moirai, the convincing way
+
+---
+
+so if paper is correct how do we defend the rebuttal we just sent out yesterday on Moirai, the convincing way. yesterday we wrote: "W3 (Moirai gains without collapse). The reviewer is right, and we should have made this clearer. On Moirai there is no collapse, so its 12-29% gain is not collapse-repair. We read it as two results. (1) It confirms the prediction: Moirai has no learnable-affine input normalization, so the co-adaptation that drives collapse cannot occur. (2) Raw routing still helps, for a different reason: Moirai's non-learnable normalization (Kim et al. 2022) also strips per-window location-scale from the hidden states, and the raw input lets the router recover it, a routing effect, not the raw-signal predictiveness the reviewer links to App. P.3: in RR-MoA the raw signal feeds only the router, and experts use frozen hidden states. So the gain cannot come from the Pure Raw-MLP mechanism, where experts read the raw signal directly. So the cross-backbone wins split into two regimes the diagnosis predicts: collapse-repair on learnable-affine RevIN backbones, routing-signal recovery elsewhere. That is a sharper claim than uniform collapse-repair, not a weaker one; the causal chain stands, and we will add the Moirai citation."
+
+---
+
+let's draft the full response to the comment now
+
+---
+
+let's draft the full response to the comment now, it is a separate reply to pm4m
+
+---
+
+then we just lose: " We should not have introduced a new mechanism
+  in a rebuttal without measuring it." <- I think what would be helpful is explain our thought when we wrote: "W3 (Moirai gains without collapse). The reviewer is right, and we should have made this clearer. On Moirai there is no collapse, so its 12-29% gain is not collapse-repair. We read it as two results. (1) It confirms the prediction: Moirai has no learnable-affine input normalization, so the co-adaptation that drives collapse cannot occur. (2) Raw routing still helps, for a different reason: Moirai's non-learnable normalization (Kim et al. 2022) also strips per-window location-scale from the hidden states, and the raw input lets the router recover it, a routing effect, not the raw-signal predictiveness the reviewer links to App. P.3: in RR-MoA the raw signal feeds only the router, and experts use frozen hidden states. So the gain cannot come from the Pure Raw-MLP mechanism, where experts read the raw signal directly. So the cross-backbone wins split into two regimes the diagnosis predicts: collapse-repair on learnable-affine RevIN backbones, routing-signal recovery elsewhere. That is a sharper claim than uniform collapse-repair, not a weaker one; the causal chain stands, and we will add the Moirai citation."
+
+---
+
+in orignal w4 there is this: "W4 — Closing the DLinear gap requires a 546-run sweep plus a stack of dataset-specific engineering choices (shared NLinear branch, b=−2 gate init, 5-epoch warmup, validation-based early stopping), after which the result is still only 5/6 match-or-beat at a −2.8% mean gap (ETTh1 still loses). Appendix P.3 then shows a backbone-free Raw-MLP MoE matches or beats the dual-stream variant on average, indicating the gains come largely from the raw/NLinear branch (essentially DLinear) rather than the TSFM. This makes Residual-IA+ read as heavy tuning to approach a linear baseline, and its generalization beyond these six benchmarks is unclear."
+
+focus on "generalization beyond these six benchmarks is unclear."". We should experiment more as per the firt rebuttal to pm4j @rebuttal/response_pm4m.md
+
+---
+
+<task-notification>
+<task-id>bepll3w6a</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/bepll3w6a.output</output-file>
+<status>completed</status>
+<summary>Background command "n=10 anchors for Solar/Traffic at H=96" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>byjd5z4go</task-id>
+<tool-use-id>toolu_01QniP5doGEZGCmTT9Gni5wt</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/byjd5z4go.output</output-file>
+<status>completed</status>
+<summary>Background command "n=10 anchors for Solar/Traffic at H=192" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+I think how we reply to the first ". The rebuttal's explanation of the Moirai gains contradicts the paper itself" is not good. We should say that the paper is correct first. Then we state what we actually mean by what we wrote in the first rebuttal (back down from here and show reasoning)
+
+---
+
+I think the first one he is directl challening rather than requesting empirical. Rewrite
+
+---
+
+are we waiting for running experiments ?
+
+---
+
+our reply is very weak now, seem like we will lose ? Don't write like this: "§4.1 is correct. Our W3 sentence is not, and we withdraw it."
+
+---
+
+<task-notification>
+<task-id>b8flw22im</task-id>
+<tool-use-id>toolu_01FVmsonZGokkeUmo36RET5t</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/b8flw22im.output</output-file>
+<status>completed</status>
+<summary>Background command "Off-suite three-way at H=192, n=10" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+I still don't like the reply as for the first part. We must stated that paper has always been right, you that our rebuttal makes him confused because of etc
+
+---
+
+write in appreciative, understanding, and warm tone please
+
+---
+
+write in appreciative, understanding, and warm tone please. Be clear why in the rebuttal we contradict ourselves (maybe because of the original feedback ?)
+
+---
+
+Bring this to earlier part of the response so that we appear stronger: """"It may help to say how we talked ourselves into the other sentence, because your W3 put fair pressure on a real gap. You asked why raw routing still helps on a backbone that does not co
+         +llapse, and read the gain as the raw-signal predictiveness of App. P.3. We were keen to show it was a routing effect instead, and reached for a mechanism that mirrored the collapse stor
+         +y: statistics removed, then recovered from the raw input. To get there we reasoned from the normalization **operation**, since per-instance scaling subtracts each window's mean and divi
+         +des by its scale so the encoder never receives the location-scale, and we concluded the router could not read it downstream either. That step from operation to representation is where i
+         +t fails: what a normalizer removes from its input does not determine what survives in the representation built from it, since a deep encoder can carry those statistics forward by other
+         +routes.""""
+
+Then rewrite another pass: emphasize readability and simpler writing structure. The word: "conjunctively" is hard to understand
+
+---
+
+after we concede don't write too much
+
+---
+
+avoid writing: """so we withdraw that claim.""" the new experiments still partly support us right ?
+
+---
+
+so how is the response reading now
+
+---
+
+avoid: "and our rebuttal is what created it." directly link to our defense
+
+---
+
+lovely but write more politely, not aggressive
+
+---
+
+remove: "  17 +Three corrections follow, all of them to our rebuttal rather than to the paper. We withdraw the sentence. Calling the change "a sharper claim, not a weaker one" presented a revision the
+         + paper did not need as a strengthening. And the rule we offered Reviewer 8b2Z was shorthand: collapse needs two things together, the statistics removed from what the router reads *and*
+         +a learnable affine map that can co-adapt (Prop. 1). We will also correct the Kim et al. 2022 citation." <- it echoes our own error
+
+---
+
+I find accept 4/6 as headline is not good, how do we write differently to keep headline
+
+---
+
+I want this: "we should have made it clearer and more careful in the rebuttal" rather than acklowedge flat contradiction !
+
+---
+
+yes please
+
+---
+
+we should back down less
+
+---
+
+enhance readability here: """§4.1, Table N.2’s caption and the regime taxonomy all say the same thing, so the paper needs no revision. As worded, our rebuttal sentence claims something about the hidden states that neither we nor the paper intended.
+How it happened is worth setting out, since your question put fair pressure on a real gap. You asked why raw routing helps on a backbone that does not collapse, and read the gain as App. P.3’s raw-signal predictiveness. Keen to show it was a routing effect, we reached for a mechanism mirroring the collapse story: statistics removed, raw input restores them. We argued from the normalization operation: per-instance scaling subtracts each window’s mean and divides by its scale, so the encoder never sees the location-scale, and we took the router to be likewise. That last step we had not checked, and we should have presented the change as a revision rather than a strengthening. What a normalizer takes out of its input does not tell you what survives in the representation built from it, since a deep encoder can carry them forward.""" the word "set out" needs a reword. It needs to read fully understandable, warm tone, no such structure like "Keen to show it was a routing effect, we reached for a mec..."
+
+---
+
+verify one more time: " What a normalizer removes from its input does not settle what survives in the representation the encoder builds, because a deep encoder can carry those statistics forward." since we cannot afford to lose one more round
+
+---
+
+can we somehow hide: "gives 4/6." instead of keep exposing the things they don't ask for
+
+---
+
+remove: " Kim et al. 2022 citatio".
+
+"" Both points have made the work more accurate, and we are grateful.""" <- we appreciate, "grateful" sounds heavy
+
+---
+
+one more pass on where we are oversharing
+
+---
+
+"As written, it makes a claim about the hidden states that we did not intend and the paper does not make." <- we should have written it more clearly and scoped ? can we ?
+
+---
+
+"""
+It may help to explain how that sentence came about, because your question raised a fair point. You asked why raw routing still helps on a backbone that does not collapse, and you read the gain as App. P.3’s raw-signal predictiveness. We wanted to show it was a routing effect instead, so we looked for a mechanism that matched the collapse story: the statistics are removed, and the raw input brings them back.
+Our reasoning started from what normalization does to its input. Per-instance scaling subtracts each window’s mean and divides by its scale, so the encoder never sees the location-scale. We then assumed the router could not see it either. But that assumption is about the representation the encoder builds, not about the operation, and it needed measuring rather than inferring. We had not measured it, and we should have presented the change as a revision rather than a strengthening.""" reasoning is good but keep it less repeated, don't drive too much attention to where we got it wrong !
+
+---
+
+user simpler structure than had we: """ Had we simply quoted that, no contradiction would have appeared. We do not stand behind the sentence as written, or the framing that called the change a strengthening."""
+
+---
+
+"The effect you identify is real, and confined to three of nine datasets." should we use "and" or "however"
+
+---
+
+"This speaks to your concern directly: " <- soften the tone, review entire writing again
+
+---
+
+if we explained first already, this "Since you asked which claim holds, we verified it. Probing the tensor a hidden-state router reads, the window mean is recoverable from Moirai’s hidden states (R²=0.996) but not MOMENT’s under RevIN (−0.311), with RevIN off as a control (0.999). The statistics survive on Moirai, exactly as §4.1 says. This shows what the router can read; it does not by itself isolate the normalizer as the cause." read very defensive and give the impression that we are unsure ourselves. How do we still use this results but more confidently
+
+---
+
+/commit-push
+
+---
+
+did we convincingly close: "Two facts from the submission itself: Residual-IA+'s shared raw branch is NLinear (App. P.1, fix (v): y = Linear(x − x_T) + x_T), while the calibration anchor is the simplified single-Linear DLinear without trend-seasonal decomposition (App. A, lines 640–643). NLinear's from-scratch advantage over DLinear on level-drifting data is a known result from [17] itself, and the paper's own Batch-4 analysis (lines 1309–1315) shows the same pattern inside the adapter: the NLinear branch helps most on precisely the non-stationary ETT datasets, "matching NLinear's design rationale."
+
+The headline defense of W1/W4 (65 significant wins vs. 11 losses) therefore compares a method whose base predictor is a stronger linear model against a weaker linear anchor. As reported, the grid cannot distinguish "the backbone adds value" from "NLinear beats a simplified DLinear." The [NEW] Exchange result (a ~10× RR-MoA deficit in Table N.4 flipping to 2/3 match-or-beat) is exactly what level anchoring predicts on near-random-walk data, backbone or not. Add a variant from-scratch NLinear, trained under the same protocol as the DLinear anchor would be persuasive." in @rebuttal/reply_pm4m_round2.md
+
+---
+
+yes do both
+
+---
+
+<task-notification>
+<task-id>blj4rfx78</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/blj4rfx78.output</output-file>
+<status>completed</status>
+<summary>Background command "Preflight MOMENT-large cell" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+monitor it closely
+
+---
+
+<task-notification>
+<task-id>brhthk2n9</task-id>
+<tool-use-id>toolu_01TJ9T1kopcFpFPSXUnPXCFq</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/brhthk2n9.output</output-file>
+<status>completed</status>
+<summary>Background command "MOMENT-large grid: 6 datasets x 3 seeds" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bvrkoxqf4</task-id>
+<summary>Monitor event: "MOMENT-large anchor grid: per-cell results and failures"</summary>
+<event>RUN COMPLETE: 18/18 cells on disk</event>
+If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bvrkoxqf4</task-id>
+<tool-use-id>toolu_017FwEkzqvMqWHMDcUvAkc5v</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/bvrkoxqf4.output</output-file>
+<status>completed</status>
+<summary>Monitor "MOMENT-large anchor grid: per-cell results and failures" stream ended</summary>
+</task-notification>
+
+---
+
+one more pass of logical writing of the reply, does it fully answer: "I thank the authors for the detailed rebuttal and the new experiments. The minor issues (router parameter count, α initialization, Figure 2, line 64) are resolved However, two substantive issues remain (W3 and W4), and in both cases the rebuttal contradicts either the paper itself or leaves the decisive control missing. My reasons are as follows.
+
+1. The rebuttal's explanation of the Moirai gains contradicts the paper itself
+The paper, §4.1 (lines 188–190), states that non-learnable I/O scaling "preserves the (M, Σ) statistics in the hidden states the router reads". This is the stated reason regime (ii) is not vulnerable. The rebuttal's response to my W3 asserts the opposite: Moirai's non-learnable normalization "also strips per-window location-scale from the hidden states, and the raw input lets the router recover it." The rebuttal presents the reversal as "a sharper claim, not a weaker one" without acknowledging that it rewrites the paper's stated mechanism. Table N.2's caption meanwhile hedges in the original direction ("hidden states retain enough signal to avoid collapse"), and the rule offered to Reviewer 8b2Z ("a normalizer causes collapse when it strips routing-relevant statistics at the router's input") silently replaces the paper's learnable-affine criterion.
+
+Which claim is correct?
+
+2. "Residual-IA+ matches or beats DLinear" is confounded by NLinear vs. a simplified DLinear
+Two facts from the submission itself: Residual-IA+'s shared raw branch is NLinear (App. P.1, fix (v): y = Linear(x − x_T) + x_T), while the calibration anchor is the simplified single-Linear DLinear without trend-seasonal decomposition (App. A, lines 640–643). NLinear's from-scratch advantage over DLinear on level-drifting data is a known result from [17] itself, and the paper's own Batch-4 analysis (lines 1309–1315) shows the same pattern inside the adapter: the NLinear branch helps most on precisely the non-stationary ETT datasets, "matching NLinear's design rationale."
+
+The headline defense of W1/W4 (65 significant wins vs. 11 losses) therefore compares a method whose base predictor is a stronger linear model against a weaker linear anchor. As reported, the grid cannot distinguish "the backbone adds value" from "NLinear beats a simplified DLinear." The [NEW] Exchange result (a ~10× RR-MoA deficit in Table N.4 flipping to 2/3 match-or-beat) is exactly what level anchoring predicts on near-random-walk data, backbone or not. Add a variant from-scratch NLinear, trained under the same protocol as the DLinear anchor would be persuasive." now
+
+---
+
+so are we good to go
+
+---
+
+so will this likely bring 2 to 3 or 4
+
+---
+
+" What would actually move him further: closing the grid with a second backbone. That's
+  precisely what I ran, and MOMENT-large" <- can we try again, with a different backbone (he did not specify right ?)
+
+---
+
+monitor it
+
+---
+
+<task-notification>
+<task-id>b9il54wa1</task-id>
+<tool-use-id>toolu_01PHykqYstxLEgb3c7u87Hy3</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/b9il54wa1.output</output-file>
+<status>completed</status>
+<summary>Background command "Preflight Moirai cell" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b45rqrf7n</task-id>
+<tool-use-id>toolu_01BAoBkqB5CZ2PZyjyCw4Bok</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/b45rqrf7n.output</output-file>
+<status>completed</status>
+<summary>Background command "Moirai grid: 6 datasets x 3 seeds" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+try that
+
+---
+
+<task-notification>
+<task-id>b0w2fp7ub</task-id>
+<tool-use-id>toolu_01BoeV19YcZHzNeTsT6t7QB9</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/b0w2fp7ub.output</output-file>
+<status>completed</status>
+<summary>Background command "MOMENT-large with the paper's exact cross-backbone flags" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bd27cx9e9</task-id>
+<summary>Monitor event: "MOMENT-large paper-config run: results and failures"</summary>
+<event>ETTh1        s42  RIA+=0.4264  DL=0.4290  NL=0.4181  | NL vs DL -2.5%  RIA+ vs NL +2.0%  loss
+ETTh1        s43  RIA+=0.4210  DL=0.4148  NL=0.4266  | NL vs DL +2.8%  RIA+ vs NL -1.3%  WIN
+ETTh1        s44  RIA+=0.4219  DL=0.4122  NL=0.4186  | NL vs DL +1.6%  RIA+ vs NL +0.8%  loss
+ETTm1        s42  RIA+=0.3342  DL=0.3238  NL=0.3231  | NL vs DL -0.2%  RIA+ vs NL +3.4%  loss
+ETTm1        s43  RIA+=0.3188  DL=0.3201  NL=0.3200  | NL vs DL -0.0%  RIA+ vs NL -0.4%  WIN
+ETTm1        s44  RIA+=0.3349  DL=0.3317  NL=0.3476  | NL vs DL +4.8%  RIA+ vs NL -3.7%  WIN
+Weather      s42  RIA+=0.1971  DL=0.2010  NL=0.2106  | NL vs DL +4.8%  RIA+ vs NL -6.4%  WIN
+Weather      s43  RIA+=0.1947  DL=0.2145  NL=0.2045  | NL vs DL -4.7%  RIA+ vs NL -4.8%  WIN
+Weather      s44  RIA+=0.1944  DL=0.2225  NL=0.2033  | NL vs DL -8.6%  RIA+ vs NL -4.4%  WIN
+Saved 9/9 cells to results/nlinear_anchor_mmlarge_papercfg/
+PAPER-CONFIG RUN DONE</event>
+If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bd27cx9e9</task-id>
+<tool-use-id>toolu_01WBBpWgg4gpLpFZjE2aLYWv</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-hungpq2412-neuralips26/2cac04a3-8b4a-4036-b8ce-acc7b0d00635/tasks/bd27cx9e9.output</output-file>
+<status>completed</status>
+<summary>Monitor "MOMENT-large paper-config run: results and failures" stream ended</summary>
+</task-notification>
+
+---
+
+one more pass on if our reply introduces any inconsistency with earlier rebuttal response and the paper
+
+---
+
+"""1. Which claim is correct: the paper’s.
+§4.1, Table N.2’s caption and the regime taxonomy all say the same thing, so on this point the paper needs no revision. The problem is a single sentence in our rebuttal that we should have scoped more carefully. We meant it about what normalization does to its input, but wrote it as a claim about the hidden states, and that is where the contradiction you found comes from.
+It may help to explain how that sentence came about, because your question raised a fair point. You asked why raw routing still helps on a backbone that does not collapse, and read the gain as App. P.3’s raw-signal predictiveness. We wanted to show it was a routing effect instead. Per-instance scaling subtracts each window’s mean and divides by its scale, so the encoder never sees the location-scale, and we carried that straight through to the router. That last move is a claim about the representation the encoder builds rather than the operation, and it needed measuring.
+The answer we should have given was already in the paper, in Table N.2’s caption: raw-signal routing is information-richer than hidden-state routing even when the hidden states retain enough signal to avoid collapse. Nothing has to go missing for the Moirai gain to be a routing effect. We should have quoted it. We do not stand behind the sentence we wrote instead, or the framing that called the change a strengthening.
+We measured it directly. Probing the tensor a hidden-state router reads, the window mean is recoverable from Moirai’s hidden states (R²=0.996) but not from MOMENT’s under RevIN (−0.311). Switching RevIN off restores it to 0.999, which calibrates the probe. That is the quantity in question, what the router can actually read, and on Moirai the statistics are there, as §4.1 says.
+On the rule we gave Reviewer 8b2Z: it was shorthand for the same criterion rather than a replacement, and the two classify every case in App. H identically. Stated fully, collapse needs two conditions together, the statistics removed from what the router reads and a learnable affine map that can co-adapt (Prop. 1). Moirai has neither, which is why it does not collapse.
+That leaves the substance of our W3 answer unchanged: in RR-MoA the raw signal reaches only the router, and the experts re"""
+
+Still not very clear. Opener stated that the paper has always been correct, and the rebuttal should have been clearer rather than contradictory. In the ending sentence address why the paper has always been consistent. Avoid this one: "We should have quoted it. We do not stand behind the sentence we wrote instead, or the framing that called the change a strengthening."
+
+---
+
+"""1. Which claim is correct: the paper’s.
+§4.1, Table N.2’s caption and the regime taxonomy all say the same thing, so on this point the paper needs no revision. The problem is a single sentence in our rebuttal that we should have scoped more carefully. We meant it about what normalization does to its input, but wrote it as a claim about the hidden states, and that is where the contradiction you found comes from.
+It may help to explain how that sentence came about, because your question raised a fair point. You asked why raw routing still helps on a backbone that does not collapse, and read the gain as App. P.3’s raw-signal predictiveness. We wanted to show it was a routing effect instead. Per-instance scaling subtracts each window’s mean and divides by its scale, so the encoder never sees the location-scale, and we carried that straight through to the router. That last move is a claim about the representation the encoder builds rather than the operation, and it needed measuring.
+The answer we should have given was already in the paper, in Table N.2’s caption: raw-signal routing is information-richer than hidden-state routing even when the hidden states retain enough signal to avoid collapse. Nothing has to go missing for the Moirai gain to be a routing effect. We should have quoted it. We do not stand behind the sentence we wrote instead, or the framing that called the change a strengthening.
+We measured it directly. Probing the tensor a hidden-state router reads, the window mean is recoverable from Moirai’s hidden states (R²=0.996) but not from MOMENT’s under RevIN (−0.311). Switching RevIN off restores it to 0.999, which calibrates the probe. That is the quantity in question, what the router can actually read, and on Moirai the statistics are there, as §4.1 says.
+On the rule we gave Reviewer 8b2Z: it was shorthand for the same criterion rather than a replacement, and the two classify every case in App. H identically. Stated fully, collapse needs two conditions together, the statistics removed from what the router reads and a learnable affine map that can co-adapt (Prop. 1). Moirai has neither, which is why it does not collapse.
+That leaves the substance of our W3 answer unchanged: in RR-MoA the raw signal reaches only the router, and the experts re"""
+
+Still not very clear. Opener stated that the paper has always been correct, and the rebuttal should have been clearer rather than contradictory. In the ending sentence address why the paper has always been consistent. Avoid this one: "We should have quoted it. We do not stand behind the sentence we wrote instead, or the framing that called the change a strengthening."
+
+---
+
+we should write explicitly that our rebuttal is not wrong fully
+
+---
+
+also the opener should reinforce our reply to reviewer: "8b2Z ("a normalizer causes collapse when it strips routing-relevant statistics at the router's input") s"
+
+---
+
+ok now on tone, should that we understand where the confusion comes from and own it
+
+---
+
+shall we remove: "We should not have called it a strengthening either."
+
+---
+
+keep it but reword, should not own fully like that, we have valid reasons ?
+
+---
+
+The effect you identify is real, and confined to three of nine datasets. NLinear beats DLinear only where the level drifts: Exchange (−28.9%), ETTh2 (−3.8%, −19.0% at H=192) and ETTm2 (−7.9%). On the other six it is neutral or worse, losing 0/10 seeds on Traffic at both horizons.
+Residual-IA+ at H=96, n=10: 5/6 against DLinear (ETTh1 loses) and 5/6 against NLinear (ETTh2 loses). Swapping the anchor changes which dataset fails, not how many. Where level anchoring offers no advantage, the backbone’s contribution is easier to see: it beats both anchors on Weather and Electricity, 9 of 10 cells each.
+On generalization beyond the six, we re-ran the three datasets never used to build the recipe, n=10 across two horizons, scored against whichever anchor is stronger on each. On Solar, where the level anchor gives nothing, it wins all 20 cells (−8.7% at H=96, −11.2% at H=192). On Traffic it is −0.3% and −0.9% across 15/20 cells, and this is the case R(D)=0.14 flags in advance as unlikely to gain.
+On Exchange you were right about the cause: the −26.3% over DLinear is level anchoring, not the backbone. Exchange is close to a random walk, where the last value is near the best predictor, so a level anchor is favoured there. Against NLinear it holds parity at H=96 and is behind on the mean at H=192, splitting 5/10 seeds at both, so we will report it as parity rather than a win. those paragraphs should have a conclusionn on net results and findings of the new control. Shorten these. Make them flow logically and conclusively
+
+---
+
+/commit-push
+
+---
+
+lovely, but do you think that we are going in circular in our explanation for entire of 1: """1. Which claim is correct: the paper’s.
+The paper’s claim is correct and has been consistent throughout, as has the rule we gave Reviewer 8b2Z. We can see why the two quotations read as a reversal, though, and the confusion is ours: one sentence in our W3 answer described what normalization does to its input but phrased it as a claim about the hidden states. Beside §4.1 it could hardly read as anything else. The two-regime reading is genuinely sharper than uniform collapse-repair; we should have flagged that we were rephrasing the mechanism alongside it.
+How it came about is worth explaining, since your question was a fair one. You asked why raw routing helps on a backbone that does not collapse, and read the gain as App. P.3’s raw-signal predictiveness. We wanted to show it was a routing effect instead. Per-instance scaling subtracts each window’s mean and divides by its scale, so the encoder never sees the location-scale, and we carried that through to the router. That last move is a claim about the representation the encoder builds rather than the operation, and it needed measuring.
+The account we should have given was already there, in Table N.2’s caption: raw-signal routing is information-richer than hidden-state routing even when the hidden states retain enough signal to avoid collapse. Nothing has to go missing for the Moirai gain to be a routing effect.
+We measured it directly. Probing the tensor a hidden-state router reads, the window mean is recoverable from Moirai’s hidden states (R²=0.996) but not MOMENT’s under RevIN (−0.311); switching RevIN off restores it to 0.999, calibrating the probe. That is the quantity in question, and on Moirai the statistics are there, as §4.1 says.
+That rule was shorthand for the same criterion, and the two classify every case in App. H identically. Stated fully, collapse needs two conditions: the statistics removed from what the router reads, and a learnable affine map that can co-adapt (Prop. 1).
+Only that clause fails; the rest holds. There is no collapse on Moirai, so the gain is not collapse-repair. Co-adaptation cannot occur without a learnable affine map. And the gain cannot be App. P.3’s Pure Raw-MLP effect, because in RR-MoA the raw signal reaches only the router while experts read frozen hidden states.
+§4.1, Table N.2’s caption and Proposition 1 are one account: routing is endangered when normalization removes the router’s signal and can co-adapt, and raw routing helps where it does not. Moirai meets neither, so it neither collapses nor needs restoring."""
+
+---
+
+"Add a variant from-scratch NLinear, trained under the same protocol as the DLinear anchor would be persuasive." <- so are we getting more persuavsive. Be more conclusive here. Even in the opener of the part 2
+
+---
+
+yes we need to be very persuative here to win him
+
+---
+
+""Narrower than the inference needs"" reword, can we have more understandable phrases
+
+---
+
+build me a pdf of reply_pm4m_round2
+
+---
+
+soften the tone a bit, don't read too aggressive, use simpler vocab and structure for non-native reviewer to read and felt convinced
+
+---
+
+Start with "We thank the reviewer again for rigorous reading..."
+
+---
+
+did we violate any law when we write thank you and from second person
+
+---
+
+no reply is just 5000k
+
+---
+
+"s. One sentence in our W3 answer " one out of how many ?
+
+---
+
+yes
+
+---
+
+emphasize on more human connection in this writing
+
+---
+
+need more appreciative tone
+
+---
+
+[Image #17] <- my friend recommends me this
+
+---
+
+opt for: "  "We clarify that the paper's claim is correct""
+
+---
+
+So we measured it. and Only that clause fails should not serve as 2 paragraph openner. So we measured it now ? When ?
+
+---
+
+"
+Both facts cited are correct, and the control proposed is the right test, so we built it:" again, write with human connection. We are convinced that ... We have run further experiments ...
+
+---
+
+Start with We instead of: "Both facts cited are correct". Review for all instances of this
+
+---
+
+"We agree that both facts" <- We are convinced that
+
+---
+
+I expect some conclusion in this opener: "We are convinced that both facts cited are correct, and that the proposed control is the right test, so we have run it: a from-scratch NLinear under the DLinear anchor’s protocol (Linear(512→96), 49K, same optimizer, epochs, batch), differing only by the level anchor, at n=10. It does separate the two effects. Our DLinear reproduces the published anchor on all six datasets (ETTh1 0.4187 vs 0.419±0.005), as does Residual-IA+, so the comparison uses the paper’s own baseline."
+
+---
+
+" The NLinear anchor now stays in the paper beside DLinear," <- are we. We should not promise works included. We are rebuttalling and replying to comment. Say that we left to future work where relevant
+
+---
+
+review for a similar class of error. 
+
+also do not over-agree that: " It is the right way to report this comparison". say something like it will be good addition, strengthening experimental design etc. Review for similar over-agreeing
+
+---
+
+"We clarify that the paper's claim is correct, and that it has been consistent throughout," <- risky (it should be throughout the paper)
+
+---
+
+what can you learn from this separate attempt: """Here is the ready-to-paste revision, aligned with the full OpenReview exchange.
+
+---
+
+## **Response to Reviewer Pm4m**
+
+We thank the reviewer for the careful follow-up. Placing the two Moirai statements side by side exposed one incorrect sentence in our previous response, and the proposed NLinear baseline was indeed the right control for separating level anchoring from the rest of Residual-IA+. We report the correction and the new control directly below.
+
+### **1. Moirai: §4.1 is correct; one sentence in our previous W3 response was not**
+
+The statement in §4.1 is correct: Moirai’s non-learnable I/O scaling preserves the relevant location-scale information in the hidden representation available to the router. Our previous W3 response incorrectly stated that Moirai “strips per-window location-scale from the hidden states.” We had described what normalization does to its immediate input as though it were also true of the router-visible representation. We thank the reviewer for identifying the contradiction, and we will remove that sentence.
+
+We have now tested the issue directly. We took the exact hidden-state tensor consumed by the router and trained a probe to recover each input window’s mean (M):
+
+* **Moirai:** (R^2=0.996)
+* **MOMENT with RevIN:** (R^2=-0.311)
+* **MOMENT with RevIN disabled:** (R^2=0.999)
+
+The mean probe is sufficient to adjudicate the contradiction: if Moirai had stripped per-window location information as our previous response claimed, (M) would not be recoverable. Instead, it is almost perfectly recoverable. Conversely, RevIN removes that information from MOMENT’s router-visible hidden states, and disabling RevIN restores it. This directly supports the distinction made in §4.1.
+
+The Moirai gain must therefore be interpreted more narrowly than in our previous response. Moirai does not collapse, and raw routing is not repairing missing location-scale information. However, the gain also cannot be attributed to the backbone-free **Pure Raw-MLP** mechanism from Appendix P.3: in RR-MoA, the raw window is supplied only to the router, while every expert continues to consume frozen backbone representations. Architecturally, the difference is therefore in the routing path, not in a raw-input prediction branch.
+
+The supported conclusion is consequently:
+
+> On Moirai, raw input is a more effective router input even though the hidden representation retains the window mean; the present experiment does not establish which additional routing cues or inductive biases cause that advantage.
+
+Nothing has to be absent from the hidden state for changing the router input to improve routing. Nevertheless, we agree that the Moirai result should be presented as a separate routing-input benefit, not as collapse repair or recovery of missing ((M,\Sigma)). It is not needed as evidence for the collapse mechanism.
+
+The reviewer is also correct that the rule we stated to Reviewer 8b2Z was incomplete. We stated the information condition but omitted the co-adaptation condition from Proposition 1. The complete criterion is:
+
+1. routing-relevant information is attenuated or removed from the representation read by the router; **and**
+2. a learnable affine component can co-adapt with the router and amplify the resulting imbalance.
+
+Moirai satisfies neither condition: the window mean remains recoverable from the hidden states, and its I/O scaling is non-learnable. Thus, §4.1 and Proposition 1 remain consistent; what was incorrect was our explanation of the separate Moirai performance gain. We will revise §4.1, Table N.2’s discussion, and the cross-normalizer rule so that this distinction is explicit throughout.
+
+### **2. Matched NLinear control: the confound is real, but it does not explain the full result**
+
+We agree that the original **65 significant wins versus 11 losses against DLinear** cannot, by itself, isolate the contribution of the backbone. Residual-IA+ contains an NLinear-style last-value-anchored raw branch, whereas the submission’s DLinear anchor is the single-Linear implementation described in Appendix A. A DLinear-only comparison therefore mixes two potential effects:
+
+1. NLinear-style level anchoring versus the DLinear anchor; and
+2. the contribution of the remaining Residual-IA+ architecture, including its backbone path.
+
+The reviewer proposed the decisive control, and we have now run it: a from-scratch NLinear under the same protocol as the DLinear anchor—(\mathrm{Linear}(512\rightarrow96)), approximately 49K parameters, identical data splits, optimizer, training epochs, and batch size, with (n=10)—differing only through the last-value anchoring
+
+[
+\hat{y}=\mathrm{Linear}(x-x_T)+x_T.
+]
+
+Our matched DLinear run reproduces the submitted anchor—for example, (0.4187) on ETTh1 versus the submitted (0.419\pm0.005)—which checks that the control uses the intended protocol.
+
+The control confirms the reviewer’s explanation on the datasets where level drift matters. Across nine datasets, NLinear is stronger than DLinear on three:
+
+* **Exchange:** 28.9% lower MSE
+* **ETTh2:** 3.8% lower at (H=96), and 19.0% lower at (H=192)
+* **ETTm2:** 7.9% lower
+
+On the remaining six datasets, NLinear provides no corresponding advantage and is equal to or worse than DLinear. Thus, the relative strength of the two linear anchors is dataset-dependent rather than uniformly in favor of either one.
+
+Exchange is the clearest case supporting the reviewer’s interpretation. Residual-IA+’s 26.3% improvement over DLinear is largely explained by last-value anchoring on data close to a random walk. Against the matched NLinear baseline, Residual-IA+ is at parity at (H=96) and behind at (H=192). We therefore withdraw Exchange as evidence that the backbone adds value and will present it as a level-anchoring result.
+
+However, the matched control does not reduce the entire Residual-IA+ result to “NLinear beats DLinear.”
+
+At (H=96) on MOMENT-small, with (n=10), Residual-IA+ matches or beats **5 of 6 datasets against DLinear and independently 5 of 6 against NLinear**. Changing the anchor changes which dataset falls short—ETTh1 against DLinear and ETTh2 against NLinear—but not the overall count.
+
+On Weather and Electricity, where NLinear does not improve over DLinear, Residual-IA+ matches or beats both anchors in 9 of 10 evaluated comparisons. On Solar, which was not used to construct the recipe, Residual-IA+ wins all 20 evaluated comparisons against the stronger of the two linear anchors, with mean improvements of 8.7% at (H=96) and 11.2% at (H=192). Traffic remains near parity—0.3% and 0.9% improvements—consistent with its low predicted benefit, (R(D)=0.14).
+
+These results show that level anchoring explains an important subset of the gains, but not all of them. We agree, however, that outperforming NLinear does not by itself identify the remaining improvement specifically with the backbone: it could also reflect routing, residual combination, or interactions among the components.
+
+For that attribution, the more direct control is the backbone-path intervention already reported in our first response. Holding the raw branch, gate, optimizer, and training protocol fixed, and changing only whether the frozen backbone path is present, the backbone-enabled model improves all **18 of 18 evaluated comparisons** at (H=192) across ETTh2, ETTm2, and Electricity, with a mean improvement of 11.8%. These are the same datasets for which the (H=96) analysis had suggested that the backbone was negligible.
+
+Together, the two controls separate the effects:
+
+* The matched NLinear control shows where last-value anchoring explains the DLinear margin, most clearly on Exchange.
+* Residual-IA+ still retains gains over the matched NLinear anchor in settings where NLinear itself does not improve over DLinear.
+* The direct path ablation attributes an incremental benefit to the backbone in the specific (H=192) settings where only the backbone path is changed.
+
+We will restrict the backbone claim to settings supported by that direct intervention. The original 65:11 count remains a valid empirical comparison against DLinear, but it is a **DLinear-only result across six backbones**, not a matched-NLinear result and not, by itself, evidence isolating backbone contribution. Because the new matched NLinear experiment currently covers MOMENT-small rather than the full six-backbone grid, we will not extrapolate it beyond the tested setting.
+
+Accordingly, we will revise the paper to:
+
+1. add the matched NLinear baseline alongside DLinear;
+2. label the 65:11 count explicitly as a DLinear comparison;
+3. remove Exchange from the evidence for backbone contribution;
+4. distinguish level-anchor gains from routing and backbone gains; and
+5. make claims about backbone value only where supported by the direct backbone-path ablation.
+
+The reviewer’s control therefore identifies a real confound and materially sharpens the interpretation. It explains the gains on some level-drifting datasets, but the matched-anchor and direct-path controls together show that Residual-IA+ is not reducible entirely to NLinear replacing DLinear.
+
+These corrections narrow two secondary interpretations without changing the paper’s central causal result: RevIN can remove routing-relevant information and, through learnable co-adaptation, induce routing collapse; routing on the raw input prevents that failure. We thank the reviewer for pressing us to separate the claims more carefully, and we hope that the direct representation probe and the requested matched NLinear control resolve the two remaining concerns.
+"""
+
+---
+
+take that
+
+---
+
+write more convincingly on this: """Beating NLinear does not by itself isolate the backbone from routing or the residual path. The direct control is the one in our first response: holding the raw branch and protocol fixed and toggling only the backbone gives 18/18 at H=192, mean −11.8%, on the cells App. P.3 called negligible."""
+
+---
+
+/commit-push
+
+---
+
+Iterate on the optimization until the language carries the lowest possible risk
+
+---
+
+/commit-push
+
+---
+
+/goal iterate on the optimization until the language carries the lowest possible risk (particularly contradiction that invites further attack)
