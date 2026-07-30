@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "e4ab218b3e2c",
+  "session_id": "3ab8098e-da06-4aac-96be-07625bc3c580",
+  "strategy": "manual-commit",
+  "created_at": "2026-07-30T18:12:43.614616Z",
+  "branch": "main",
+  "checkpoints_count": 19,
+  "files_touched": [
+    "rebuttal/reply_pm4m_round2.md",
+    "scripts/run_gap_closing.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b9bc4491c3fe",
+  "token_usage": {
+    "input_tokens": 5657,
+    "cache_creation_tokens": 304756,
+    "cache_read_tokens": 18042940,
+    "output_tokens": 177583,
+    "api_call_count": 80
+  },
+  "session_metrics": {
+    "turn_count": 19
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-07-30T18:12:43.336987Z",
+    "agent_lines": 21,
+    "human_added": 150,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 171,
+    "agent_percentage": 12.280701754385964
+  }
+}
