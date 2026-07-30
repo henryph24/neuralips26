@@ -516,3 +516,7 @@ The effect you identify is real, and confined to three of nine datasets. NLinear
 Residual-IA+ at H=96, n=10: 5/6 against DLinear (ETTh1 loses) and 5/6 against NLinear (ETTh2 loses). Swapping the anchor changes which dataset fails, not how many. Where level anchoring offers no advantage, the backbone’s contribution is easier to see: it beats both anchors on Weather and Electricity, 9 of 10 cells each.
 On generalization beyond the six, we re-ran the three datasets never used to build the recipe, n=10 across two horizons, scored against whichever anchor is stronger on each. On Solar, where the level anchor gives nothing, it wins all 20 cells (−8.7% at H=96, −11.2% at H=192). On Traffic it is −0.3% and −0.9% across 15/20 cells, and this is the case R(D)=0.14 flags in advance as unlikely to gain.
 On Exchange you were right about the cause: the −26.3% over DLinear is level anchoring, not the backbone. Exchange is close to a random walk, where the last value is near the best predictor, so a level anchor is favoured there. Against NLinear it holds parity at H=96 and is behind on the mean at H=192, splitting 5/10 seeds at both, so we will report it as parity rather than a win. those paragraphs should have a conclusionn on net results and findings of the new control. Shorten these. Make them flow logically and conclusively
+
+---
+
+/commit-push
