@@ -1,0 +1,30 @@
+Both points reach the accuracy claim beside the diagnosis. We would appreciate the
+reviewer weighing the paper on the diagnosis, which stands as submitted -> should we add "rather than a sota method claim or something " ?
+
+---
+
+ok leave it as is, do one warm tone pass on the AC official comment which we will pass, use more "We + verb", show appreciation on his prioritisation etc
+
+---
+
+should we not mention pm4m here, it will be triggering
+
+---
+
+I think we should stop at when we post our rebuttals rather than our reply to reviewer
+
+---
+
+use more we + verb here, we clarify, we agree, etc: """**4 (frozen backbone).** Frozen is our recommended default, not a requirement: Table 1 shows RR-MoA beating the best fixed adapter with Last-2 and Last-4 unfrozen as well as frozen (ETTh1 -44% / -29% / -32%), frozen simply being strongest on 4/6. It is also a deployment advantage rather than a limitation (our reply to jemj).
+
+**5 (memory).** Raw routing lowers router memory rather than raising it. The router reads one univariate window (~0.26 MB at B=128, L=512), ~64× smaller than the hidden states a conventional router reads, and it is the model's own input, so a re-read, not a new allocation. The frozen backbone carries no gradients or optimizer state, so training peak memory is the usual frozen-adapter floor; at inference the 853-parameter gate and the experts add at most +5.9% latency and +6 MB.
+
+**6 (scope of the theory).** The account covers what normalization destroys (Observation 1, recast as rate-distortion in App. D.1), how collapse unfolds (Proposition 1), when it onsets (Proposition 2, α*=R(D)/(R(D)+1)), and which datasets are vulnerable before any training (R(D), ρ=-0.88). The reviewer is right that dataset-specific structure and feature asymmetry remain open, a direction we find genuinely valuable."""
+
+---
+
+resolve the file, we only post one reply to AC (this one is optional, earlier we decided to post 3 separate rebuttals only) but now we are doing this one
+
+---
+
+make the tone more thankful here so that AC likes us, but not outright flattery
