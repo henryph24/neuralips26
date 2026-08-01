@@ -1,0 +1,15 @@
+**Response to the Area Chair**
+
+We thank the AC for keeping the discussion focused. Reviewer Pm4m raised two further points that bear on meta-review points 1 and 2, and we report where they landed, since one of them qualifies a number we cited in our earlier response. `[NEW]` marks discussion-phase work.
+
+**Point 1 (reframing).** Pm4m observed that our DLinear comparison is confounded: Residual-IA+'s raw branch is NLinear, while the calibration anchor is the simplified single-Linear DLinear without trend-seasonal decomposition, and NLinear is the stronger from-scratch model on level-drifting data. The observation is correct, and both facts are in the submission, in App. A and in App. P. `[NEW]` We ran the control asked for: a from-scratch NLinear under the DLinear anchor's protocol (Linear(512→96), 49K, same optimizer, epochs and batch), at n=10 across nine datasets.
+
+NLinear is the stronger anchor on three of the nine, all of them level-drifting: Exchange (−28.9%), ETTm2 (−7.9%) and ETTh2 (−3.8%). DLinear is stronger or level on the other six, so the substitution does not run one way. On MOMENT-small at H=96, Residual-IA+ beats both anchors on ETTm2, Electricity and Weather, is at parity with both on ETTm1, and loses ETTh1 to DLinear and ETTh2 to NLinear. On data never used to build the recipe it holds against the stronger anchor on Solar (−8.7% at H=96, −11.2% at H=192, 20 of 20 seeds), the R(D) outlier the paper flags at R=0.06, and is at parity on Traffic, which R(D)=0.14 predicts in advance. On Exchange the margin we reported is level anchoring, and we now report that cell as parity rather than a win.
+
+This qualifies the 65:11 count we cited earlier, which was computed against DLinear alone. The revision will name the anchor as the undecomposed single-Linear variant of Zeng et al. wherever that count and the abstract sentence appear, add the NLinear anchor to the grid, and lead with the count against the stronger of the two. That is a narrower claim than the submission makes, and it is the one the controls support.
+
+**Point 2 (the mechanism).** Pm4m also found a mismatch between §4.1, which states that non-learnable I/O scaling leaves the (M,Σ) statistics in the hidden states the router reads, and one sentence in our first response that described the opposite. The paper's claim is the correct one, and that sentence is withdrawn. The paper's own result settles it: if the statistics were stripped from what the router reads on Moirai, the diagnosis would predict collapse there, and Moirai does not collapse. §4.1, Appendix H and Proposition 1 are one account rather than three, and the revision will make that relationship explicit.
+
+Neither point reaches the diagnosis. Normalization-induced routing collapse, its mechanism, and R(D) as a training-free predictor stand as submitted, and R(D) still calls the Traffic null before any training. What changes is the accuracy claim reported beside them, which will now be stated at the scope the controls support.
+
+We appreciate Pm4m raising both, and the paper is more accurate for them. We are glad to answer anything further during the discussion.
