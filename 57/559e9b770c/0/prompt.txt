@@ -1,0 +1,40 @@
+regenerate the pdfs
+
+---
+
+use more structure of: "We + verb" here: """Both points reach the accuracy claim reported beside the diagnosis, and the diagnosis
+stands as submitted. That is the paper’s own framing: the title calls RR-MoA a causal
+intervention for routing collapse, and two of the three contributions are the diagnosis
+and R(D). The diagnosis names a failure mode the standard MoE toolkit does not repair: 720 runs of optimization-side rescues close 10.9% of the gap an input-side fix
+closes, and the criterion predicts collapse for a ViT under InstanceNorm1d and none
+for a ResNet under InstanceNorm2d. R(D), computed before training, says where the
+fix will help and where it will not"""
+
+---
+
+regenerate
+
+---
+
+we need to set the context around: "We take both points to reach the accuracy claim beside the diagnosis, and the diagnosis
+stands as submitted. We draw that framing from the paper: the title calls RR-MoA a
+causal intervention for routing collapse, and two of the three contributions are the diagnosis and R(D). We name a failure mode the standard MoE toolkit does not repair:
+720 runs of optimization-side rescues close 10.9% of the gap an input-side fix closes.
+We see collapse for a ViT under InstanceNorm1d and none for a ResNet under InstanceNorm2d, as the criterion predicts. We compute R(D) before training, and it says
+where the fix will help and where it will not." a bit, nudge them to see the paper from this lense to rethink their 2
+
+---
+
+be more gentle, thankful,
+
+---
+
+be more gentle, thankful instead of we ask, we would appreciate the viewer seeing this
+
+---
+
+is it approriate to ask so ? research
+
+---
+
+what does it mean by: "the mid-paragraph one is the softer target"
