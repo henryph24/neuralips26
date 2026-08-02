@@ -1,0 +1,1702 @@
+Should we focus on 3 to 8 in this rep
+
+---
+
+yes work on that more, be sure that we take their priorisation serioiusly and have delivered on individual rebuttal responses. Show respect !
+
+---
+
+this gonna be triggering the reviewers: """On the second instruction, we clarified the two factual points the reviews had misread: the referent for the 13-42% figure, and the multi-horizon results already in the submission.""" who may have given us 5
+
+---
+
+not name reviewer without the word "reviewer"
+
+---
+
+verify this: """single-Linear variant of Zeng et al"""
+
+---
+
+I think it is not necessary, we take on extra risks for no rewards for that
+
+---
+
+so we now post the reply @reply_pm4m_round2.md and then @reply_ac_round2.md and then close the case @reply_8b2z_round2.md (jemy has been silient since our rebuttal, which is still good as he has already given a 5)
+
+---
+
+how good of a chance is 5/5/2 for neurips 2026, pull reddit and chinese forum http://xhslink.cn/o/6gEjdstMvc9
+
+---
+
+check a bit more sources, other post from xiaohongshu or reddit
+
+---
+
+exa mcp
+
+---
+
+exa mcp
+
+---
+
+Skip to main content
+The comments are sorted successfully
+
+
+r/MachineLearning
+Search in ⁨r/MachineLearning⁩
+Advertise on Reddit
+
+Open chat
+Create
+Create post
+Open inbox
+
+User Avatar
+Expand user menu
+Skip to NavigationSkip to Right Sidebar
+
+Back
+
+Go to MachineLearning
+r/MachineLearning
+•
+10d ago
+
+Afraid_Difference697
+
+NeurIPS 2026 Reviews Are Out Today (22 July, AoE) — Discussion Thread [D]
+Discussion
+Reviews drop today. This thread is for reactions, celebrations, commiserations, and anything useful in between.
+
+First: if you got good reviews, say so. There's a norm in these threads where only the bad news gets aired, and it skews everyone's sense of what's normal. Post your wins.
+
+Second, the thing worth repeating every cycle: the review process is noisy, and that noise is measured, not folklore. The NeurIPS consistency experiments (2014, repeated 2021) found that a large fraction of accepted papers would have been rejected by an independent second committee. Reviewer assignment, load, and luck of the draw account for a lot. A score is a weak signal about your work and a strong signal about the process that produced it.
+
+That cuts both ways. It's not a license to dismiss every criticism as noise — it's a reason to weight reviews by the quality of the argument rather than the number attached to them. The reviewer who found a real hole in your evaluation did you a favor, even if the tone was rough. The one who clearly skimmed did not, regardless of the score.
+
+So: prioritize the reviews that make the paper better. Fix what's fixable, contest what's genuinely wrong, and concede the rest gracefully in the rebuttal.
+
+Things worth discussing:
+
+Reviews that caught something you'd missed
+
+Rebuttal strategy — what's worth contesting vs. conceding, and when new experiments actually shift a score
+
+Patterns you're seeing this cycle (missing baselines, compute comparisons, ablation depth, reproducibility asks)
+
+Framing a response when a reviewer has clearly misread the submission
+
+Backup plans: ICLR, AISTATS, workshops
+
+Please paraphrase rather than paste review text, and no speculation about reviewer or AC identities.
+
+To anyone who got bad news: this doesn't define your research impact. Plenty of heavily-cited work took two or three cycles to land somewhere. Rejection is a scheduling problem.
+
+How did everyone do?
+
+
+Upvote
+151
+
+Downvote
+
+1.6K
+Go to comments
+Repost
+
+Share
+Join the conversation
+Sort by:
+
+Top
+
+Search Comments
+Expand comment search
+Comments Section
+DNunez90plus9
+•
+10d ago
+
+  First:  if you got good reviews, say so. 
+
+You know what, I am gonna post my bad reviews even HARDERR
+
+
+Upvote
+84
+
+Downvote
+
+Reply
+
+
+1
+
+Share
+
+
+3 more replies
+hihey54
+•
+10d ago
+
+Some quick impressions as an AC who has submitted all of their "metareviews" (my batch is of ~10 papers)
+
+A non-negligible portion of reviews has clear tell-tale signs of LLM-writing (imho)
+
+This has to be interpreted as "portions of the text have been LLM-written" -- which does not necessarily mean that the reviewer fed the paper to an LLM, asked the LLM to provide a review, and copy-pasted the LLM output.
+
+These typically are the most positive reviews
+
+No paper in my batch triggered the hidden prompt injection
+
+Genuine "human-written" reviews are not generous at all with their recommendations
+
+I am quite confident at least one paper was substantially LLM-written.
+
+I did not perform any check via Pangram because the papers and the reviews are all (still) confidential
+
+All of my papers have at least 3 reviews. Most have 4. For one paper, I had to find an emergency reviewer because one review was clearly of low technical quality
+
+Three reviewers have not (yet) submitted their reviews -- despite receiving at least 5 reminders. These reviewers are totally MIA.
+
+Writing the metareview was cool.
+
+IMHO, this process was manageable if (i) reviewers submitted their reviews early and (ii) the AC monitored the situation of each paper as each review was submitted instead of doing everything all at the same time [clearly, late reviews hinder this process]
+
+There isn't a single paper in my batch that I can confidently say is "above the bar".
+
+Again, these are my impressions, which reflect less than 0.1% of NeurIPS'26, so do not take any conclusions from that. I wish best of luck to all people involved!
+
+
+Upvote
+78
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+random-tomato
+•
+10d ago
+
+These typically are the most positive reviews
+
+I am quite confident at least one paper was substantially LLM-written.
+
+Queue the meme with obama giving obama a medal 🙃
+
+
+Upvote
+20
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+2 more replies
+
+9 more replies
+BomsDrag
+•
+9d ago
+
+PhD
+RELEASE THE FILES!
+
+
+Upvote
+61
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+SeTiDaYeTi
+•
+10d ago
+
+Professor
+Well. "Today" means "in 26h40m", give or take.
+
+
+Upvote
+58
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+1 more reply
+howtorewriteaname
+•
+9d ago
+
+PhD
+openreview down, classic
+
+
+Upvote
+47
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+RaeudigerRaffi
+•
+9d ago
+
+Student
+I can see my submission but i cant see the reviews 😑
+
+
+Upvote
+11
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+No-Mention-4910
+•
+9d ago
+
+Same pinch, hoping for the best!!!
+
+
+Upvote
+10
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+Parsley-Pressure
+•
+9d ago
+
+same with me. No reviews but the submission is visible.
+
+
+Upvote
+8
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+1 more reply
+
+4 more replies
+u/Massive_Horror9038 avatar
+Massive_Horror9038
+•
+9d ago
+
+As I have said in previous threads, I don't care anymore about refreshing open review. My main focus right now is refreshing this comment section
+
+
+Upvote
+43
+
+Downvote
+
+Reply
+
+
+3
+
+Share
+
+geeky_penguin
+•
+9d ago
+
+Hell yeah! Same here 
+
+
+Upvote
+9
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/threadjumper1 avatar
+threadjumper1
+•
+8d ago
+
+I parsed the Reddit thread and extracted self-reported main-track review scores only. I treated unspecified scores as main track.
+
+Current sample: 152 unique main-track papers.
+
+In short:
+≥ 4.33 →Top 10%
+≥ 4.00 → Top 21%
+≥ 3.50 → Top 44.7%
+
+Score count (Average → Count)
+
+1.67 → 1
+2.00 → 3
+2.25 → 1
+2.33 → 6
+2.50 → 2
+2.67 → 12
+2.75 → 1
+2.80 → 1
+3.00 → 35
+3.25 → 1
+3.33 → 20
+3.40 → 1
+3.50 → 4
+3.67 → 28
+3.75 → 4
+4.00 → 17
+4.33 → 9
+4.67 → 6
+
+Obviously this is a self-selected Reddit sample rather than a random sample of all NeurIPS submissions, so take the numbers with the appropriate caution.
+
+
+Upvote
+43
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+4 more replies
+u/Working-Read1838 avatar
+Working-Read1838
+•
+9d ago
+
+I'm either hoping for great or terrible reviews. I am defending my thesis next week and don't have the bandwidth to deal with a rebuttal
+
+
+Upvote
+37
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Illustrious_Sun_2145 avatar
+Illustrious_Sun_2145
+•
+9d ago
+
+Good luck with the defense!
+
+
+Upvote
+15
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+1 more reply
+ippasodimetaponto
+•
+9d ago
+
+Let's see how rebuttals will be truly useful with the new policies
+
+
+Upvote
+8
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+2 more replies
+
+4 more replies
+u/Senior-Let-7576 avatar
+Senior-Let-7576
+•
+9d ago
+
+Position track under 1K submission out!
+
+
+Upvote
+34
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+3 more replies
+u/Massive_Horror9038 avatar
+Massive_Horror9038
+•
+9d ago
+
+I'm hoping GPT-5.6 Sol Mega Ultra to be able to hack openreview DB and find my reviews
+
+
+Upvote
+34
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+1 more reply
+AKidNamedLou
+•
+9d ago
+
+That cortisol spike is taking years off my life
+
+
+Upvote
+32
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+RainPuzzled2511
+•
+9d ago
+
+Researcher
+This little maneuver just cost us 51 years!!! :)
+
+
+Upvote
+26
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+1 more reply
+ippasodimetaponto
+•
+9d ago
+
+Upvote for asking Apple to release Watch statistics :D
+
+
+Upvote
+8
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/nanoxas avatar
+nanoxas
+•
+10d ago
+
+If you are interested remember to post your scores in https://papercopilot.com/ to keep track of everything
+
+
+Upvote
+21
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/No-Cash-284 avatar
+No-Cash-284
+•
+10d ago
+
+Why is this being down voted? 
+
+
+Upvote
+12
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+1 more reply
+Objective_Whole_1406
+•
+9d ago
+
+Looks like NeurIPS doesn't have the sense-of-humor X account like ICML. 😀
+
+
+Upvote
+20
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+5 more replies
+u/Unlikely-Wall146 avatar
+Unlikely-Wall146
+•
+9d ago
+
+5443 ICML rejected to 221 NIPS, wtf is going on?
+
+
+Upvote
+21
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+AffectionateLife5693
+•
+9d ago
+
+Profile Badge for the Achievement Top 1% Poster Top 1% Poster
+Same here.
+
+4444 ICML rejected. Beefed up experiments and writing and resubmitted to NeurIPS; now getting 233. The reviews show strong LLM patterns.
+
+
+Upvote
+9
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+3 more replies
+ActTricky
+•
+9d ago
+
+Some news from a Chinese forum: they are cleaning up bad reviews/missing reviews now, scores should be available very soon :)
+
+
+Upvote
+19
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+tariban
+•
+9d ago
+
+Professor
+ACs are responsible for this. We've been doing this for the last few weeks.
+
+
+Upvote
+10
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+3 more replies
+Mammoth-Leg-3844
+•
+9d ago
+
+How do they know all these before anyone?
+
+
+Upvote
+7
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+5 more replies
+
+5 more replies
+u/SwissMountaineer avatar
+SwissMountaineer
+•
+9d ago
+
+Impression as a reviewer who actually spent time reading my batch and didn't use LLMs (based on the small sample size of 4 papers I got):
+
+overwhelmingly quite disappointed by the other reviewers, in the sense that a lot of the reviews are clearly LLM-written and hand out good scores to obviously crappy papers (I'm talking very minimal novelty, plots generated by AI to the point you can't read important info, etc.), and for papers you see were human-written, well-explained, and clearly fill a gap in the field, they end up with mixed reviews.
+
+Honestly don't know what to think about this entire AI-phase of reviewing and academia at this point. I spent a considerate amount of time reading all this stuff to try and reward the papers where thought and quality went into, and its the AI-generated/heavily enhanced ones, with no core intellectual contribution or also in terms of experiments, that get through.
+
+
+Upvote
+19
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+3 more replies
+u/zaff04 avatar
+zaff04
+•
+8d ago
+•
+Edited 8d ago
+
+Anyone else getting raw dogged by making assumptions/limitations explicit rather than hiding them? It is immediately turned against you by every reviewer.
+
+
+Upvote
+17
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+2 more replies
+u/stoneddumbledore avatar
+stoneddumbledore
+•
+9d ago
+
+still nothing....just go touch grass
+
+
+Upvote
+16
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Brilliant-Pay8261 avatar
+Brilliant-Pay8261
+•
+9d ago
+
+5xxx out (saw as reviewer)
+
+
+Upvote
+16
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+2 more replies
+dimy93
+•
+9d ago
+
+they are at 10k at the main track
+
+
+Upvote
+16
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Legitimate_Neck809 avatar
+Legitimate_Neck809
+•
+9d ago
+
+11k+ out
+
+
+Upvote
+16
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Haunting_Air3071 avatar
+Haunting_Air3071
+•
+9d ago
+
+thank you for ur service
+
+
+Upvote
+17
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+3 more replies
+ActTricky
+•
+9d ago
+•
+Edited 9d ago
+
+They should just try to hire the guy who is responsible for this subreddit's server for the openreview server cause people are refreshing both pages like crazy anyway Lol
+
+
+Upvote
+15
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+1 more reply
+SodomizedPanda
+•
+9d ago
+
+Mines are out, number just below 4k.
+
+
+Upvote
+15
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+17 more replies
+u/MasterBrainn avatar
+MasterBrainn
+•
+10d ago
+
+finger crossed guys
+
+
+Upvote
+14
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+Chemical-Spend7412
+•
+9d ago
+
+Student
+Position track review released: 4/7/7/5 with confidence of 4/3/4/2 2 being the confidence of the reviewer who gave 4.
+
+
+Upvote
+14
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+
+10 more replies
+u/aglet_factorial avatar
+aglet_factorial
+•
+9d ago
+
+Position track (#220) ratings 5, 6, 4, 4 confidence 3, 2, 3, 4. This is v2 of this paper, got some constructive stuff from ICML reviews and used those to improve the paper. Let's see how we do
+
+
+2 more replies
+Mundane_Expert_7373
+•
+9d ago
+
+164XX out now
+
+
+3 more replies
+u/Terrible_Flamingo216 avatar
+Terrible_Flamingo216
+•
+9d ago
+
+A lot of people are asking about the delays. Note that if we (ACs) do not submit our meta-reviews, we will be unable to see the reviews we co-authored. Hence, it would be unfair not to wait till the meta-review deadline to release the reviews. Why they had the same deadline, I don't know.
+
+u/Specialist-Manager67 avatar
+Specialist-Manager67
+•
+9d ago
+
+What’s the highest submission out now
+
+
+10 more replies
+AKidNamedLou
+•
+9d ago
+
+6.5k out. see you on the other side
+
+
+14 more replies
+viviaxenov
+•
+9d ago
+
+522 with 434 confidence... At this point i probably would be happier to receive 322 and resubmit. But on the other hand, it's kinda my last chance to get a top-tier-conference paper from my phd (witch seems to be an entry requirement even for internship jobs around here), so we decided to do the rebuttal. 
+
+Fun fact: the two 2s say the paper is not sufficiently novel, because it's a generalization to arbitrary distributions of the method that was already studied for Gaussians. Yes it's was studied for Gaussians. In exactly one paper. One where I was the 1-st author, it was rejected from previous neurips and lays around on arXiv w/o citations for over a year. 
+
+
+3 more replies
+u/pauleon2 avatar
+pauleon2
+•
+9d ago
+
+mid 24k is now released
+
+Feuilius
+•
+9d ago
+
+I can enter the console but no review, id 7k
+
+
+4 more replies
+Pseudomanifold
+•
+9d ago
+
+Professor
+Position Paper track initial reviews are out!
+
+
+1 more reply
+u/Jolly_Description_74 avatar
+Jolly_Description_74
+•
+9d ago
+
+Question to those who have received their reviews: Are the initial meta reviews from ACs also visible?
+
+
+5 more replies
+Practical-Buddy6323
+•
+9d ago
+
+19k out
+
+
+2 more replies
+u/Necessary-Future-549 avatar
+Necessary-Future-549
+•
+9d ago
+
+4 4 4 With conf 4 3 4 19k Good chances right
+
+
+3 more replies
+DNunez90plus9
+•
+9d ago
+
+Lol redditors here be like, 3 3 3 3 and you have a chance
+
+Are you guys all living in la la land?
+
+dimy93
+•
+9d ago
+
+Has anyone seen any meta reviews btw?
+
+
+3 more replies
+temporal_guy
+•
+9d ago
+•
+Edited 9d ago
+
+Oh wow, 5-4-4! Feeling very grateful for the reviewers for closely reading our work. I definitely lucked out
+
+Update: Metareview was surprisingly negative and requesting unreasonable experiments that will require way more compute than I have. Not sure what to do :/
+
+
+4 more replies
+CheeseSomersault
+•
+10d ago
+
+Reviews will not be out until the end of July 22, AoE. 
+
+ACs need to write initial meta reviews for all papers before reviews are released. The deadline for the meta reviews is July 22 23:59 AoE, so authors will not be seeing reviews before then. 
+
+u/Losthero_12 avatar
+Losthero_12
+•
+10d ago
+
+It makes no sense to give ACs this deadline and to also say reviews will be out July 22 AoE then
+
+
+1 more reply
+lcj29
+•
+10d ago
+
+Seems like an odd choice to make the AC meta review deadline coincide with the date of review release. It almost ensures that there’ll be delays 🤷‍♂️
+
+
+3 more replies
+u/raleigh_scientist avatar
+raleigh_scientist
+•
+10d ago
+
+Good luck everyone!
+
+u/Jealous_Key_4030 avatar
+Jealous_Key_4030
+•
+9d ago
+
+I don't think they will even release when the counter becomes 00:00. It will take some time
+
+
+3 more replies
+Appropriate-Worry372
+•
+9d ago
+
+Any news from the E&D track?
+
+
+8 more replies
+soup----
+•
+9d ago
+
+This feels inhumane 🙁
+
+IndianaJaws
+•
+9d ago
+
+Student
+12.1k+ out
+
+u/NegotiationDue301 avatar
+NegotiationDue301
+•
+9d ago
+•
+Edited 9d ago
+
+late 27k is out for main track, got 545. that was unexpected. confidence scores are at least 3 too
+
+
+2 more replies
+u/Rereen_abdalla avatar
+Rereen_abdalla
+•
+9d ago
+
+Got 3/2/2 , worst reviews I have ever had. Same work got 5/4/3 on ICML and 7/5/5 on AAAI26. ALL reviews are LLM generated and reported minor comments about evaluation. No comments on contributions. I am devastated for my 1st PhD submission. are Neurips reviews generally this brutal?
+
+u/undesirable_12 avatar
+undesirable_12
+•
+9d ago
+
+I have a lot of experience with neurips, and the reviews this round seem to be especially harsh unfortunately
+
+
+1 more reply
+
+2 more replies
+No_Rule584
+•
+9d ago
+
+got a 5/5/4 with confidence 4/4/4, hopefully my first A* conference!
+
+
+4 more replies
+u/6342385 avatar
+6342385
+•
+10d ago
+
+24 hours to go! If I counted every second I’d go mad.
+
+
+8 more replies
+u/Terrible_Flamingo216 avatar
+Terrible_Flamingo216
+•
+10d ago
+
+AC here.. in my batch of 10, the highest score is 3.75 (4 is the borderline accept) and only 3 have avg. scores >3.. so, don't get disheartened by low scores..
+
+
+5 more replies
+u/Specialist-Manager67 avatar
+Specialist-Manager67
+•
+9d ago
+
+Yo why is it so quiet
+
+Secret-Toe-8185
+•
+9d ago
+
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+
+2 more replies
+
+2 more replies
+u/Afraid_Difference697 avatar
+Afraid_Difference697
+OP
+•
+9d ago
+
+That's really an engineering problem - it can't be that a website in today's time cannot handle ~100K submissions. what is this 1990 ?
+
+
+1 more reply
+Unhappy_Craft1906
+•
+9d ago
+
+Running ICLR experiments with reddit and openreview tabs open in the window
+
+
+3 more replies
+u/johnny3357 avatar
+johnny3357
+•
+9d ago
+
+I got 3 (confidence 3) 4 (confidence 2) 5 (confidence 3)
+
+Such an improvement from 3322 that I got for ICML! I'm hoping this one makes it
+
+paulh0107
+•
+9d ago
+
+Does anyone know when we will see the initial meta reviews?
+
+u/happy-elephant avatar
+happy-elephant
+•
+9d ago
+
+I got 5/5/4 with confidence 4/4/3. I'm cautiously optimistic!
+
+u/Lazy-Cream1315 avatar
+Lazy-Cream1315
+•
+9d ago
+
+bloodbath : business as usual, I noticed that many reviewers started to give very negative feedback on mathematical proofs which is the part of the paper that was never read a few month ago (thanks LLMs).
+
+
+1 more reply
+u/HighlightFit5606 avatar
+HighlightFit5606
+•
+8d ago
+
+This is one of the review scores I saw in my review batch
+
+(Quality: 4: excellent
+
+Clarity: 3: good
+
+Significance: 3: good
+
+Originality: 4: excellent
+
+Rating: 3: Borderline reject)
+
+Make it make sense!
+
+
+4 more replies
+Resident-Concept3534
+•
+9d ago
+
+Does anybody know the scoring criteria of Main track papers?
+
+For evaluation and db track, highest score is 6. But dont know about main track papers.
+
+u/ATHii-127 avatar
+ATHii-127
+•
+9d ago
+
+6: Strong Accept:  Technically flawless paper with groundbreaking impact on one or more areas of AI, with exceptionally strong evaluation, reproducibility, and resources, and no unaddressed ethical considerations.
+
+5: Accept: Technically solid paper, with high potential value on at least one sub-area of AI or moderate-to-high impact on more than one area of AI, with good-to-excellent evaluation, resources, reproducibility, and no unaddressed ethical considerations.
+
+4: Borderline accept: Technically solid paper where reasons to accept outweigh reasons to reject, e.g., limited evaluation. Please use sparingly.
+
+3: Borderline reject:  Technically solid paper where reasons to reject, e.g., limited evaluation, outweigh reasons to accept, e.g., good evaluation. Please use sparingly.
+
+2: Reject: For instance, a paper with technical flaws, weak evaluation, inadequate reproducibility and incompletely addressed ethical considerations.
+
+1: Strong Reject: For instance, a paper with well-known results or unaddressed ethical considerations.
+
+
+4 more replies
+
+5 more replies
+[deleted]
+•
+9d ago
+
+u/ink0gn1tus avatar
+ink0gn1tus
+•
+9d ago
+
+7.2k is out
+
+u/Haunting_Air3071 avatar
+Haunting_Air3071
+•
+9d ago
+
+Lesson of the day: submit the abstract early. It will save you X hours :)
+
+
+3 more replies
+u/Vegetable-Ebb-7394 avatar
+Vegetable-Ebb-7394
+•
+9d ago
+
+Any one got their review >15k?
+
+u/Other-Today4852 avatar
+Other-Today4852
+•
+9d ago
+
+4 4 3 at 14.7k
+
+u/Dangerous_Parsnip_20 avatar
+Dangerous_Parsnip_20
+•
+2d ago
+
+That's sad. Finished responding to all of the author's rebuttals and even increased the score for few to weak accept or accept.
+
+But unfortunately, my submission didn't get any responses yet and did not get any meta-review. We submitted AC confidential comment 3 days ago and no response. We have emailed NeurIPS comitee and Chairs yesterday and did not get any response.
+
+I don't understand ... initially we had 2 reviews and they assigned emergency reviewer to our submission resulting in 3 reviews. Why are we left without AC ?
+
+
+8 more replies
+u/Afraid_Difference697 avatar
+Afraid_Difference697
+OP
+•
+9d ago
+
+Reviews Released to Authors Jul 22 '26 (Anywhere on Earth)
+Author + Reviewer + AC Discussion Period Starts Jul 27 '26 (Anywhere on Earth)
+
+Author + Reviewer + AC Discussion Period Ends Aug 03 '26 (Anywhere on Earth)
+
+The above are the dates. Does this mean that we have to hand in our reponse / rebuttals by Jul 27th ? or can we respond until Aug 03 ?
+
+u/Massive_Horror9038 avatar
+Massive_Horror9038
+•
+9d ago
+
+My interpretation is that you can hand in your responses until Aug 03; however, you will not be able to answer further comments. If you hand in your responses by July 27 and the reviewer makes further comments before Aug 3, you will be able to answer them.
+
+
+1 more reply
+iOverFit
+•
+9d ago
+
+Got reviews for mine. Submission number <500.
+
+
+7 more replies
+u/Opening_Fail5284 avatar
+Opening_Fail5284
+•
+9d ago
+
+review score for main track are out of 6 ?
+
+
+8 more replies
+Anatheballerina
+•
+9d ago
+
+genuinely the 8th circle of hell
+
+u/Maximum-Habit8012 avatar
+Maximum-Habit8012
+•
+9d ago
+
+when you provide your review scores can you please also share your submission number, so that the rest of us can keep feeding on anxiety? Thank you :)
+
+u/Obvious-Eagle-923 avatar
+Obvious-Eagle-923
+•
+9d ago
+
+around 21.6kish is out
+
+
+1 more reply
+u/slambda avatar
+slambda
+•
+9d ago
+
+23k is out. 333 with confidence 324, looks like we'll be resubmitting!
+
+
+4 more replies
+[deleted]
+•
+9d ago
+
+u/sloerewth avatar
+sloerewth
+•
+9d ago
+
+Ratings: 2, 4, 2 (Confidence: 4, 4, 4)
+
+All in all, I think the reviewers make decent points but I can also do a decent rebuttal imo. However the meta review already essentially states that I shouldn’t bother as this requires a lot of experiments to satisfy the reviewers with a rebuttal. That seems harsh and defeatist, so what little delusional confidence I had is also waning as time goes on. It also feels like the meta-reviewer is already biased which I am not very happy about.
+
+Anyway, it is what it is. It’s most likely a reject even though one reviewer thinks its a borderline accept. I have to say, they all come up with the same issues (almost 70% overlap) so LLM reviews has to be the case. The only one who makes intelligent points is the reviewer who gave me a 4. Both the reviewers who gave me 2 were also very harsh when it came to quality, significance and originality. My solution is relatively simple but there’s is no literature out there commenting on these problems so I think I found myself 2 very harsh critics.
+
+
+6 more replies
+Practical-Buddy6323
+•
+8d ago
+
+ICLR here I come, 2.33 as my average score with 2/3/4 confidence in NeurIPS lol 😭
+
+pantry_path
+•
+8d ago
+
+it's always worth remembering that a thoughtful review pointing out a real weakness is more valuable than a high score with no substance, even if it stings a lot more at first
+
+
+3 more replies
+u/TellIndependent9655 avatar
+TellIndependent9655
+•
+6d ago
+
+Would it be possible to submit the initial rebuttal responses after the July 27 AoE deadline? The email did not explicitly clarify this.
+
+
+4 more replies
+Resident-Concept3534
+•
+4d ago
+
+Have anyone received any comments from the reviewer after rebuttal?
+
+
+9 more replies
+u/Puzzleheaded-Home802 avatar
+Puzzleheaded-Home802
+•
+3d ago
+
+Still no feedback for the rebuttal, is that normal?
+
+
+1 more reply
+Community Info Section
+r/MachineLearning
+Join
+Machine Learning
+Beginners -> /r/mlquestions or /r/learnmachinelearning , AGI -> /r/singularity, career advices -> /r/cscareerquestions, datasets -> r/datasets
+
+Show more
+Created Jul 29, 2009
+Public
+113K
+Weekly visitors
+2.5K
+Weekly contributions
+User flair
+u/Total_Chemistry8393 avatar
+Total_Chemistry8393
+r/MachineLearning Rules
+1
+No Spam
+2
+No Self-Promotion
+3
+No Marketing Campaigns (SEO)
+4
+No Disrespectful Behavior
+5
+No arXiv Links without Body Text
+6
+No Low-Effort, Beginner Questions
+Recommended Subreddits
+
+r/OpenAI
+2,826,652 members
+
+r/Anthropic
+194,672 members
+
+r/neuralnetworks
+43,686 members
+
+r/ResearchML
+20,647 members
+
+r/Automate
+156,293 members
+
+r/MLQuestions
+110,877 members
+r/learnmachinelearning
+665,365 members
+r/deeplearning
+244,004 members
+
+r/ArtificialInteligence
+1,890,688 members
+
+r/notebooklm
+146,497 members
+Moderators
+Message Mods
+u/kunjaan avatar
+u/kunjaan
+u/cavedave
+ 
+Mod to the stars
+u/MTGTraner avatar
+u/MTGTraner
+ 
+HD Hlynsson
+u/hardmaru avatar
+u/hardmaru
+ 
+Google Brain
+u/programmerChilli avatar
+u/programmerChilli
+ 
+Researcher
+u/AutoModerator avatar
+u/AutoModerator
+u/olaf_nij avatar
+u/olaf_nij
+u/BeatLeJuce
+ 
+Researcher
+u/MatricesRL
+u/Benlus avatar
+u/Benlus
+ 
+ML Engineer
+View all moderators
+Reddit Rules
+Privacy Policy
+User Agreement
+Accessibility
+Reddit, Inc. © 2026. All rights reserved.
+
+Collapse Navigation
+
+Voice Typing
+
+Ready for your note — just start speaking...
+Copy
+Play 
+⌥
+A
+
+Save to Library
+⌥
+L
+
+Talk to Assistant
+Dictate
+⌥
+S
+
+Settings
+
+New Version Available
+Update to get the latest features and improvements.
+
+Update
+
+---
+
+so in summary
+
+---
+
+last year accceptance rate is 25-27% right ? verify, then top 21% still good ?
+
+---
+
+what: "NeurIPS 2025 rejected papers averaging 4.75," ?
+
+---
+
+revise the above web search for main track
+
+---
+
+can we have further score distribution for neurips 2026 on other forums, use exa mcp
+
+---
+
+given the important role of AC, we need to win their advocacy how good are we now with @reply_ac_round2.md
+
+---
+
+risky, we have 3 contributions right ? /Users/hungpq2412/Downloads/16168_Raw_Routed_Mixture_of_Ad.pdf
+
+---
+
+I think the points emphasized by AC is not the points raised by the reviewer who gives us 2, but we are writing a lot more about what are not prioritised by AC in the response for AC
+
+---
+
+We thank the AC for recognising: """The paper makes three contributions: routing collapse diagnosed as a router-input failure, Observation 1 and R(D) as a training-free predictor of it, and RR-MoA as the minimal intervention that follows. The first is a failure mode the standard MoE toolkit does not repair: 720 runs of optimization-side rescues close 10.9% of the gap an input-side fix closes, and it replicates in vision. What the discussion has changed is the accuracy claim reported beside the third."""
+
+not just echoing, pick some, use more readable sentences than "720 runs of optimization-side rescues close 10.9% of the gap an input-side fix closes" so that non-native readers read easily
+
+---
+
+then how about our fixes to this: " We tested eleven of those fixes over 720 runs, and they close only 10.9% of the gap that changing the router's input closes", as mentioned in the paper
+
+---
+
+document those to to-do, we are working on the reply first to AC
+
+---
+
+are we overexposing or oversharing in ac reply and yet-to-post reply @reply_pm4m_round2.md
+
+---
+
+how good is this one now @reply_ac_round2.md in terms of:
+1. not triggering the settled reviewers who gives 5 already (jemj and 8b2z) by calling out their review factual inaccuraties
+2. being thankful, appreacitve tone to the AC, echo our strength, hope they fight for the paper (since this carry most weights)
+3. easy readable, easy to follow, simple sentece structure and vocab
+
+---
+
+how good is this one now @reply_ac_round2.md in terms of:
+1. not triggering the settled reviewers who gives 5 already (jemj and 8b2z) by calling out their review factual inaccuraties
+2. being thankful, appreacitve tone to the AC, echo our strength, hope they fight for the paper (since this carry most weights)
+3. easy readable, easy to follow, simple sentece structure and vocab
+
+ultrathink
+
+---
+
+improve upon that opener
+
+---
+
+this reads very out of context: """The paper makes three contributions: routing collapse diagnosed as a failure of the router's input, Observation 1 and R(D) as a training-free predictor of it, and RR-MoA as the minimal intervention that follows. The first two are what the AC credits. The first is a failure the standard MoE toolkit does not repair. We tested eleven of those fixes over 720 runs. The best cuts MSE by 10.9%; RR-MoA, which changes only the router's input, does 2.7× better. The same failure appears in vision models. What the discussion has changed is the accuracy claim beside the third."""
