@@ -1,0 +1,35 @@
+opener: "We thank the reviewer for the time this review took" should be acknlowedging that they read very closely, spend a lot of time reading so that they can spot such issue"
+
+---
+
+use simpler structure: "Neither point surfaces without checking one against the other down to the appendices, and both were right" We believe that this will not be possible ...
+
+---
+
+No I need structure "We + verb"
+
+---
+
+We believe it takes ...
+
+---
+
+It takes huge efforts and time invested. Write explicitly
+
+---
+
+"""We thank the reviewer for reading our rebuttal against the paper, line by line.""" Read our paper carefully throughout the appendix and our rebuttals so closely
+
+---
+
+less verbose on this: """We believe it
+  ▎ takes a great deal of time and effort to do that, and that nothing less surfaces either point.""" Remove: " Both were right"
+
+---
+
+" We thank the reviewer for reading the paper carefully, appendices included, and our rebuttal just as closely" simplify structure
+
+---
+
+" We believe i
+     t takes a great deal of time and effort to do that" is fine "and that nothing less surfaces either point." is too much
