@@ -1,0 +1,115 @@
+give me a title: """Title
+(Optional) Brief summary of your comment.""" for @rebuttal/reply_pm4m_round2.md
+
+---
+
+I want: "We withdraw it, and want to show how we got there.
+Our reasoning was that" instead of We withdraw it. We had reasoned that raw input helps Moirai's router for the reason it does on MOMENT, where RevIN removes the statistics and raw routing restores them. It does not transfer.
+
+Be explicit: our intial reasoning is that , ... we want to give visibility into ...
+
+---
+
+"we are sorry" -> we apologise
+
+---
+
+add back bro: " We believe it takes a great deal of time and effort to do that."
+
+---
+
+strip elsewhere
+
+---
+
+"to do that" to arrive at those feedback
+
+---
+
+verify these results one more time: """MOMENT-small, H=96, n=10 per arm, Welch two-sided against the stronger anchor:
+
+| Dataset | Residual-IA+ | DLinear | NLinear | Stronger | Gap | p |
+|---|---|---|---|---|---|---|
+| ETTh1 | 0.4288 | 0.4187 | 0.4289 | DLinear | +2.4% | 0.008 |
+| ETTh2 | 0.3456 | 0.3519 | 0.3385 | NLinear | +2.1% | 0.173 |
+| ETTm1 | 0.3259 | 0.3259 | 0.3255 | NLinear | +0.1% | 0.923 |
+| ETTm2 | 0.1880 | 0.2109 | 0.1943 | NLinear | −3.2% | 0.075 |
+| Weather | 0.1967 | 0.2070 | 0.2068 | NLinear | −4.9% | 0.001 |
+| Electricity | 0.1564 | 0.1590 | 0.1627 | DLinear | −1.6% | 0.004 |"""
+
+why mentioned welch two-sided here
+
+---
+
+so we can post @rebuttal/reply_pm4m_round2.md now
+
+---
+
+so we can post @rebuttal/reply_pm4m_round2.md now yet ?
+
+---
+
+why we dropt this one again: """However, the two-regime
+reading is genuinely sharper than uniform collapse-repair, and we restate it correctly
+below; we should have flagged that the clause carrying it rewrote the mechanism."""
+
+---
+
+so what you recommend
+
+---
+
+yes
+
+---
+
+The two regimes are therefore collapse-repair where the statistics are stripped, and a richer router input where they are not. This is not App. P.3's Pure Raw-MLP effect: in RR-MoA the raw signal reaches only the router, and the 12–29% figure is RR-MoA against best fixed (Table N.1).
+
+is """This is not App. P.3's Pure Raw-MLP effect: in RR-MoA the raw signal reaches only the router, and the 12–29% figure is RR-MoA against best fixed (Table N.1).""" logically correct
+
+---
+
+"Welch two-sided a" is this match with the reviewer who raised concern about statsitcal testing @rebuttal/discussion_8b2z.md
+
+---
+
+"  Worth having in your pocket: the cell nearest the correction boundary is ETTh1 at 0.008, which is your
+  loss. Reporting these uncorrected makes your own result look worse, not better — the opposite of the
+  direction a correction complaint usually implies." what do you mean ? is @rebuttal/reply_pm4m_round2.md postable now
+
+---
+
+fully addressing: """Response to Authors
+I thank the authors for the detailed rebuttal and the new experiments. The minor issues (router parameter count, α initialization, Figure 2, line 64) are resolved However, two substantive issues remain (W3 and W4), and in both cases the rebuttal contradicts either the paper itself or leaves the decisive control missing. My reasons are as follows.
+
+1. The rebuttal's explanation of the Moirai gains contradicts the paper itself
+The paper, §4.1 (lines 188–190), states that non-learnable I/O scaling "preserves the (M, Σ) statistics in the hidden states the router reads". This is the stated reason regime (ii) is not vulnerable. The rebuttal's response to my W3 asserts the opposite: Moirai's non-learnable normalization "also strips per-window location-scale from the hidden states, and the raw input lets the router recover it." The rebuttal presents the reversal as "a sharper claim, not a weaker one" without acknowledging that it rewrites the paper's stated mechanism. Table N.2's caption meanwhile hedges in the original direction ("hidden states retain enough signal to avoid collapse"), and the rule offered to Reviewer 8b2Z ("a normalizer causes collapse when it strips routing-relevant statistics at the router's input") silently replaces the paper's learnable-affine criterion.
+
+Which claim is correct?
+
+2. "Residual-IA+ matches or beats DLinear" is confounded by NLinear vs. a simplified DLinear
+Two facts from the submission itself: Residual-IA+'s shared raw branch is NLinear (App. P.1, fix (v): y = Linear(x − x_T) + x_T), while the calibration anchor is the simplified single-Linear DLinear without trend-seasonal decomposition (App. A, lines 640–643). NLinear's from-scratch advantage over DLinear on level-drifting data is a known result from [17] itself, and the paper's own Batch-4 analysis (lines 1309–1315) shows the same pattern inside the adapter: the NLinear branch helps most on precisely the non-stationary ETT datasets, "matching NLinear's design rationale."
+
+The headline defense of W1/W4 (65 significant wins vs. 11 losses) therefore compares a method whose base predictor is a stronger linear model against a weaker linear anchor. As reported, the grid cannot distinguish "the backbone adds value" from "NLinear beats a simplified DLinear." The [NEW] Exchange result (a ~10× RR-MoA deficit in Table N.4 flipping to 2/3 match-or-beat) is exactly what level anchoring predicts on near-random-walk data, backbone or not. Add a variant from-scratch NLinear, trained under the same protocol as the DLinear anchor would be persuasive.
+
+""" yet ? Shall we go post now ?
+
+---
+
+I think this one reads not as good: """Both concerns focus on the accuracy claim rather than the diagnostic contribution because our presentation put it in front: we led with "5/6 match-or-beat" and titled the appendix "Closing the DLinear Gap". The reviewer read the paper as we wrote it. That said, we would respectfully ask that the paper also be weighed on the diagnostic contribution, which stands as submitted; the title and two of three contributions name it.""" as the earlier version we had
+
+---
+
+I think this one reads not as good: """Both concerns focus on the accuracy claim rather than the diagnostic contribution because our presentation put it in front: we led with "5/6 match-or-beat" and titled the appendix "Closing the DLinear Gap". The reviewer read the paper as we wrote it. That said, we would respectfully ask that the paper also be weighed on the diagnostic contribution, which stands as submitted; the title and two of three contributions name it.""" as the earlier version we had: "To be explicit: the confusion here comes from our writing, not the reviewer's reading. Both concerns focus on the accuracy claim rather than the diagnostic contribution because our presentation put it in front: we led with "5/6 match-or-beat" and titled the appendix "Closing the DLinear Gap". The reviewer read the paper as we wrote it. That said, we would respectfully ask that the paper also be weighed on the diagnostic contribution, which stands as submitted; the title and two of three contributions name it."
+
+---
+
+". Across nine datasets at H=96" then why I only see 6 dataset in the table
+
+---
+
+". Across nine datasets at H=96" then why I only see 6 dataset in the table ? if not possible say that due to length constraint we will report in full in revision
+
+---
+
+I mean can we make it look less confused, earlier part it says nine dataset and then I just gloss over the table and it is 6
