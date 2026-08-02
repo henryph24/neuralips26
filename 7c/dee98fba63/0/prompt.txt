@@ -1,0 +1,40 @@
+how good is this one now @reply_ac_round2.md in terms of:
+1. not triggering the settled reviewers who gives 5 already (jemj and 8b2z) by calling out their review factual inaccuraties
+2. being thankful, appreacitve tone to the AC, echo our strength, hope they fight for the paper (since this carry most weights)
+3. easy readable, easy to follow, simple sentece structure and vocab
+
+ultrathink
+
+on scale 0 to 10 do we post this one now
+
+---
+
+Yes toa= all Tone should go to 9, all to 9
+
+---
+
+did we trace the right file ?
+
+---
+
+let continue to improve @reply_pm4m_round2.md a bit. We are trying to ask them to weigh the paper in the diagnostic direction is that correct ? Just confirm me
+
+---
+
+This one reads bad: "Both points reach the accuracy claim beside the diagnosis.". Write this way: "Both concerns focus on the accuracy claim rather than the paper’s intended diagnostic contribution. We respectfully ask that the paper also be weighed on the strength of this diagnostic contribution." <- however, be careful, write in a way that we own our writing not being clear enough
+
+---
+
+Be more polite, write very explicit that it is due to our own writing
+
+---
+
+we should acknolwedge this reviewer effort more in our writing, they indeed spent a lot of time perusing
+
+---
+
+don't say that it is "demanding review". We understand it take a lot of efforts to read in-depth
+
+---
+
+INclude: again we thank the reviewer """We know the effort a reading at this depth takes"""
