@@ -1,0 +1,72 @@
+one deep review pass to see if we may likely introduce further contradiction
+@rebuttal/reply_pm4m_round2.md , first rebuttal of @rebuttal/response_pm4m.md and the paper /Users/hungpq2412/Downloads/16168_Raw_Routed_Mixture_of_Ad.pdf
+
+ultrathink
+
+---
+
+let fix all items but not overshare or overexpose, we are replying to: """Official Comment by Reviewer Pm4m
+Official Commentby Reviewer Pm4m29 Jul 2026, 17:26Program Chairs, Senior Area Chairs, Area Chairs, Reviewers Submitted, Authors
+Comment:
+Response to Authors
+I thank the authors for the detailed rebuttal and the new experiments. The minor issues (router parameter count, α initialization, Figure 2, line 64) are resolved However, two substantive issues remain (W3 and W4), and in both cases the rebuttal contradicts either the paper itself or leaves the decisive control missing. My reasons are as follows.
+
+1. The rebuttal's explanation of the Moirai gains contradicts the paper itself
+The paper, §4.1 (lines 188–190), states that non-learnable I/O scaling "preserves the (M, Σ) statistics in the hidden states the router reads". This is the stated reason regime (ii) is not vulnerable. The rebuttal's response to my W3 asserts the opposite: Moirai's non-learnable normalization "also strips per-window location-scale from the hidden states, and the raw input lets the router recover it." The rebuttal presents the reversal as "a sharper claim, not a weaker one" without acknowledging that it rewrites the paper's stated mechanism. Table N.2's caption meanwhile hedges in the original direction ("hidden states retain enough signal to avoid collapse"), and the rule offered to Reviewer 8b2Z ("a normalizer causes collapse when it strips routing-relevant statistics at the router's input") silently replaces the paper's learnable-affine criterion.
+
+Which claim is correct?
+
+2. "Residual-IA+ matches or beats DLinear" is confounded by NLinear vs. a simplified DLinear
+Two facts from the submission itself: Residual-IA+'s shared raw branch is NLinear (App. P.1, fix (v): y = Linear(x − x_T) + x_T), while the calibration anchor is the simplified single-Linear DLinear without trend-seasonal decomposition (App. A, lines 640–643). NLinear's from-scratch advantage over DLinear on level-drifting data is a known result from [17] itself, and the paper's own Batch-4 analysis (lines 1309–1315) shows the same pattern inside the adapter: the NLinear branch helps most on precisely the non-stationary ETT datasets, "matching NLinear's design rationale."
+
+The headline defense of W1/W4 (65 significant wins vs. 11 losses) therefore compares a method whose base predictor is a stronger linear model against a weaker linear anchor. As reported, the grid cannot distinguish "the backbone adds value" from "NLinear beats a simplified DLinear." The [NEW] Exchange result (a ~10× RR-MoA deficit in Table N.4 flipping to 2/3 match-or-beat) is exactly what level anchoring predicts on near-random-walk data, backbone or not. Add a variant from-scratch NLinear, trained under the same protocol as the DLinear anchor would be persuasive."""
+
+---
+
+check our experimental logs or git commit to see if we can still defend this: "The H≥192 retreat (not raised)" and that TSFM is not dead weight
+
+---
+
+so that our own careless in the first rebuttal right
+
+---
+
+so according to our own paper TSFM is deadweight ?
+
+---
+
+so according to our own paper TSFM is deadweight ? as the reviewer reported verbatim: """2. "Residual-IA+ matches or beats DLinear" is confounded by NLinear vs. a simplified DLinear
+Two facts from the submission itself: Residual-IA+'s shared raw branch is NLinear (App. P.1, fix (v): y = Linear(x − x_T) + x_T), while the calibration anchor is the simplified single-Linear DLinear without trend-seasonal decomposition (App. A, lines 640–643). NLinear's from-scratch advantage over DLinear on level-drifting data is a known result from [17] itself, and the paper's own Batch-4 analysis (lines 1309–1315) shows the same pattern inside the adapter: the NLinear branch helps most on precisely the non-stationary ETT datasets, "matching NLinear's design rationale."
+
+The headline defense of W1/W4 (65 significant wins vs. 11 losses) therefore compares a method whose base predictor is a stronger linear model against a weaker linear anchor. As reported, the grid cannot distinguish "the backbone adds value" from "NLinear beats a simplified DLinear." The [NEW] Exchange result (a ~10× RR-MoA deficit in Table N.4 flipping to 2/3 match-or-beat) is exactly what level anchoring predicts on near-random-walk data, backbone or not. Add a variant from-scratch NLinear, trained under the same protocol as the DLinear anchor would be persuasive.
+
+"""
+
+---
+
+so how good to go is @rebuttal/reply_pm4m_round2.md, grep, verify, give me yes or no
+
+---
+
+and also because the reviewer explicit ask for experiments to make it fully pursuasive, can we add the full table here @rebuttal/reply_pm4m_round2.md  ?
+
+---
+
+Cool but are we less than 5000 characters in the markdown file now
+
+---
+
+"""Comment*
+Your comment or reply (max 5000 characters). Add formatting using Markdown and formulas using LaTeX. For more information see https://openreview.net/faq"""
+
+---
+
+be very selective with word choice. "the fault" <- "the confusion"
+
+---
+
+review all word choice in the reply
+
+---
+
+lovely
