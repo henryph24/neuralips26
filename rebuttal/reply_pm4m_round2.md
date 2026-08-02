@@ -1,6 +1,6 @@
 **Response to Reviewer Pm4m**
 
-We thank the reviewer for reading the paper, its appendices and our rebuttal so closely. We believe it takes a great deal of time and effort to do that. On the first we stand corrected; on the second we ran the requested control and report every cell.
+We thank the reviewer for reading the paper, its appendices and our rebuttal so closely. We believe it takes a great deal of time and effort to do that. We are sorry for the slight delay: we wanted the requested control finished first. On the first we stand corrected; on the second we report every cell below.
 
 **1. Which claim is correct: the paper's.**
 
